@@ -326,6 +326,17 @@ def test_curve_retrieval(target_curve, distance):
             argmin = c
 
     return argmin
+    
+def test_normalization(curve):
+    angle = np.pi / 5.
+    R = np.array([[np.cos(angle), -np.sin(angle)],
+                  [np.sin(angle), np.cos(angle)]])
+    transformed = R.dot(curve) * 2. + np.array([[2], [3]])
+    cplt.plot(transformed, label='input')
+    normalized = cdist.CurveDistance.normalize_pose(transformed)
+    cplt.plot(normalized, label='normalized')
+    plt.legend(loc='best')
+    plt.grid()
 
 def plot_distance(target_curve, distance):
     """Plot a given distance to a given target curve."""
@@ -408,6 +419,8 @@ def main():
     # Get the candidate curve.
     params = (5., 3., 2.)
     nb_turns = 3
+#    params = (2., 1., 0.5) # Ellipse
+#    nb_turns = 1
     samples_per_turn = 50
     cand_curve = get_curve(params, nb_turns, samples_per_turn)
 
@@ -418,6 +431,9 @@ def main():
     # Not used here but could be useful.
 #    points = cand_curve.T
 #    cand_curve_length = sum(la.norm(points[:-1] - points[1:], axis=1))
+
+    
+#    test_normalization(cand_curve)
 
 
     ### 1. DISTANCE FIELD ###

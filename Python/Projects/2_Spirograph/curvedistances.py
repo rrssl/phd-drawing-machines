@@ -8,7 +8,6 @@ Library of curve distances.
 import numpy as np
 import numpy.linalg as la
 import scipy.signal as sig
-from matplotlib.mlab import PCA
 
 try:
     import cv2
@@ -48,16 +47,21 @@ class CurveDistance:
 
     @staticmethod
     def normalize_pose(curve):
-        # Center the curve.
-        curve_average = curve.mean(axis=1)
-        centered_curve = curve - curve_average.reshape(2, 1)
-        # Compute PCA.
-        results = PCA(centered_curve)
-        # TODO compare with other methods (sklearn, linalg.eig(cov()), OpenCV, etc.)
-        # TODO check "using eigenvalues is better for high-dimensional data
-        # and fewer samples, whereas using Singular value decomposition is
-        # better if you have more samples than dimensions."
-        # NOTE avoid using external libraries when they're not needed!
+        # Center and (uniformly) rescale the curve.
+        mean = curve.mean(axis=1)
+        try:
+            std_inv = 1 / la.norm(curve.std(axis=1))
+        except ZeroDivisionError:
+            std_inv = 1.
+        curve = (curve - mean.reshape(2, 1)) * std_inv        
+        
+        # Compute the SVD (numerically more stable than eig(cov), and more 
+        # efficient when nb_samples >> nb_dims).
+        u, _, _ = la.svd(curve)
+        # Rotate the curve.
+        curve = u.dot(curve)
+        
+        return curve
 
     def get_desc(self, curve):
         pass
