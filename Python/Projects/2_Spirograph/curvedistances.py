@@ -6,8 +6,9 @@ Library of curve distances.
 """
 
 import numpy as np
-import numpy.linalg as la
+import scipy.linalg as la
 import scipy.signal as sig
+import scipy.stats as st
 
 try:
     import cv2
@@ -21,10 +22,12 @@ if CV2_IMPORTED: import curveimproc as cimp
 class CurveDistance:
     """Base class for shape distances."""
 
-    def __init__(self, use_cache=True):
+    def __init__(self, use_cache=True, normalize=True):
         # If true, the target descriptor will be saved and re-used if the
         # target is the same. Useful for curve retrieval.
         self.use_cache = use_cache
+        
+        self.normalize = normalize
 
     def get_target_desc(self, target_curve):
         """Get the target descriptor (possibly cached to save computations)."""
@@ -47,6 +50,7 @@ class CurveDistance:
 
     @staticmethod
     def normalize_pose(curve):
+        """Normalize the curve's position, scale, orientation and skewness."""
         # Center and (uniformly) rescale the curve.
         mean = curve.mean(axis=1)
         try:
@@ -61,6 +65,10 @@ class CurveDistance:
         # Rotate the curve.
         curve = u.dot(curve)
         
+        # Normalize mirror reflection to get positive skewness (i.e. most of
+        # the mass is on the positive side of each axis).
+        curve = curve * np.sign(st.skew(curve, axis=1)).reshape(2, 1)
+        
         return curve
 
     def get_desc(self, curve):
@@ -74,8 +82,8 @@ if CV2_IMPORTED:
     class DistanceField(CurveDistance):
         """Shape distance based on the distance transform of the target."""
 
-        def __init__(self, mask_size=5, resol=(512, 512), use_cache=True):
-            super().__init__(use_cache)
+        def __init__(self, mask_size=5, resol=(512, 512), *args, **kwargs):
+            super().__init__(*args, **kwargs)
             self.mask_size = mask_size
             self.resol = resol
             self.diag_ratio_dist_normalization = 0.05
@@ -83,6 +91,8 @@ if CV2_IMPORTED:
         def get_desc(self, curve):
             """Get the descriptor on the input curve."""
             if curve.shape[0] == 2:
+                if self.normalize:
+                    curve = self.normalize_pose(curve)
                 img = cimp.getim(curve, self.resol)
             else:
                 img = curve
@@ -92,14 +102,17 @@ if CV2_IMPORTED:
             """Get the distance between two curves."""
             df = self.get_target_desc(target_curve)
             # Adapt the candidate curve to the distance field.
-            adapted_cand_curve = cimp.fit_in_box(cand_curve, df.shape)
+            if cand_curve.shape[0] == 2:
+                if self.normalize:
+                    cand_curve = self.normalize_pose(cand_curve)
+            cand_curve = cimp.fit_in_box(cand_curve, df.shape)
             # Compute distance normalization factor.
             diag = (df.shape[0] * df.shape[0] + df.shape[1] * df.shape[1])**0.5
             normalization_factor = self.diag_ratio_dist_normalization * diag
             # Compute the average normalized distance.
-            nb_samples = adapted_cand_curve.shape[1]
+            nb_samples = cand_curve.shape[1]
             return sum(df[int(y), int(x)] / normalization_factor
-                       for x, y in adapted_cand_curve.T) / nb_samples
+                       for x, y in cand_curve.T) / nb_samples
 
     # Bug: these constants are not defined in the OpenCV Python namespace.
     cv2.CV_CONTOURS_MATCH_I1 = 1
@@ -132,25 +145,28 @@ if CV2_IMPORTED:
             self.hist_match_method = hist_match_method
 
         def adapt_curve(self, curve):
+            if curve.shape[0] == 2:
+                if self.normalize:
+                    curve = self.normalize_pose(curve)            
             if self.use_image:
                 if curve.shape[0] == 2:
                     shp = (512, 512)
                     curve = cimp.getim(curve, shp)
-                filled = self.filled
+                filled_contour = self.filled_contour
     
                 if self.contour_method == USE_NO_CONTOUR:
                     return curve
                 elif self.contour_method == USE_EXT_CONTOUR:
-                    return cimp.get_ext_contour(curve, filled)
+                    return cimp.get_ext_contour(curve, filled_contour)
                 elif self.contour_method == USE_INT_CONTOUR:
-                    return cimp.get_int_contour(curve, filled)
+                    return cimp.get_int_contour(curve, filled_contour)
                 elif self.contour_method == USE_INTEXT_CONTOUR:
-                    if filled:
-                        return (cimp.get_ext_contour(curve, filled) -
-                                cimp.get_int_contour(curve, filled))
+                    if filled_contour:
+                        return (cimp.get_ext_contour(curve, filled_contour) -
+                                cimp.get_int_contour(curve, filled_contour))
                     else:
-                        return (cimp.get_ext_contour(curve, filled) +
-                                cimp.get_int_contour(curve, filled))
+                        return (cimp.get_ext_contour(curve, filled_contour) +
+                                cimp.get_int_contour(curve, filled_contour))
                 else:
                     return curve
             else:
@@ -190,8 +206,8 @@ class ZernikeMoments(CurveDistance):
 class CurvatureFeatures(CurveDistance):
     """Shape distance based on the curvature of the shapes."""
 
-    def __init__(self, sampling_rate, closed_curve=True, use_cache=True):
-        super().__init__(use_cache)
+    def __init__(self, sampling_rate, closed_curve=True, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.sampling_rate = sampling_rate
         self.closed_curve = closed_curve
 
@@ -215,6 +231,8 @@ class CurvatureFeatures(CurveDistance):
 
     def get_desc(self, curve):
         """Get the descriptor on the input curve."""
+        if self.normalize:
+            curve = self.normalize_pose(curve)
         nb_samples = curve.shape[-1]
         cvt = self.compute_curvature(curve)
 

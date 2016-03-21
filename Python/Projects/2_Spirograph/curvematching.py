@@ -39,6 +39,8 @@ if CV2_IMPORTED:
         df = cdist.DistanceField()
         desc = df.get_desc(target_curve)
         adapted_cand_curve = cimp.fit_in_box(cand_curve, desc.shape)
+        
+        plt.figure()
         cplt.imshow(desc, adapted_cand_curve)
         plt.title('Candidate curve in the distance field of the target curve.')
 
@@ -328,13 +330,16 @@ def test_curve_retrieval(target_curve, distance):
     return argmin
     
 def test_normalization(curve):
-    angle = np.pi / 5.
+    angle = np.pi / 10.
     R = np.array([[np.cos(angle), -np.sin(angle)],
                   [np.sin(angle), np.cos(angle)]])
-    transformed = R.dot(curve) * 2. + np.array([[2], [3]])
-    cplt.plot(transformed, label='input')
+    transformed = R.dot(curve) * 2. + np.array([[2], [3]])    
     normalized = cdist.CurveDistance.normalize_pose(transformed)
+    
+    plt.figure()
+    cplt.plot(transformed, label='input')
     cplt.plot(normalized, label='normalized')
+    plt.gca().set_aspect('equal')
     plt.legend(loc='best')
     plt.grid()
 
@@ -442,18 +447,18 @@ def main():
 #        print("Distance field.")
 #
 #        # Test the code.
-##        test_distance_field(cand_curve, ref_curve)
+#        test_distance_field(cand_curve, ref_curve)
 #
 #        # Test the distance properties.
 #        df = cdist.DistanceField()
-#        df_props = DistanceProperties(df.get_dist, display=False)
+#        df_props = DistanceProperties(df.get_dist, display=True)
 #        df_props.compute_dist_properties(cand_curve, ref_curve)
 #
 #        # Test curve retrieval.
 #        print("Target arguments: 5, 3, 1.5")
 #        retrieved_args = test_curve_retrieval(ref_curve, df.get_dist)
 #        print("Retrieved arguments: {}".format(retrieved_args))
-##        plot_distance(ref_curve, df.get_dist)
+#        plot_distance(ref_curve, df.get_dist)
 #
 #        print('\n')
 
@@ -482,34 +487,34 @@ def main():
 
     ### 3. HU MOMENTS ###
 
-    if CV2_IMPORTED:
-        print("Hu moments.")
-        
-        # Test the code.
+#    if CV2_IMPORTED:
+#        print("Hu moments.")
+#        
+#        # Test the code.
 #        test_hu_moments(cand_curve, ref_curve)
-        
-        # Test the distance properties.
-        hm = cdist.HuMoments(use_image=True, 
-                             contour_method=cdist.USE_INTEXT_CONTOUR,
-                             hist_match_method=cv2.CV_CONTOURS_MATCH_I3)
-        hm_props = DistanceProperties(hm.get_dist, display=False)
-        hm_props.compute_dist_properties(cand_curve, ref_curve)
-
-        # Test curve retrieval.
-        print("Target arguments: 5, 3, 1.5")
-#        descriptor = cf.get_desc(ref_curve)
-#        print("Descriptor: {}".format(descriptor))
-        retrieved_args = test_curve_retrieval(ref_curve, hm.get_dist)
-        print("Retrieved arguments: {}".format(retrieved_args))
-        
+#        
+#        # Test the distance properties.
+#        hm = cdist.HuMoments(use_image=False, 
+#                             contour_method=cdist.USE_NO_CONTOUR,
+#                             hist_match_method=cv2.CV_CONTOURS_MATCH_I2)
+#        hm_props = DistanceProperties(hm.get_dist, display=False)
+#        hm_props.compute_dist_properties(cand_curve, ref_curve)
+#
+#        # Test curve retrieval.
+#        print("Target arguments: 5, 3, 1.5")
+##        descriptor = cf.get_desc(ref_curve)
+##        print("Descriptor: {}".format(descriptor))
+#        retrieved_args = test_curve_retrieval(ref_curve, hm.get_dist)
+#        print("Retrieved arguments: {}".format(retrieved_args))
+#        
 #        hm.hist_match_method=cv2.CV_CONTOURS_MATCH_I1
 #        plot_distance(ref_curve, hm.get_dist)
 #        hm.hist_match_method=cv2.CV_CONTOURS_MATCH_I2
 #        plot_distance(ref_curve, hm.get_dist)
 #        hm.hist_match_method=cv2.CV_CONTOURS_MATCH_I3
 #        plot_distance(ref_curve, hm.get_dist)
-    
-        print('\n')
+#    
+#        print('\n')
 
     ### 4. ZERNIKE MOMENTS ###
 
