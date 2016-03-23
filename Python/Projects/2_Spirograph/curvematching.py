@@ -25,7 +25,8 @@ else:
 from curves import Hypotrochoid
 import curveplotlib as cplt
 import curvedistances as cdist
-if CV2_IMPORTED: import curveimproc as cimp
+if CV2_IMPORTED: 
+    import curveimproc as cimp
 
 
 TEST_IMG_INPUT = False
@@ -81,19 +82,22 @@ if CV2_IMPORTED:
         
         # Display the moments.
         plt.figure()
-        plt.suptitle("Absolute value of the Hu moments (log-scale)")
+        plt.suptitle("Absolute value of log10 of the Hu moments.")
         ax = plt.gcf().add_subplot(221)
         plt.title("Full curve.")
-        plt.bar(np.arange(len(mom_full)) + .6, abs(mom_full), log=True)
+        try:
+            plt.bar(np.arange(len(mom_full)) + .6, abs(mom_full), log=False)
+        except ValueError:
+            print('Error: ', mom_full)
         plt.gcf().add_subplot(222, sharex=ax, sharey=ax)
         plt.title("Exterior contour.")
-        plt.bar(np.arange(len(mom_ext)) + .6, abs(mom_ext), log=True)
+        plt.bar(np.arange(len(mom_ext)) + .6, abs(mom_ext), log=False)
         plt.gcf().add_subplot(223, sharex=ax, sharey=ax)
         plt.title("Interior contour.")
-        plt.bar(np.arange(len(mom_int)) + .6, abs(mom_int), log=True)
+        plt.bar(np.arange(len(mom_int)) + .6, abs(mom_int), log=False)
         plt.gcf().add_subplot(224, sharex=ax, sharey=ax)
         plt.title("Difference of contours.")
-        plt.bar(np.arange(len(mom_intext)) + .6, abs(mom_intext), log=True)
+        plt.bar(np.arange(len(mom_intext)) + .6, abs(mom_intext), log=False)
         
     def test_contours(cand_img, ref_img):
         ref_ext_ctr = cimp.get_ext_contour(ref_img)
@@ -372,7 +376,7 @@ def plot_distance(target_curve, distance):
     yi = np.linspace(Y.min(), Y.max(), 150)
     # Grid the data.
     xi, yi = np.meshgrid(xi, yi)
-    zi = interp.griddata((X, Y), Z, (xi, yi), method='cubic')
+    zi = interp.griddata((X, Y), Z, (xi, yi), method='linear')
     if zi.min() < 0:
         zi = zi - 2 * zi.min()
     # Plot the data.
@@ -422,7 +426,7 @@ def main():
 #        imshow(ref_img)
 
     # Get the candidate curve.
-    params = (5., 3., 2.)
+    params = (5., 3., 2.5)
     nb_turns = 3
 #    params = (2., 1., 0.5) # Ellipse
 #    nb_turns = 1
@@ -494,11 +498,13 @@ def main():
 #        test_hu_moments(cand_curve, ref_curve)
 #        
 #        # Test the distance properties.
-#        hm = cdist.HuMoments(use_image=False, 
-#                             contour_method=cdist.USE_NO_CONTOUR,
+#        hm = cdist.HuMoments(contour_method=cdist.USE_NO_CONTOUR,
+#                             filled_contour=False,
 #                             hist_match_method=cv2.CV_CONTOURS_MATCH_I2)
 #        hm_props = DistanceProperties(hm.get_dist, display=False)
 #        hm_props.compute_dist_properties(cand_curve, ref_curve)
+##        plt.figure()
+##        cplt.imshow(hm.adapt_curve(cand_curve))
 #
 #        # Test curve retrieval.
 #        print("Target arguments: 5, 3, 1.5")
@@ -509,14 +515,37 @@ def main():
 #        
 #        hm.hist_match_method=cv2.CV_CONTOURS_MATCH_I1
 #        plot_distance(ref_curve, hm.get_dist)
-#        hm.hist_match_method=cv2.CV_CONTOURS_MATCH_I2
-#        plot_distance(ref_curve, hm.get_dist)
-#        hm.hist_match_method=cv2.CV_CONTOURS_MATCH_I3
-#        plot_distance(ref_curve, hm.get_dist)
+##        hm.hist_match_method=cv2.CV_CONTOURS_MATCH_I2
+##        plot_distance(ref_curve, hm.get_dist)
+##        hm.hist_match_method=cv2.CV_CONTOURS_MATCH_I3
+##        plot_distance(ref_curve, hm.get_dist)
 #    
 #        print('\n')
 
     ### 4. ZERNIKE MOMENTS ###
+
+    if cdist.MH_IMPORTED:
+        print("Zernike moments.")
+        
+        # Test the code.
+        
+        
+        # Test the distance properties.
+        zm = cdist.ZernikeMoments(radius=128)
+        zm_props = DistanceProperties(zm.get_dist, display=True)
+        zm_props.compute_dist_properties(cand_curve, ref_curve)
+
+        # Test curve retrieval.
+        print("Target arguments: 5, 3, 1.5")
+#        descriptor = cf.get_desc(ref_curve)
+#        print("Descriptor: {}".format(descriptor))
+        retrieved_args = test_curve_retrieval(ref_curve, zm.get_dist)
+        print("Retrieved arguments: {}".format(retrieved_args))
+        
+        # Plot the distance.
+        plot_distance(ref_curve, zm.get_dist)
+    
+        print('\n')
 
     plt.show()
 
