@@ -166,7 +166,7 @@ def test_curvature_features(curve, r, R, sampling_rate):
 
 
 class DistanceProperties:
-    """Class testing the mathematical properties of a distance."""
+    """Class testing the mathematical properties of a dissimilarity measure."""
 
     def __init__(self, distance, display=False, epsilon=1e-3):
         self.distance = distance
@@ -315,7 +315,7 @@ def test_curve_retrieval(target_curve, distance):
     combi = Hypotrochoid.get_param_combinations(num_R_vals, num_d_vals)
     # Compare each candidate curve.
     min_dist = np.inf
-    argmin = (-1, -1, -1)
+    argmin = np.empty(3)
     points_per_turn = 50
     for c in combi:
         # Generate the curve.
@@ -524,26 +524,51 @@ def main():
 
     ### 4. ZERNIKE MOMENTS ###
 
-    if cdist.MH_IMPORTED:
-        print("Zernike moments.")
+#    if cdist.MH_IMPORTED:
+#        print("Zernike moments.")
+#        
+#        # Test the code.
+#        
+#        
+#        # Test the distance properties.
+#        zm = cdist.ZernikeMoments(radius=128)
+#        zm_props = DistanceProperties(zm.get_dist, display=True)
+#        zm_props.compute_dist_properties(cand_curve, ref_curve)
+#
+#        # Test curve retrieval.
+#        print("Target arguments: 5, 3, 1.5")
+##        descriptor = cf.get_desc(ref_curve)
+##        print("Descriptor: {}".format(descriptor))
+#        retrieved_args = test_curve_retrieval(ref_curve, zm.get_dist)
+#        print("Retrieved arguments: {}".format(retrieved_args))
+#        
+#        # Plot the distance.
+#        plot_distance(ref_curve, zm.get_dist)
+#    
+#        print('\n')
+    
+    ### 5. PERCEPTUAL FEATURES ###
+
+    if CV2_IMPORTED:
+        print("Perceptual features.")
         
         # Test the code.
         
         
         # Test the distance properties.
-        zm = cdist.ZernikeMoments(radius=128)
-        zm_props = DistanceProperties(zm.get_dist, display=True)
-        zm_props.compute_dist_properties(cand_curve, ref_curve)
+        pf = cdist.PerceptualFeatures(normalize=True)
+        pf_props = DistanceProperties(pf.get_dist, display=False)
+        pf_props.compute_dist_properties(cand_curve, ref_curve)
 
         # Test curve retrieval.
         print("Target arguments: 5, 3, 1.5")
-#        descriptor = cf.get_desc(ref_curve)
-#        print("Descriptor: {}".format(descriptor))
-        retrieved_args = test_curve_retrieval(ref_curve, zm.get_dist)
+        descriptor = pf.get_desc(ref_curve)
+        print("Descriptor: {}".format(descriptor))
+        retrieved_args = test_curve_retrieval(ref_curve, pf.get_dist)
         print("Retrieved arguments: {}".format(retrieved_args))
         
         # Plot the distance.
-        plot_distance(ref_curve, zm.get_dist)
+        plot_distance(ref_curve, pf.get_dist)
     
         print('\n')
 

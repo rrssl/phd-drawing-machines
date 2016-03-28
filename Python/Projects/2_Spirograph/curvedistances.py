@@ -219,11 +219,11 @@ if CV2_IMPORTED:
 #            target_curve = self.adapt_curve(target_curve)
 #            return cv2.matchShapes(cand_curve, target_curve,
 #                                   self.hist_match_method, 0)
-            
+
     class PerceptualFeatures(CurveDistance):
         """Shape distance based on perceptually intuituve features."""
         
-        def __init__(self, closed_curve, *args, **kwargs):
+        def __init__(self, closed_curve=True, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.closed_curve = closed_curve
             
@@ -235,10 +235,8 @@ if CV2_IMPORTED:
             curve_img = cimp.getim(curve, shp)
                 
             # Feature 1: contour areas ratio
-            int_contour = cimp.get_int_contour(curve_img, filled=False)
-            int_area = cv2.contourArea(int_contour)
-            ext_contour = cimp.get_ext_contour(curve_img, filled=True)
-            ext_area = cv2.contourArea(ext_contour)
+            int_area = cimp.get_int_contour(curve_img, filled=True).sum()
+            ext_area = cimp.get_ext_contour(curve_img, filled=True).sum()
             area_ratio = int_area / ext_area
             # Feature 2: number of curvature maxima
             cvt = compute_curvature(curve, self.closed_curve)
@@ -256,8 +254,9 @@ if CV2_IMPORTED:
             """Get the distance between two curves."""
             target_desc = self.get_target_desc(target_curve)
             cand_desc = self.get_desc(cand_curve)
-            return la.norm(target_desc - cand_desc)        
-            
+            # TODO: weight the components so that they become commensurable:
+            # || (m_A - m_B) / m_A ||_1
+            return la.norm(target_desc - cand_desc, 1)              
 
 #class SphericalDensity:
 #    """Shape distance based on the histogram of the spherical mapping."""
