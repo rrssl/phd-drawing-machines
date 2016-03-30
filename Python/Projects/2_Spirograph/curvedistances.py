@@ -237,26 +237,27 @@ if CV2_IMPORTED:
             # Feature 1: contour areas ratio
             int_area = cimp.get_int_contour(curve_img, filled=True).sum()
             ext_area = cimp.get_ext_contour(curve_img, filled=True).sum()
-            area_ratio = int_area / ext_area
-            # Feature 2: number of curvature maxima
+            # Feature 2: number of curvature maxima / length of curve
             cvt = compute_curvature(curve, self.closed_curve)
             argrelmax = sig.argrelmax(cvt)[0]
             nb_max = argrelmax.size
+            # /!\ scipy.linalg.norm currently does not accept the 'axis' arg.
+            length = sum(np.linalg.norm(curve.T[:-1] - curve.T[1:], axis=1))
             # Feature 3: average curvature maxima
             if nb_max:
                 avg_max = np.mean(cvt[argrelmax])
             else:
                 avg_max = np.mean(cvt)
             
-            return np.array([area_ratio, nb_max, avg_max])
+            return np.array([0 * int_area / ext_area, 
+                             nb_max / length, 
+                             np.log(avg_max)])
     
         def get_dist(self, cand_curve, target_curve):
             """Get the distance between two curves."""
             target_desc = self.get_target_desc(target_curve)
             cand_desc = self.get_desc(cand_curve)
-            # TODO: weight the components so that they become commensurable:
-            # || (m_A - m_B) / m_A ||_1
-            return la.norm(target_desc - cand_desc, 1)              
+            return la.norm(target_desc - cand_desc)          
 
 #class SphericalDensity:
 #    """Shape distance based on the histogram of the spherical mapping."""
