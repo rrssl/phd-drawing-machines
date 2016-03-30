@@ -104,54 +104,55 @@ class SpiroPlot:
 
 class SpiroGridPlot():
     def __init__(self):
-        self.draw_grid()
+        self.plot_increasing_ratios = True
+        self.draw_grid()        
 
     def draw_grid(self):
-        num_R_vals = 8
+        num_R_vals = 7
         num_d_vals = 5
 
         # Compute combinations.
         combi = Hypotrochoid.get_param_combinations(num_R_vals, num_d_vals)
+        if self.plot_increasing_ratios:
+            ratios = (combi[:,1] / combi[:,0]) + 1e-6 * combi[:,2]
+            sorted_indices = np.argsort(ratios)
+            combi = combi[sorted_indices, :]
 
         # Draw curves.
-        plt.close(plt.gcf())
-        height = combi.shape[0] // num_d_vals
-        self.fig, axes = plt.subplots(height, num_d_vals)
-        idx = 0
-        for c in combi:
-            self.R, self.r, self.d = c
-            self.ax = axes.flat[idx]
-            idx += 1
-            self.draw_grid_cell()
-        self.fig.canvas.draw()
+        fig, frame = plt.subplots()
 
-        plt.subplots_adjust(bottom=0.02, top = 0.98)
+        for i, c in enumerate(combi):
+            position = np.array([i % num_d_vals, i // num_d_vals]) * [5, -3]
+            if c[1] / c[0] != combi[i - 1, 1] / combi[i - 1, 0]:
+                frame.text(-6, position[1] - 0.3, 
+                           r'$\frac{{{:.0f}}}{{{:.0f}}}$'.format(c[1], c[0]), 
+                           fontsize=20)            
+            self.draw_grid_cell(c, position)
+        
         # Adjust figure size. Don't forget 'forward=True' to change window size
         # as well.
-        base_size = self.fig.get_size_inches()
-        self.fig.set_size_inches((base_size[0], 3 * base_size[1]),
-                                  forward=True)
+        base_size = fig.get_size_inches()
+        fig.set_size_inches((base_size[0], 3 * base_size[1]),
+                            forward=True)
+                            
+        plt.subplots_adjust(bottom=0.02, top = 0.98)
+        frame.set_ylim(-3 * (combi.shape[0] // num_d_vals), 3)
+        frame.set_aspect('equal')
+        frame.axis('off')
 
-    def draw_grid_cell(self):
-        R = self.R
-        r = self.r
-        d = self.d
+    def draw_grid_cell(self, parameters, position):
+        R, r, d = parameters
         N = r   # r is already the smallest integer denominator.
         theta_range = np.linspace(0., N * 2 * np.pi,
                                   N * SpiroPlot.points_per_turn)
-        ax = self.ax
 
         hypo = Hypotrochoid(theta_range, R, r, d)
+        
+        curve = np.array([hypo.getX(), hypo.getY()])
+        curve = curve / abs(curve).max()
+        curve = curve + position.reshape(2, 1)
 
-        ax.cla()
-        ax.set_aspect('equal')
-        ax.axis('off')
-
-        ax.plot(hypo.getX(), hypo.getY())
-
-        dim = R - r + d + 1
-        ax.set_xlim(-dim, dim)
-        ax.set_ylim(-dim, dim)
+        plt.plot(curve[0], curve[1], 'b-')
 
     def show(self):
         plt.show()
