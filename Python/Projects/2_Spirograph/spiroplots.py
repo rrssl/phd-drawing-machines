@@ -105,10 +105,11 @@ class SpiroPlot:
 class SpiroGridPlot():
     def __init__(self):
         self.plot_increasing_ratios = True
+        self.plot_increasing_r = False
         self.draw_grid()        
 
     def draw_grid(self):
-        num_R_vals = 7
+        num_R_vals = 8
         num_d_vals = 5
 
         # Compute combinations.
@@ -117,7 +118,10 @@ class SpiroGridPlot():
             ratios = (combi[:,1] / combi[:,0]) + 1e-6 * combi[:,2]
             sorted_indices = np.argsort(ratios)
             combi = combi[sorted_indices, :]
-
+        if self.plot_increasing_r:
+            sorted_indices = np.argsort(combi[:,1] + 1e-3 * combi[:,0] + 1e-6 * combi[:,2])
+            combi = combi[sorted_indices, :]
+            
         # Draw curves.
         fig, frame = plt.subplots()
 
