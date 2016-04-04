@@ -104,12 +104,12 @@ class SpiroPlot:
 
 class SpiroGridPlot():
     def __init__(self):
-        self.plot_increasing_ratios = True
-        self.plot_increasing_r = False
+        self.plot_increasing_ratios = False
+        self.plot_increasing_r = True
         self.draw_grid()        
 
     def draw_grid(self):
-        num_R_vals = 8
+        num_R_vals = 10
         num_d_vals = 5
 
         # Compute combinations.
@@ -118,29 +118,31 @@ class SpiroGridPlot():
             ratios = (combi[:,1] / combi[:,0]) + 1e-6 * combi[:,2]
             sorted_indices = np.argsort(ratios)
             combi = combi[sorted_indices, :]
+            axis_text = r'$\frac{{{1:.0f}}}{{{0:.0f}}}$'
         if self.plot_increasing_r:
-            sorted_indices = np.argsort(combi[:,1] + 1e-3 * combi[:,0] + 1e-6 * combi[:,2])
+            sorted_indices = np.argsort(
+                combi[:,1] + 1e-3 * combi[:,0] + 1e-6 * combi[:,2])
             combi = combi[sorted_indices, :]
+            axis_text = r'$({0:.0f},\ {1:.0f})$'
             
         # Draw curves.
         fig, frame = plt.subplots()
 
         for i, c in enumerate(combi):
-            position = np.array([i % num_d_vals, i // num_d_vals]) * [5, -3]
+            position = np.array([i // num_d_vals, i % num_d_vals]) * [3, 5]
             if c[1] / c[0] != combi[i - 1, 1] / combi[i - 1, 0]:
-                frame.text(-6, position[1] - 0.3, 
-                           r'$\frac{{{:.0f}}}{{{:.0f}}}$'.format(c[1], c[0]), 
-                           fontsize=20)            
+                frame.text(position[0] - 0.3, -6, axis_text.format(c[0], c[1]), 
+                           fontsize=12)            
             self.draw_grid_cell(c, position)
         
         # Adjust figure size. Don't forget 'forward=True' to change window size
         # as well.
         base_size = fig.get_size_inches()
-        fig.set_size_inches((base_size[0], 3 * base_size[1]),
+        fig.set_size_inches((2 * base_size[0], 2 * base_size[1]),
                             forward=True)
                             
-        plt.subplots_adjust(bottom=0.02, top = 0.98)
-        frame.set_ylim(-3 * (combi.shape[0] // num_d_vals), 3)
+        plt.subplots_adjust(left=0.02, right=0.98)
+        frame.set_xlim(-3, 3 * (combi.shape[0] // num_d_vals))
         frame.set_aspect('equal')
         frame.axis('off')
 

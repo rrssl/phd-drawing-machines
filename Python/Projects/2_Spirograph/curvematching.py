@@ -13,8 +13,9 @@ import scipy.signal as sig
 import scipy.interpolate as interp
 #import numpy.linalg as la
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.colors as colors
+from mpl_toolkits.mplot3d import Axes3D
+
 try:
     import cv2
 except ImportError:
@@ -25,8 +26,9 @@ else:
 from curves import Hypotrochoid
 import curveplotlib as cplt
 import curvedistances as cdist
-if CV2_IMPORTED: 
+if CV2_IMPORTED:
     import curveimproc as cimp
+import matcheval as meval
 
 
 TEST_IMG_INPUT = False
@@ -40,7 +42,7 @@ if CV2_IMPORTED:
         df = cdist.DistanceField()
         desc = df.get_desc(target_curve)
         adapted_cand_curve = cimp.fit_in_box(cand_curve, desc.shape)
-        
+
         plt.figure()
         cplt.imshow(desc, adapted_cand_curve)
         plt.title('Candidate curve in the distance field of the target curve.')
@@ -65,21 +67,21 @@ if CV2_IMPORTED:
         # Compute the distance.
         hu_dist = hm.get_dist(cand_curve, target_curve)
         print("Distance between external Hu Moments: {}".format(hu_dist))
-        
+
         # Compute the Hu moments of the target internal contour.
         hm.contour_method = cdist.USE_INT_CONTOUR
         mom_int = hm.get_desc(target_curve)
         # Compute the distance.
         hu_dist = hm.get_dist(cand_curve, target_curve)
         print("Distance between internal Hu Moments: {}".format(hu_dist))
-        
+
         # Compute the Hu moments of the intext contour.
         hm.contour_method = cdist.USE_INTEXT_CONTOUR
         mom_intext = hm.get_desc(target_curve)
         # Compute the distance.
         hu_dist = hm.get_dist(cand_curve, target_curve)
         print("Distance between internal Hu Moments: {}".format(hu_dist))
-        
+
         # Display the moments.
         plt.figure()
         plt.suptitle("Absolute value of log10 of the Hu moments.")
@@ -98,39 +100,41 @@ if CV2_IMPORTED:
         plt.gcf().add_subplot(224, sharex=ax, sharey=ax)
         plt.title("Difference of contours.")
         plt.bar(np.arange(len(mom_intext)) + .6, abs(mom_intext), log=False)
-        
-    def test_contours(cand_img, ref_img):
-        ref_ext_ctr = cimp.get_ext_contour(ref_img)
-        cand_ext_ctr = cimp.get_ext_contour(cand_img)
-        ref_int_ctr = cimp.get_int_contour(ref_img)
-        cand_int_ctr = cimp.get_int_contour(cand_img)
-        
-        plt.figure()
-        plt.gcf().add_subplot(421)
-        cplt.imshow(ref_img)
-        plt.title("Target's contours.\n")
-        plt.gcf().add_subplot(422)
-        cplt.imshow(cand_img)
-        plt.title("Candidate's contours.\n")
-        plt.gcf().add_subplot(423)
-        cplt.imshow(ref_ext_ctr)
-        plt.gcf().add_subplot(424)
-        cplt.imshow(cand_ext_ctr)
-        plt.gcf().add_subplot(425)
-        cplt.imshow(ref_int_ctr)
-        plt.gcf().add_subplot(426)
-        cplt.imshow(cand_int_ctr)
-        plt.gcf().add_subplot(427)
-        cplt.imshow(ref_ext_ctr - ref_int_ctr)
-        plt.gcf().add_subplot(428)
-        cplt.imshow(cand_ext_ctr - cand_int_ctr)        
 
+    def show_contours(img):
+        """Show the different available versions of contour extraction. """
+
+        plt.figure()
+
+        plt.gcf().add_subplot(332)
+        plt.title("Source.\n")
+        cplt.imshow(img)
+
+        ext_ctr = cimp.get_ext_contour(img, filled=False)
+        int_ctr = cimp.get_int_contour(img, filled=False)
+
+        plt.gcf().add_subplot(334)
+        cplt.imshow(ext_ctr)
+        plt.gcf().add_subplot(335)
+        cplt.imshow(int_ctr)
+        plt.gcf().add_subplot(336)
+        cplt.imshow(ext_ctr + int_ctr)
+
+        ext_ctr = cimp.get_ext_contour(img, filled=True)
+        int_ctr = cimp.get_int_contour(img, filled=True)
+
+        plt.gcf().add_subplot(337)
+        cplt.imshow(ext_ctr)
+        plt.gcf().add_subplot(338)
+        cplt.imshow(int_ctr)
+        plt.gcf().add_subplot(339)
+        cplt.imshow(ext_ctr - int_ctr)
 
 def test_curvature_features(curve, r, R, sampling_rate):
     """Test the curvature features descriptor."""
     # Compute Fourier transform.
     cf = cdist.CurvatureFeatures(sampling_rate)
-    cvt = cf.compute_curvature(curve)
+    cvt = cdist.compute_curvature(curve)
     fourier = np.fft.rfft(cvt)
     power = abs(fourier) * abs(fourier)
     freq = np.fft.rfftfreq(curve.shape[-1])
@@ -306,9 +310,8 @@ class DistanceProperties:
         plt.gca().set_aspect('equal')
         plt.title("{}\nd = {:.2f}".format(name, score))
 
-
-def test_curve_retrieval(target_curve, distance):
-    """Test the retrieving capacities of a distance."""
+def test_curve_matching(target_curve, distance):
+    """Test the matching capacities of a distance."""
     # Compute combinations.
     num_R_vals = 10
     num_d_vals = 14
@@ -333,66 +336,104 @@ def test_curve_retrieval(target_curve, distance):
 
     return argmin
     
-def test_normalization(curve):
+
+def test_curve_retrieval(target_curve, distance):
+    """Test the retrieving capacities of a distance."""
+    num_retrieved = 6
+    # Compute combinations.
+    num_R_vals = 10
+    num_d_vals = 14
+    combi = Hypotrochoid.get_param_combinations(num_R_vals, num_d_vals)
+    # Compare each candidate curve.
+    distances = np.empty(combi.shape[0])
+    points_per_turn = 50
+    for i, c in enumerate(combi):
+        # Generate the curve.
+        cand_curve = get_curve(c, c[1], points_per_turn)
+        # Compute the distance.
+        distances[i] = distance(cand_curve, target_curve)
+    # Collect the closest curves.
+    sortid = np.argsort(distances)
+    mindist = distances[sortid][:num_retrieved]
+    argmin = combi[sortid, :][:num_retrieved, :]
+
+    return argmin, mindist
+    
+def show_curve_retrieval(target_curve, retrieved_curves, distances):
+    """Show the curve retrieval results for a given distance."""
+    samples_per_turn = 50
+    nb_retrieved = retrieved_curves.shape[0]
+    plt.figure(figsize=(3.3 * (nb_retrieved + 1), 3))
+    frame = plt.subplot(1, nb_retrieved + 1, 1)
+    plt.title("Target curve. {}".format(np.array([5, 3, 1.5])))
+    cplt.plot(target_curve)
+    frame.set_aspect('equal')
+    for i, c in enumerate(retrieved_curves):
+        frame = plt.subplot(1, nb_retrieved + 1, 2 + i, sharex=frame, 
+                            sharey=frame)
+        plt.title("d = {:.3f} {}".format(distances[i], c))
+        cplt.plot(get_curve(c, c[1], samples_per_turn))
+        frame.set_aspect('equal')
+    plt.subplots_adjust(left=0.02, right=0.98)
+    plt.autoscale()
+    plt.margins(0.1)
+
+def show_normalization(curve):
     angle = np.pi / 10.
     R = np.array([[np.cos(angle), -np.sin(angle)],
                   [np.sin(angle), np.cos(angle)]])
-    transformed = R.dot(curve) * 2. + np.array([[2], [3]])    
+    transformed = R.dot(curve) * 2. + np.array([[2], [3]])
     normalized = cdist.CurveDistance.normalize_pose(transformed)
-    
+
     plt.figure()
     cplt.plot(transformed, label='input')
     cplt.plot(normalized, label='normalized')
     plt.gca().set_aspect('equal')
     plt.legend(loc='best')
     plt.grid()
+    
 
-def plot_distance(target_curve, distance):
+def plot_distance(target_curve, distance, name):
     """Plot a given distance to a given target curve."""
-    dist_list = []
-    d_r_ratio_list = []
-    r_R_ratio_list = []
     # Compute combinations.
-    num_R_vals = 10
+    num_R_vals = 15
     num_d_vals = 15
     combi = Hypotrochoid.get_param_combinations(num_R_vals, num_d_vals)
+    D = np.empty(combi.shape[0])
     # Compare each candidate curve.
     points_per_turn = 50
-    for c in combi:
+    for i, c in enumerate(combi):
         # Generate the curve.
         cand_curve = get_curve(c, c[1], points_per_turn)
         # Compute the distance.
-        dist = distance(cand_curve, target_curve)
+        D[i] = distance(cand_curve, target_curve)
 #        print(dist, c)
-        dist_list.append(dist)
-        d_r_ratio_list.append(c[2] / c[1])
-        r_R_ratio_list.append(c[1] / c[0])
 
-    X = np.array(d_r_ratio_list)
-    Y = np.array(r_R_ratio_list)
-    Z = np.array(dist_list)
+    X = combi[:,2] / combi[:,1]
+    Y = combi[:,1] / combi[:,0]
     # Define grid.
-    xi = np.linspace(X.min(), X.max(), 150)
-    yi = np.linspace(Y.min(), Y.max(), 150)
+    xi = np.linspace(X.min(), X.max(), 50)
+    yi = np.linspace(Y.min(), Y.max(), 50)
     # Grid the data.
     xi, yi = np.meshgrid(xi, yi)
-    zi = interp.griddata((X, Y), Z, (xi, yi), method='linear')
+    zi = interp.griddata((X, Y), D, (xi, yi), method='linear')
     if zi.min() < 0:
         zi = zi - 2 * zi.min()
     # Plot the data.
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
-    ax.plot_surface(xi, yi, zi, rstride=3, cstride=3, cmap=plt.cm.winter,
+    ax = plt.figure().gca(projection='3d')
+    ax.plot_surface(xi, yi, zi, rstride=1, cstride=1, cmap=plt.cm.winter,
                     norm=colors.LogNorm(vmin=zi.min(), vmax=zi.max()),
-                    linewidth=0, antialiased=True)
+                    linewidth=0.1, antialiased=True)
+    ax.scatter(1.5/3, 3/5)
     ax.set_xlim(0., 1.)
     ax.set_ylim(0., 1.)
     ax.set_zlim(0., zi.max())
     ax.set_xlabel('d / r')
     ax.set_ylabel('r / R')
-    ax.set_zlabel('Distance')
-    plt.title("Plot of the distance as a function\n"
-              "of the candidate hypotrochoid's parameters.")
+    ax.set_zlabel('D')
+    plt.title("Plot of the " + name + " dissimilarity measure\n"
+              "as a function of the candidate hypotrochoid's parameters.")
+              
 
 def get_curve(params, nb_turns, nb_samples_per_turn):
     """Generate the curve (hypotrochoid) of given parameters."""
@@ -401,8 +442,11 @@ def get_curve(params, nb_turns, nb_samples_per_turn):
     theta_range = np.linspace(0., interval_length, nb_samples)
     hypo = Hypotrochoid(theta_range, *params)
     return np.vstack([hypo.getX(), hypo.getY()])
+    
 
 def main():
+    """Entry point."""
+    np.set_printoptions(precision=2, suppress=True)
     plt.ioff()
 
     # Get the reference curve image.
@@ -437,45 +481,48 @@ def main():
         shp = ref_img.shape
         cand_img = cimp.getim(cand_curve, shp)
 
-    # Not used here but could be useful.
-#    points = cand_curve.T
-#    cand_curve_length = sum(la.norm(points[:-1] - points[1:], axis=1))
-
-    
-#    test_normalization(cand_curve)
+#    show_normalization(cand_curve)
+#    show_contours(cand_img)
 
 
     ### 1. DISTANCE FIELD ###
 
-#    if CV2_IMPORTED:
-#        print("Distance field.")
-#
+    if CV2_IMPORTED:
+        print("Distance field.")
+
 #        # Test the code.
 #        test_distance_field(cand_curve, ref_curve)
 #
 #        # Test the distance properties.
-#        df = cdist.DistanceField()
+        df = cdist.DistanceField()
 #        df_props = DistanceProperties(df.get_dist, display=True)
 #        df_props.compute_dist_properties(cand_curve, ref_curve)
 #
 #        # Test curve retrieval.
 #        print("Target arguments: 5, 3, 1.5")
-#        retrieved_args = test_curve_retrieval(ref_curve, df.get_dist)
+#        retrieved_args = test_curve_matching(ref_curve, df.get_dist)
 #        print("Retrieved arguments: {}".format(retrieved_args))
-#        plot_distance(ref_curve, df.get_dist)
-#
-#        print('\n')
+#        plot_distance(ref_curve, df.get_dist, "Distance Field")
+#        df_error_dist = meval.get_relative_error(df.get_dist)
+#        print("Relative error mean, median and std: {}".format(df_error_dist))
+#        df_prec_rec = meval.get_precision_recall(df.get_dist)
+#        print("Precision and recall: {}".format(df_prec_rec))
+#        # Test curve retrieval.
+#        show_curve_retrieval(ref_curve, 
+#                             *test_curve_retrieval(ref_curve, df.get_dist))
+
+        print('\n')
 
     ### 2. CURVATURE'S FEATURES ###
 
-#    print("Curvature's features.")
-#
-#    sampling_rate = samples_per_turn / (2 * np.pi)
+    print("Curvature's features.")
+
+    sampling_rate = samples_per_turn / (2 * np.pi)
 #    # Test the code.
 #    test_curvature_features(cand_curve, params[1], params[0], sampling_rate)
 #
 #    # Test the distance properties.
-#    cf = cdist.CurvatureFeatures(sampling_rate)
+    cf = cdist.CurvatureFeatures(sampling_rate)
 #    cf_props = DistanceProperties(cf.get_dist, display=True)
 #    cf_props.compute_dist_properties(cand_curve, ref_curve)
 #
@@ -483,24 +530,31 @@ def main():
 #    print("Target arguments: 5, 3, 1.5")
 ##    descriptor = cf.get_desc(ref_curve)
 ##    print("Descriptor: {}".format(descriptor))
-#    retrieved_args = test_curve_retrieval(ref_curve, cf.get_dist)
+#    retrieved_args = test_curve_matching(ref_curve, cf.get_dist)
 #    print("Retrieved arguments: {}".format(retrieved_args))
-#    plot_distance(ref_curve, cf.get_dist)
-#
-#    print('\n')
+#    plot_distance(ref_curve, cf.get_dist, "Curvature Features")
+#    cf_error_dist = meval.get_relative_error(cf.get_dist)
+#    print("Relative error mean, median and std: {}".format(cf_error_dist))
+#    cf_prec_rec = meval.get_precision_recall(cf.get_dist)
+#    print("Precision and recall: {}".format(cf_prec_rec))
+#    # Test curve retrieval.
+#    show_curve_retrieval(ref_curve, 
+#                         *test_curve_retrieval(ref_curve, cf.get_dist))
+
+    print('\n')
 
     ### 3. HU MOMENTS ###
 
-#    if CV2_IMPORTED:
-#        print("Hu moments.")
-#        
+    if CV2_IMPORTED:
+        print("Hu moments.")
+#
 #        # Test the code.
 #        test_hu_moments(cand_curve, ref_curve)
-#        
+#
 #        # Test the distance properties.
-#        hm = cdist.HuMoments(contour_method=cdist.USE_NO_CONTOUR,
-#                             filled_contour=False,
-#                             hist_match_method=cv2.CV_CONTOURS_MATCH_I2)
+        hm = cdist.HuMoments(contour_method=cdist.USE_NO_CONTOUR,
+                             filled_contour=False,
+                             hist_match_method=cv2.CV_CONTOURS_MATCH_I2)
 #        hm_props = DistanceProperties(hm.get_dist, display=False)
 #        hm_props.compute_dist_properties(cand_curve, ref_curve)
 ##        plt.figure()
@@ -510,28 +564,35 @@ def main():
 #        print("Target arguments: 5, 3, 1.5")
 ##        descriptor = cf.get_desc(ref_curve)
 ##        print("Descriptor: {}".format(descriptor))
-#        retrieved_args = test_curve_retrieval(ref_curve, hm.get_dist)
+#        retrieved_args = test_curve_matching(ref_curve, hm.get_dist)
 #        print("Retrieved arguments: {}".format(retrieved_args))
-#        
+#
 #        hm.hist_match_method=cv2.CV_CONTOURS_MATCH_I1
-#        plot_distance(ref_curve, hm.get_dist)
+#        plot_distance(ref_curve, hm.get_dist, "Hu Moments")
 ##        hm.hist_match_method=cv2.CV_CONTOURS_MATCH_I2
 ##        plot_distance(ref_curve, hm.get_dist)
 ##        hm.hist_match_method=cv2.CV_CONTOURS_MATCH_I3
 ##        plot_distance(ref_curve, hm.get_dist)
-#    
-#        print('\n')
+#        hm_error_dist = meval.get_relative_error(hm.get_dist)
+#        print("Relative error mean, median and std: {}".format(hm_error_dist))
+#        hm_prec_rec = meval.get_precision_recall(hm.get_dist)
+#        print("Precision and recall: {}".format(hm_prec_rec))
+        # Test curve retrieval.
+        show_curve_retrieval(ref_curve, 
+                             *test_curve_retrieval(ref_curve, hm.get_dist))
+
+        print('\n')
 
     ### 4. ZERNIKE MOMENTS ###
 
-#    if cdist.MH_IMPORTED:
-#        print("Zernike moments.")
-#        
+    if cdist.MH_IMPORTED:
+        print("Zernike moments.")
+#
 #        # Test the code.
-#        
-#        
+#
+#
 #        # Test the distance properties.
-#        zm = cdist.ZernikeMoments(radius=128)
+        zm = cdist.ZernikeMoments(radius=128)
 #        zm_props = DistanceProperties(zm.get_dist, display=True)
 #        zm_props.compute_dist_properties(cand_curve, ref_curve)
 #
@@ -539,37 +600,50 @@ def main():
 #        print("Target arguments: 5, 3, 1.5")
 ##        descriptor = cf.get_desc(ref_curve)
 ##        print("Descriptor: {}".format(descriptor))
-#        retrieved_args = test_curve_retrieval(ref_curve, zm.get_dist)
+#        retrieved_args = test_curve_matching(ref_curve, zm.get_dist)
 #        print("Retrieved arguments: {}".format(retrieved_args))
-#        
+#
 #        # Plot the distance.
-#        plot_distance(ref_curve, zm.get_dist)
-#    
-#        print('\n')
-    
+#        plot_distance(ref_curve, zm.get_dist, "Zernike Moments")
+#        zm_error_dist = meval.get_relative_error(zm.get_dist)
+#        print("Relative error mean, median and std: {}".format(zm_error_dist))
+#        zm_prec_rec = meval.get_precision_recall(zm.get_dist)
+#        print("Precision and recall: {}".format(zm_prec_rec))
+        # Test curve retrieval.
+        show_curve_retrieval(ref_curve, 
+                             *test_curve_retrieval(ref_curve, zm.get_dist))
+                             
+        print('\n')
+
     ### 5. PERCEPTUAL FEATURES ###
 
     if CV2_IMPORTED:
         print("Perceptual features.")
-        
-        # Test the code.
-        
-        
-        # Test the distance properties.
+#
+#        # Test the code.
+#
+#
+#        # Test the distance properties.
         pf = cdist.PerceptualFeatures(normalize=True)
-        pf_props = DistanceProperties(pf.get_dist, display=False)
-        pf_props.compute_dist_properties(cand_curve, ref_curve)
-
+#        pf_props = DistanceProperties(pf.get_dist, display=False)
+#        pf_props.compute_dist_properties(cand_curve, ref_curve)
+#
+#        # Test curve retrieval.
+#        print("Target arguments: 5, 3, 1.5")
+#        descriptor = pf.get_desc(ref_curve)
+#        print("Descriptor: {}".format(descriptor))
+#        retrieved_args = test_curve_matching(ref_curve, pf.get_dist)
+#        print("Retrieved arguments: {}".format(retrieved_args))
+#
+#        # Plot the distance.
+#        plot_distance(ref_curve, pf.get_dist, "Perceptual Features")
+#        pf_error_dist = meval.get_relative_error(pf.get_dist)
+#        print("Relative error mean, median and std: {}".format(pf_error_dist))
+#        pf_prec_rec = meval.get_precision_recall(pf.get_dist)
+#        print("Precision and recall: {}".format(pf_prec_rec))
         # Test curve retrieval.
-        print("Target arguments: 5, 3, 1.5")
-        descriptor = pf.get_desc(ref_curve)
-        print("Descriptor: {}".format(descriptor))
-        retrieved_args = test_curve_retrieval(ref_curve, pf.get_dist)
-        print("Retrieved arguments: {}".format(retrieved_args))
-        
-        # Plot the distance.
-        plot_distance(ref_curve, pf.get_dist)
-    
+        show_curve_retrieval(ref_curve, 
+                             *test_curve_retrieval(ref_curve, pf.get_dist))
         print('\n')
 
     plt.show()
