@@ -160,14 +160,16 @@ if CV2_IMPORTED:
 
         def __init__(self, 
                      contour_method=USE_NO_CONTOUR,
-                     filled_contour=True,
-                     hist_match_method=cv2.CV_CONTOURS_MATCH_I2, 
-                     use_cache=True):
+                     filled_contour=False,
+                     hist_match_method=cv2.CV_CONTOURS_MATCH_I2,
+                     threshold=1e-15,
+                     *args, **kwargs):
             # TODO: use cache to store contours.
-            super().__init__(use_cache)
+            super().__init__(*args, **kwargs)
             self.contour_method = contour_method
             self.filled_contour = filled_contour
             self.hist_match_method = hist_match_method
+            self.threshold = threshold
 
         def adapt_curve(self, curve):
             """Transform the curve according to the options."""
@@ -202,7 +204,7 @@ if CV2_IMPORTED:
             """Get the descriptor on the input curve."""
             curve = self.adapt_curve(curve)
             m = cv2.HuMoments(cv2.moments(curve))
-            nonzero = np.abs(m) > 1e-5
+            nonzero = np.abs(m) > self.threshold
             m[nonzero] = np.sign(m[nonzero]) * np.log10(np.abs(m[nonzero]))
             if not np.isfinite(m).all():
                 print('infinite desc in Hu moms: ', m)
@@ -213,8 +215,9 @@ if CV2_IMPORTED:
             """Get the distance between two curves."""
             target_desc = self.get_target_desc(target_curve)
             cand_desc = self.get_desc(cand_curve)            
-            nonzero = (np.abs(cand_desc) > 1e-5) * (np.abs(target_desc) > 1e-5)
-            return la.norm((cand_desc - target_desc)[nonzero], 1)
+            nonzero = ((np.abs(cand_desc) > self.threshold) * 
+                       (np.abs(target_desc) > self.threshold))
+            return la.norm((cand_desc - target_desc)[nonzero])
 #            cand_curve = self.adapt_curve(cand_curve)
 #            target_curve = self.adapt_curve(target_curve)
 #            return cv2.matchShapes(cand_curve, target_curve,
@@ -241,16 +244,16 @@ if CV2_IMPORTED:
             cvt = compute_curvature(curve, self.closed_curve)
             argrelmax = sig.argrelmax(cvt)[0]
             nb_max = argrelmax.size
-            # /!\ scipy.linalg.norm currently does not accept the 'axis' arg.
-            length = sum(np.linalg.norm(curve.T[:-1] - curve.T[1:], axis=1))
+#            # /!\ scipy.linalg.norm currently does not accept the 'axis' arg.
+#            length = sum(np.linalg.norm(curve.T[:-1] - curve.T[1:], axis=1))
             # Feature 3: average curvature maxima
             if nb_max:
                 avg_max = np.mean(cvt[argrelmax])
             else:
                 avg_max = np.mean(cvt)
             
-            return np.array([0 * int_area / ext_area, 
-                             nb_max / length, 
+            return np.array([int_area / ext_area, 
+                             nb_max, 
                              np.log(avg_max)])
     
         def get_dist(self, cand_curve, target_curve):
