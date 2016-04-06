@@ -4,7 +4,7 @@
 # To avoid numpy errors with PyLint: --extension-pkg-whitelist=numpy
 
 """
-Curve matching algorithms
+Entry file.
 
 @author: Robin Roussel
 """
@@ -36,7 +36,7 @@ TEST_IMG_INPUT = False
 
 def test_curve_retrieval(target_curve, distance):
     """Test the retrieving capacities of a distance."""
-    num_retrieved = 6
+    num_retrieved = 5
     # Compute combinations.
     cand_params = cg.get_param_combinations()
     # Compare each candidate curve.
@@ -50,21 +50,34 @@ def test_curve_retrieval(target_curve, distance):
     return argmin, mindist
 
 
-def show_curve_retrieval(target_curve, retrieved_curves, distances):
+def show_curve_retrieval(target_curve, optimized_curve, retrieved_curves, 
+                         distances, title):
     """Show the curve retrieval results for a given distance."""
-    nb_retrieved = retrieved_curves.shape[0]
-    plt.figure(figsize=(3.3 * (nb_retrieved + 1), 3))
-    frame = plt.subplot(1, nb_retrieved + 1, 1)
-    plt.title("Target curve. {}".format(np.array([5, 3, 1.5])))
-    cplt.plot(target_curve)
+    nb_retrieved = retrieved_curves.shape[0]    
+    plt.figure(figsize=(16, 9))
+    plt.suptitle(title)
+    plot_grid_size = (3, nb_retrieved)
+    
+    # Show the target.
+    frame = plt.subplot2grid(
+        plot_grid_size, (0, 0), rowspan=2, colspan=nb_retrieved,
+        title="Target curve. {}".format(np.array([5, 3, 1.5])))
+    cplt.plot(target_curve, 'r-', label="Target")
+    cplt.plot(optimized_curve, 'b--', label="Optimized")
+    plt.legend(loc='best')
     frame.set_aspect('equal')
+    
+    # Show the retrieved curves.
     for i, c in enumerate(retrieved_curves):
-        frame = plt.subplot(1, nb_retrieved + 1, 2 + i, sharex=frame,
-                            sharey=frame)
-        plt.title("d = {:.3f} {}".format(distances[i], c))
-        cplt.plot(cg.get_curve(c))
+        frame = plt.subplot2grid(
+            plot_grid_size, (2, i), sharex=frame, sharey=frame,
+            title="d = {:.3f}\n{}".format(distances[i], c))
+        curve_pts = cg.get_curve(c)
+        curve_pts = curve_pts * abs(target_curve).max() / abs(curve_pts).max()
+        cplt.plot(curve_pts)
         frame.set_aspect('equal')
-    plt.subplots_adjust(left=0.02, right=0.98)
+        
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.90, hspace=0.5)
     plt.autoscale()
     plt.margins(0.1)
 
@@ -110,7 +123,7 @@ def plot_distance(target_curve, distance, name):
 
 def main():
     """Entry point."""
-    np.set_printoptions(precision=2, suppress=True)
+    np.set_printoptions(precision=5, suppress=True)
     plt.ioff()
 
     # Get the reference curve image.
@@ -120,8 +133,8 @@ def main():
         else:
             print("Error loading the image: OpenCV module not imported.")
     else:
-        params = (5., 3., 1.5)
-        ref_curve = cg.get_curve(params)
+        ref_params = (5., 3., 1.502)
+        ref_curve = cg.get_curve(ref_params)
 
 #        # Generate the image.
 #        if CV2_IMPORTED:
@@ -133,11 +146,11 @@ def main():
             cplt.imshow(ref_img)
 
     # Get a candidate curve.
-    params = (5., 3., 2.5)
+    cand_params = (5., 3., 2.5)
 #    params = (2., 1., 0.5) # Ellipse
     samples_per_turn = 50
     sampling_rate = samples_per_turn / (2 * np.pi)
-    cand_curve = cg.get_curve(params, nb_samples_per_turn=samples_per_turn)
+    cand_curve = cg.get_curve(cand_params, nb_samples_per_turn=samples_per_turn)
 
 #    if CV2_IMPORTED:
 #        shp = ref_img.shape
@@ -148,8 +161,10 @@ def main():
     distances = {
 #        "Distance field.": cdist.DistanceField(),
 #        "Curvature's features.": cdist.CurvatureFeatures(sampling_rate),
-#        "Hu moments.": cdist.HuMoments(contour_method=cdist.USE_NO_CONTOUR),
-#        "Zernike moments.": cdist.ZernikeMoments(radius=128),
+#        "Hu moments.": cdist.HuMoments(contour_method=None),
+#        "Zernike moments.": cdist.ZernikeMoments(radius=128, degree=6,
+#                                                 contour_method=None,
+#                                                 filled_contour=False),
         "Perceptual features.": cdist.PerceptualFeatures()
         }
 
@@ -162,28 +177,37 @@ def main():
 
         # Test curve matching.
         dist_func = dist.get_dist
-        print("Target arguments: 5, 3, 1.5")
+        print("Target arguments: {}".format(ref_params))
         matcher = cmat.CurveMatcher(dist_func)
+#        retrieved_args = []
         retrieved_args = matcher(ref_curve, combi)
         print("Retrieved arguments: {}".format(retrieved_args))
+        
+        # Test curve optimization.
+        optimizer = cmat.CurveOptimizer(dist_func, retrieved_args, ref_curve)
+        optimized_args = np.hstack([retrieved_args[:2], 
+                                     optimizer.optimize(display=True).x])
+        print("Optimized arguments: {}".format(optimized_args))
 
-        # Plot the curve.
+        # Plot the curve dissimilarity measure.
 #        plot_distance(ref_curve, dist_func, name)
 
         # Get the relative parametric error.
-        error_eval = mev.RelativeParametricError(matcher)
-        error_dist = error_eval.get_error()
-        print("Relative parametric error"
-              " mean, median and std: {}".format(error_dist))
+#        error_eval = mev.RelativeParametricError(matcher)
+#        error_dist = error_eval.get_error()
+#        print("Relative parametric error"
+#              " mean, median and std: {}".format(error_dist))
 
 #        # Get the precision and recall.
 #        prec_rec = mev.get_precision_recall(dist_func)
 #        print("Precision and recall: {}".format(prec_rec))
 
         # Show curve retrieval.
-        show_curve_retrieval(ref_curve,
-                             *test_curve_retrieval(ref_curve, dist_func))
+        show_curve_retrieval(ref_curve, cg.get_curve(optimized_args),
+                             *test_curve_retrieval(ref_curve, dist_func),
+                             title=name)
         print('\n')
+        
         plt.show()
 
 if __name__ == "__main__":

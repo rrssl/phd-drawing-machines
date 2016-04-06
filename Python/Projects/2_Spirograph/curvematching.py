@@ -5,6 +5,7 @@ Tools for the matching, retrieval and classification of curves.
 @author: Robin Roussel
 """
 import numpy as np
+import scipy.optimize as opt
 
 import curvegen as cg
 
@@ -36,3 +37,19 @@ def classify_curve(target_curve, cand_params, curve_matcher, threshold):
         belongs[i] = dist <= threshold
 
     return belongs
+    
+class CurveOptimizer:
+    """Precise optimization of a candidate curve on a target curve."""
+    
+    def __init__(self, distance, init_guess, target_curve):
+        self.distance = distance
+        self.init = init_guess
+        self.target = target_curve
+        
+    def get_objective(self, x):
+        params = np.hstack([self.init[:2], x])
+        cand_curve = cg.get_curve(params)
+        return self.distance(cand_curve, self.target)
+        
+    def optimize(self, display=False):
+        return opt.minimize_scalar(self.get_objective)
