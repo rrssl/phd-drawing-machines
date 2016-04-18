@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Spirograph plotting classes.
@@ -13,6 +14,7 @@ from discreteslider import DiscreteSlider
 from curves import Hypotrochoid
 
 class SpiroPlot:
+    """Forward analytic simulation of a simple Spirograph."""
     points_per_turn = 50
 
     def __init__(self, show_spiro=True):
@@ -61,6 +63,7 @@ class SpiroPlot:
         self.draw()
 
     def draw(self):
+        """Draw the figure."""
         R = self.R
         r = self.r
         d = self.d
@@ -94,21 +97,27 @@ class SpiroPlot:
 #        self.fig.canvas.draw_idle()
 
     def update(self, value):
+        """Callback function for parameter update."""
         self.R = self.s_R.val
         self.r = self.s_r.val
         self.d = self.s_d.val
         self.draw()
 
     def show(self):
+        """Display the application."""
         plt.show()
 
+
 class SpiroGridPlot():
+    """Parametric plotting of Spirograph figures."""
+
     def __init__(self):
-        self.plot_increasing_ratios = False
-        self.plot_increasing_r = True
-        self.draw_grid()        
+        self.plot_increasing_ratios = True
+        self.plot_increasing_r = False
+        self.draw_grid()
 
     def draw_grid(self):
+        """Draw the grid of figures."""
         num_R_vals = 10
         num_d_vals = 5
 
@@ -124,36 +133,39 @@ class SpiroGridPlot():
                 combi[:,1] + 1e-3 * combi[:,0] + 1e-6 * combi[:,2])
             combi = combi[sorted_indices, :]
             axis_text = r'$({0:.0f},\ {1:.0f})$'
-            
+        else:
+            axis_text = r'$({0:.0f},\ {1:.0f})$'
+
         # Draw curves.
         fig, frame = plt.subplots()
 
         for i, c in enumerate(combi):
             position = np.array([i // num_d_vals, i % num_d_vals]) * [3, 5]
             if c[1] / c[0] != combi[i - 1, 1] / combi[i - 1, 0]:
-                frame.text(position[0] - 0.3, -6, axis_text.format(c[0], c[1]), 
-                           fontsize=12)            
+                frame.text(position[0] - 0.3, -6, axis_text.format(c[0], c[1]),
+                           fontsize=12)
             self.draw_grid_cell(c, position)
-        
+
         # Adjust figure size. Don't forget 'forward=True' to change window size
         # as well.
         base_size = fig.get_size_inches()
         fig.set_size_inches((2 * base_size[0], 2 * base_size[1]),
                             forward=True)
-                            
+
         plt.subplots_adjust(left=0.02, right=0.98)
         frame.set_xlim(-3, 3 * (combi.shape[0] // num_d_vals))
         frame.set_aspect('equal')
         frame.axis('off')
 
     def draw_grid_cell(self, parameters, position):
+        """Draw a single cell of the grid."""
         R, r, d = parameters
         N = r   # r is already the smallest integer denominator.
         theta_range = np.linspace(0., N * 2 * np.pi,
                                   N * SpiroPlot.points_per_turn)
 
         hypo = Hypotrochoid(theta_range, R, r, d)
-        
+
         curve = np.array([hypo.getX(), hypo.getY()])
         curve = curve / abs(curve).max()
         curve = curve + position.reshape(2, 1)
@@ -161,12 +173,19 @@ class SpiroGridPlot():
         plt.plot(curve[0], curve[1], 'b-')
 
     def show(self):
+        """Display the application."""
         plt.show()
-        
-if __name__ == "__main__":
+
+
+def main():
+    """Entry point."""
     plt.ioff()
 #    sp = SpiroPlot(show_spiro=True)
 #    sp.show()
 
     sgp = SpiroGridPlot()
     sgp.show()
+
+
+if __name__ == "__main__":
+    main()
