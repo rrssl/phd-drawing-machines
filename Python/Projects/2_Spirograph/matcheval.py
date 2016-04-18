@@ -6,12 +6,14 @@ Tools for the benchmarking of curve matching techniques.
 """
 
 import random
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg as la
-import matplotlib.pyplot as plt
 
-import curveplotlib as cplt
 import curvegen as cg
+import curveplotlib as cplt
+import curveproc as cpr
+
 
 class DistanceProperties:
     """Class testing the mathematical properties of a dissimilarity measure."""
@@ -153,15 +155,50 @@ class DistanceProperties:
         cplt.plot(curve2)
         plt.gca().set_aspect('equal')
         plt.title("{}\nd = {:.2f}".format(name, score))
-
+        
 
 class Robustness:
-    """Evaluator of the robustness of a dissimilarity measure."""
+    """Evaluator of the robustness of a curve recognition technique."""
 
-    def __init__(self, distance, display=False, epsilon=1e-3):
-        self.distance = distance
+    def __init__(self, curve_matcher, distorsion=0.02, nb_tests=30, 
+                 epsilon=1.0):
+        self.matcher = curve_matcher
+        self.distorsion = distorsion
+        self.nb_tests = nb_tests
         self.epsilon = epsilon
-        self.display = display
+        
+        
+    def get_success_rate(self):
+        """Compute the success rate."""
+        # Compute the pool of candidate curves.
+        combi = cg.get_param_combinations()
+        size = combi.shape[0]
+        # Run the tests.
+        nb_successes = 0
+        target_ids = np.random.choice(np.arange(size), self.nb_tests, 
+                                      replace=False)
+        for tid in target_ids:
+            # Compute and distort the target curve.
+            target = cg.get_curve(combi[tid])
+            distorted = cpr.get_hand_drawn(target, amplitude=self.distorsion)
+            # Run the curve matching algorithm on the target.
+            matched = self.matcher(distorted, combi)[0]
+            # Compute difference of errors in the parameter space and append it.
+#            print(combi[tid], matched)
+#            self.show_distorsion(target)
+#            plt.show()
+            success = la.norm(combi[tid] - matched) < self.epsilon
+            nb_successes += success
+        return nb_successes / self.nb_tests
+        
+    def show_distorsion(self, curve):
+        """Temporary function to show the effect of the distorsion."""
+        plt.figure()
+        cplt.plot(curve, ':')
+        hand_curve = cpr.get_hand_drawn(curve, amplitude=self.distorsion)
+        cplt.plot(hand_curve, 'r-', linewidth=2)        
+        plt.gca().set_aspect('equal')        
+        plt.margins(0.1)
 
 
 class Complexity:
