@@ -31,7 +31,9 @@ def fit_in_box(curve, box_limits):
     box_half_dims = (B - A) * 0.5 - 0.5
 
     # Rescale and translate the curve to fit in the box.
-    scale = np.diag(box_half_dims / np.abs(centered_curve).max(axis=1))
+    den = np.abs(centered_curve).max(axis=1)
+    den[den == 0.] = 1.
+    scale = np.diag(box_half_dims / den)
 
     return scale.dot(centered_curve) + box_center.reshape(2, 1)
 

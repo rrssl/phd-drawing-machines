@@ -19,7 +19,7 @@ from matplotlib.collections import LineCollection
 
 def plot(curve, *args, **kwargs):
     """Plot the input curve."""
-    plt.plot(curve[0], curve[1], *args, **kwargs)
+    return plt.plot(curve[0], curve[1], *args, **kwargs)
 
 class PixelFormatter:
     """Coordinate formatter to show pixel value with pyplot.imshow."""

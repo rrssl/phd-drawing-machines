@@ -21,7 +21,7 @@ class CurveMatcher:
         # Compare each candidate curve.
         distances = np.array([self.distance(cg.get_curve(cand), target_curve)
                               for cand in cand_params])
-        return cand_params[np.argsort(distances)[0], :]
+        return cand_params[np.argsort(distances), :]
         
     
 def classify_curve(target_curve, cand_params, curve_matcher, threshold):
@@ -41,7 +41,7 @@ def classify_curve(target_curve, cand_params, curve_matcher, threshold):
 class CurveOptimizer:
     """Precise optimization of a candidate curve on a target curve."""
     
-    def __init__(self, distance, init_guess, target_curve):
+    def __init__(self, distance, target_curve=None, init_guess=None):
         self.distance = distance
         self.init = init_guess
         self.target = target_curve
@@ -51,5 +51,9 @@ class CurveOptimizer:
         cand_curve = cg.get_curve(params)
         return self.distance(cand_curve, self.target)
         
-    def optimize(self, display=False):
+    def optimize(self, display=False, target_curve=None, init_guess=None):
+        if target_curve is not None:
+            self.target = target_curve
+        if init_guess is not None:
+            self.init = init_guess
         return opt.minimize_scalar(self.get_objective)
