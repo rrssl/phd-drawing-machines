@@ -27,24 +27,7 @@ else:
 if CV2_IMPORTED:
     import curveimproc as cimp
 
-
-def compute_curvature(curve, is_closed=True):
-    """Compute the curvature along the input curve."""
-    if is_closed:
-        # Extrapolate so that the curvature at the boundaries is correct.
-        curve = np.hstack([curve[:, -3:-1], curve, curve[:, 1:3]])
-
-    dx_dt = np.gradient(curve[0])
-    dy_dt = np.gradient(curve[1])
-    d2x_dt2 = np.gradient(dx_dt)
-    d2y_dt2 = np.gradient(dy_dt)
-    curvature = (np.abs(dx_dt * d2y_dt2 - d2x_dt2 * dy_dt) /
-                 (dx_dt * dx_dt + dy_dt * dy_dt)**1.5)
-
-    if is_closed:
-        curvature = curvature[2:-2]
-
-    return curvature
+import curveproc as cpr
 
 
 class CurveDistance:
@@ -79,6 +62,9 @@ class CurveDistance:
     @staticmethod
     def normalize_pose(curve):
         """Normalize the curve's position, scale, orientation and skewness."""
+        if curve.size == 0:
+            return curve
+            
         # Center and (uniformly) rescale the curve.
         mean = curve.mean(axis=1)
         try:
@@ -238,7 +224,7 @@ if CV2_IMPORTED:
             int_area = cimp.get_int_contour(curve_img, filled=True).sum()
             ext_area = cimp.get_ext_contour(curve_img, filled=True).sum()
             # Feature 2: number of curvature maxima / length of curve
-            cvt = compute_curvature(curve, self.closed_curve)
+            cvt = cpr.compute_curvature(curve, self.closed_curve)
             argrelmax = sig.argrelmax(cvt)[0]
             nb_max = argrelmax.size
 #            # /!\ scipy.linalg.norm currently does not accept the 'axis' arg.
@@ -305,7 +291,7 @@ class CurvatureFeatures(CurveDistance):
         if self.normalize:
             curve = self.normalize_pose(curve)
         nb_samples = curve.shape[-1]
-        cvt = compute_curvature(curve, self.closed_curve)
+        cvt = cpr.compute_curvature(curve, self.closed_curve)
 
         # Compute the Fourier power spectrum.
         fourier = np.fft.rfft(cvt)
