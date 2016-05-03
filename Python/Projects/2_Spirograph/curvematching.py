@@ -56,4 +56,6 @@ class CurveOptimizer:
             self.target = target_curve
         if init_guess is not None:
             self.init = init_guess
-        return opt.minimize_scalar(self.get_objective)
+        param_bounds = (0., self.init[1])
+        return opt.minimize_scalar(self.get_objective, bounds=param_bounds,
+                                   method='bounded')
