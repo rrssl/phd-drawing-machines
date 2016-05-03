@@ -6,7 +6,7 @@ Application for the retrieval and editing of Spirograph curves.
 @author: Robin Roussel
 """
 from fractions import Fraction
-import matplotlib.animation as manim
+#import matplotlib.animation as manim
 import matplotlib.patches as mpat
 import matplotlib.pyplot as plt
 import numpy as np
@@ -80,7 +80,14 @@ class Spirou():
         if picker.args is not None:
             scl.data = np.array(picker.curve.get_data())
             scl.curve.set_data(scl.data)
+            # Perform deep copy of the args since they are actively modified in
+            # the sculptor.
             scl.args = picker.args.copy()
+            # Adapt the plot limits (keeping the frame square).
+            dim = scl.data.max() * 1.5
+            self.edit_frame.set_xlim(-dim, dim)
+            self.edit_frame.set_ylim(-dim, dim)
+
             scl.redraw()
 
     def transmit_picker_to_display(self, picker):
@@ -129,12 +136,15 @@ class Spirou():
             self.transmit_sculptor_to_display()
 
     def update_pickers_plots(self, args, scale):
-
+        """Update display of the pickers."""
         # Update pickers' plots.
         for i, frame in enumerate(self.retrieved_frames):
-            curve_pts = cg.get_curve(args[i, :])
-            curve_pts *= scale / abs(curve_pts).max()
+            curve_pts = cg.get_curve(args[i, :])            
             frame.picker.curve.set_data(curve_pts[0], curve_pts[1])
+            # Adapt the plot limits (keeping the frame square).
+            dim = curve_pts.max() * 1.1
+            frame.set_xlim(-dim, dim)
+            frame.set_ylim(-dim, dim)
 
             frame.picker.args = args[i, :]
             # Unselect an eventual previously selected picker.
@@ -145,14 +155,14 @@ class Spirou():
             frame.picker.redraw()
             
     def update_display(self, args, data):
+        """Update data and gears in the display pane."""
         dsp = self.show_frame.display
         dsp.args = args
         dsp.erase_spiro()
         dsp.draw_spiro()
 
         dsp.data = np.asarray(data)[:, :-1]
-        # TODO: do not rescale curve data outside of artists!!!
-        dsp.data *= (args[0] - args[1] + args[2]) / dsp.data[0, 0]
+        
         dsp.redraw()        
 
 
@@ -168,8 +178,6 @@ class Artist():
         self.ax.get_xaxis().set_visible(False)
         self.ax.get_yaxis().set_visible(False)
         self.ax.set_aspect('equal')
-        self.ax.autoscale()
-        self.ax.margins(0.1)
 
         self.ax.figure.canvas.mpl_connect('axes_enter_event', self.on_enter)
         self.ax.figure.canvas.mpl_connect('axes_leave_event', self.on_leave)
@@ -597,7 +605,6 @@ class AnimDisplay(Display):
         """Animate the spirograph."""
         idx = self.time % self.data.shape[1]
         self.curve.set_data(self.data[:, :idx + 1])
-#        print(self.curve.get_data(orig=False))
 
         theta = self.time * 2 * np.pi * self.args[1] / self.data.shape[1]
         r = self.args[0] - self.args[1]
