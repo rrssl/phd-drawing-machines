@@ -14,9 +14,9 @@ def get_curve(params, nb_turns=None, nb_samples_per_turn=50):
         nb_turns = params[1]
     nb_samples = nb_turns * nb_samples_per_turn
     interval_length = nb_turns * 2 * np.pi
-    theta_range = np.linspace(0., interval_length, nb_samples)
-    hypo = Hypotrochoid(theta_range, *params)
-    return np.vstack([hypo.getX(), hypo.getY()])
+    theta = np.linspace(0., interval_length, nb_samples)
+    hypo = Hypotrochoid(*params)
+    return hypo.get_point(theta)
     
     
 def get_param_combinations(grid_size=(10,10)):

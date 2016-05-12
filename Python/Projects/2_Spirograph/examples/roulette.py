@@ -6,84 +6,20 @@ a circle.
 
 @author: Robin Roussel
 """
+import context
 from fractions import Fraction
 import matplotlib.pyplot as plt
 import matplotlib.patches as pat
 import numpy as np
 #import scipy.optimize as opt
-import scipy.special as spec
 
-class Circle:
-    """Parametric curve of a circle."""
-
-    def __init__(self, r):
-        self.r = r
-
-    def get_point(self, t):
-        """Get the [x(t), y(t)] point(s)."""
-        return self.r * np.vstack([np.cos(t), np.sin(t)])
-
-    def get_jac(self, t):
-        """Get the [x'(t), y'(t)] jacobian(s)."""
-        return self.r * np.vstack([-np.sin(t), np.cos(t)])
-
-    def get_perimeter(self):
-        """Get the full perimeter of the ellipse."""
-        return 2 * np.pi * self.r
-
-    def get_arclength(self, end):
-        """Get the arc length(s) s(t)."""
-        return self.r * end
-
-    def get_arclength_der(self, end):
-        """Get the derivative(s) of the arc length s'(t)."""
-        return self.r
-
-
-class Ellipse:
-    """Parametric curve of an ellipse."""
-
-    def __init__(self, a, b):
-        self.a = a
-        self.b = b
-        # /!\ This scipy implementation uses the convention E(phi, m) with m
-        # the elliptic parameter, which in our case needs to be e**2.
-        self.e2 = 1 - b * b / (a * a)
-
-        self.ellipe_val = spec.ellipe(self.e2)
-
-    def get_point(self, t):
-        """Get the [x(t), y(t)] point(s)."""
-        return np.vstack([self.a * np.cos(t), self.b * np.sin(t)])
-
-    def get_jac(self, t):
-        """Get the [x'(t), y'(t)] jacobian(s)."""
-        return np.vstack([self.a * -np.sin(t), self.b * np.cos(t)])
-
-    def get_perimeter(self):
-        """Get the full perimeter of the ellipse."""
-        # Use the value of the complete elliptic integral of the 2nd kind.
-        return 4 * self.a * self.ellipe_val
-
-    def get_arclength(self, t):
-        """Get the arc length(s) s(t)."""
-        # Use the incomplete elliptic integral of the 2nd kind.
-        # /!\ The "amplitude" phi of E(phi, k) as it is often found in the
-        # litterature is NOT the same as our ellipse parameter here. To get the
-        # arc length right we have to use s(t) = E(t + pi/2, e) - E(e).
-        return self.a * (spec.ellipeinc(t + (np.pi / 2), self.e2) -
-                         self.ellipe_val)
-
-    def get_arclength_der(self, t):
-        """Get the derivative(s) of the arc length s'(t)."""
-        # Easy with the fundamental theorem of calculus.
-        return self.a * np.sqrt(1 - self.e2 * np.cos(t) ** 2)
+from curves import Circle, Ellipse
 
 
 def get_roulette_ellipse_inside_circle(r, a, b, tracer, nb_pts=81,
                                        max_nb_turns=30):
     """
-    Calcualte and show the roulette of an ellipse rolling inside a circle.
+    Calculate and show the roulette of an ellipse rolling inside a circle.
 
     Terms:
     -----
@@ -147,7 +83,7 @@ def get_roulette_ellipse_inside_circle(r, a, b, tracer, nb_pts=81,
     m_points = mov.get_point(m_tvals)
     m_points = np.hstack([np.tile(m_points[:, :-1], (1, num)),
                           m_points[:, 0].reshape(2,1)])
-    # Compute pairs of unit jacobians.
+    # Compute pairs of jacobians.
     # Note: the jacobian must be taken wrt the arc length s and not wrt the
     # parameter t. For this we use the chain rule.
     # In practice this is not really necessary if dt/ds is a scalar, since it
@@ -184,8 +120,7 @@ def get_roulette_ellipse_inside_circle(r, a, b, tracer, nb_pts=81,
     time = 0.
     timer = plt.gcf().canvas.new_timer(interval=50)
     ell_centers = n_points + np.einsum('ijk,jk->ik', rot, - m_points)
-    ell = pat.Ellipse(xy=ell_centers[:, 0], width=2*a, height=2*b,
-                      angle=0., fill=False, color='g')
+    ell = pat.Ellipse(ell_centers[:, 0], 2*a, 2*b, 0., fill=False, color='g')
     tra = pat.Circle(roul[:, 0], 0.05, color='g', fill=False)
     contact_n = pat.Circle(n_points[:, 0], 0.05, color='b')
     contact_m = pat.Circle(m_points[:, 0], 0.05, color='g')
