@@ -89,6 +89,9 @@ class Circle(Curve):
     def get_period(self):
         return 2 * np.pi
 
+    def has_even_arclength(self):
+        return True
+
 
 class Ellipse(Curve):
     """Parametric curve of an ellipse."""
@@ -146,6 +149,9 @@ class Ellipse(Curve):
 
     def get_period(self):
         return 2 * np.pi
+    
+    def has_even_arclength(self):
+        return True
 
 
 def _get_rotation(u, v):
@@ -234,7 +240,7 @@ class Roulette(Curve):
         Optimized computations will be used if:
             - the parametrizing curve is T-periodic and the sampling is s.t.
         T % step == 0,
-            - TODO: under the previous condition, the parametrizing curve's arc 
+            - under the previous condition, the parametrizing curve's arc 
         length is an even function and (T / 2) % step == 0,
             - TODO: the curve is symmetric wrt the x-axis.
         """
@@ -254,9 +260,17 @@ class Roulette(Curve):
         # Get the parameter values for both curves.     
         nb_cycles, rem = divmod(abs(end - start), per)
         nb_rem_pts = rem / step + 1
-        # We only compute s(t) on [0, T].
+        
         tr = np.linspace(start, per, per / step + 1)
-        svals = ref_obj.get_arclength(tr)
+        if ref_obj.has_even_arclength() and (per / 2) % step == 0:
+            # Compute s(t) on [0, T/2].
+            svals = ref_obj.get_arclength(tr[:(len(tr) + 1) / 2])
+            # Mirror the variation, integrate and shift.
+            svals_diff= np.cumsum((svals[1:] - svals[:-1])[::-1]) + svals[-1]
+            svals = np.concatenate([svals, svals_diff])
+        else:
+            # Compute s(t) on [0, T].            
+            svals = ref_obj.get_arclength(tr)
         svals = np.concatenate(
             [svals[:-1] + i * svals[-1] for i in range(int(nb_cycles))] +
             [svals[:nb_rem_pts] + nb_cycles * svals[-1]])
