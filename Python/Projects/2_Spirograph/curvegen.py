@@ -6,7 +6,7 @@ Helper functions for the uniform management of curve generation accross modules.
 """
 
 import numpy as np
-from curves import Hypotrochoid
+import curves as cu
 
 def get_curve(params, nb_turns=None, nb_samples_per_turn=50):
     """Generate the curve (hypotrochoid) of given parameters."""
@@ -15,10 +15,10 @@ def get_curve(params, nb_turns=None, nb_samples_per_turn=50):
     nb_samples = nb_turns * nb_samples_per_turn
     interval_length = nb_turns * 2 * np.pi
     theta = np.linspace(0., interval_length, nb_samples)
-    hypo = Hypotrochoid(*params)
+    hypo = cu.Hypotrochoid(*params)
     return hypo.get_point(theta)
     
     
 def get_param_combinations(grid_size=(10,10)):
     """Generate combinations of parameters of (hypotrochoid) curves."""
-    return Hypotrochoid.get_param_combinations(*grid_size)
+    return cu.Hypotrochoid.get_param_combinations(*grid_size)

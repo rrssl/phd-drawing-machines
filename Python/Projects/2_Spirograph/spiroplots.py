@@ -14,7 +14,7 @@ import numpy as np
 import scipy.special as spec
 
 import curvegen as cg
-from curves import RouletteEllipseInCircle
+import curves as cu
 from discreteslider import DiscreteSlider
 
 
@@ -73,7 +73,7 @@ class SpiroPlot:
         r = self.r
         d = self.d
 #        N = Fraction(int(R), int(r)).denominator # /!\ R & r are numpy floats
-        N = Fraction.from_float(R/r).limit_denominator(100).denominator
+        N = Fraction.from_float(R / r).limit_denominator(100).denominator
         ax = self.ax
 
         hypo = cg.get_curve((R, r, d), N)
@@ -258,11 +258,16 @@ class RoulettePlot:
             if update_tracer_only:
                 curve = self.roulette.update_tracer(self.d)
             else:
-                N = Fraction.from_float(R / S).limit_denominator(100).denominator
-                t = np.linspace(0., N * 2 * np.pi, N * 100)
-
-                self.roulette = RouletteEllipseInCircle(R, a, b, d)
-                curve = self.roulette.get_point(t)
+                cir = cu.Circle(R)
+                ell = cu.Ellipse(a, b)
+                self.roulette = cu.Roulette(ell, cir, d, 'moving')
+                
+                N = Fraction.from_float(R / S).limit_denominator(100).numerator
+#                t = np.linspace(0., N * 2 * np.pi, N * 128 + 1)
+#                curve = self.roulette.get_point(t)
+                # We have to take care of using a power of 2 so that 
+                # get_range uses its optimizations.
+                curve = self.roulette.get_range(0., N * 2 * np.pi, N * 128 + 1)
 
             if self.show_gears:
                 out_gear = pat.Circle((0., 0.), R, color='r', fill=False)
