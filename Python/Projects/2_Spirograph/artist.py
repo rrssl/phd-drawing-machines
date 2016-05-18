@@ -4,14 +4,10 @@ Library of GUIs for curve drawing, manipulation and display.
 
 @author: Robin Roussel
 """
-from fractions import Fraction
-
 import matplotlib as mpl
 #import matplotlib.animation as manim
 import matplotlib.patches as mpat
 import numpy as np
-
-import curvegen as cg
 
 
 class Artist():
@@ -23,20 +19,18 @@ class Artist():
 
         self.press = False
 
-        self.ax.get_xaxis().set_visible(False)
-        self.ax.get_yaxis().set_visible(False)
-        self.ax.set_aspect('equal')
-
-        self.ax.figure.canvas.mpl_connect('axes_enter_event', self.on_enter)
-        self.ax.figure.canvas.mpl_connect('axes_leave_event', self.on_leave)
-
-        self.ax.figure.canvas.mpl_connect('button_press_event', self.on_press)
-        self.ax.figure.canvas.mpl_connect('button_release_event',
-                                          self.on_release)
-        self.ax.figure.canvas.mpl_connect('motion_notify_event', self.on_move)
-        self.ax.figure.canvas.mpl_connect('key_press_event', self.on_key_press)
-        self.ax.figure.canvas.mpl_connect('key_release_event',
-                                          self.on_key_release)
+        axes.get_xaxis().set_visible(False)
+        axes.get_yaxis().set_visible(False)
+        axes.set_aspect('equal')
+        
+        connect = axes.figure.canvas.mpl_connect
+        connect('axes_enter_event', self.on_enter)
+        connect('axes_leave_event', self.on_leave)
+        connect('button_press_event', self.on_press)
+        connect('button_release_event',self.on_release)
+        connect('motion_notify_event', self.on_move)
+        connect('key_press_event', self.on_key_press)
+        connect('key_release_event',self.on_key_release)
 
     def on_enter(self, event):
         """Manage entering mouse events."""
@@ -111,13 +105,14 @@ class Painter(Artist):
 
             self.ctxt.update_data(event)
 
-
+# TODO: resorb the code duplication due to the useless distinction between
+# grab_circle and aux_grab_circles.
 class Sculptor(Artist):
     """Artist for continuous curve editing."""
     init_radius_coeff = 0.05
     period = 40 # in milliseconds
 
-    def __init__(self, optimizer=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.data = np.array([])
@@ -140,7 +135,7 @@ class Sculptor(Artist):
         self.aux_coeffs = []
 
         self.args = None
-        self.opt = optimizer
+        self.sym_order = 0
 
     def on_enter(self, event):
         """Manage entering mouse events."""
@@ -216,32 +211,17 @@ class Sculptor(Artist):
             self.time = 0.
 
         if self.press:
-            redraw = False
             # Cleanup
             self.press = False
             self.moving_points = None
             self.coeffs = None
             if not self.r_press:
                 self.erase_aux_grab_circles()
-                redraw = True
                 self.aux_moving_points = []
                 self.aux_coeffs = []
-            # Optimization
-            if self.to_opt and self.opt is not None:
-                opt_d = self.opt.optimize(target_curve=self.data,
-                                          init_guess=self.args).x
-                self.args[2] = opt_d
-
-                curve_pts = cg.get_curve(self.args)
-                curve_pts *= abs(self.data).max() / abs(curve_pts).max()
-
-                self.data = curve_pts
-                self.curve.set_data(self.data)
-                redraw = True
-
-                self.to_opt = False
             # Update
-            if redraw: self.redraw()
+                if not self.to_opt:
+                    self.redraw()
             self.ctxt.update_data(event)
 
     def on_key_press(self, event):
@@ -291,14 +271,13 @@ class Sculptor(Artist):
 
     def get_rot_sym(self, point):
         """Get points that are rotationally symmetric around the center."""
-        order = self.get_symmetry_order()
-        if not order:
+        if not self.sym_order:
             return
-        theta = 2 * np.pi / order
+        theta = 2 * np.pi / self.sym_order
         rot = np.array([[np.cos(theta), -np.sin(theta)],
                         [np.sin(theta), np.cos(theta)]])
         points = [np.array(point)]
-        for i in range(order - 1):
+        for i in range(self.sym_order - 1):
             points.append(rot.dot(points[i]))
 
         return points
@@ -307,14 +286,6 @@ class Sculptor(Artist):
         """Get the radius at the current scale."""
         dims = np.array([self.ax.get_xlim(), self.ax.get_ylim()])
         return self.radius_coeff * abs(dims[:, 0] - dims[:, 1]).sum()
-
-    def get_symmetry_order(self):
-        """Get the order of symmetry of the current figure."""
-        if self.args is None:
-            return 0
-        else:
-            return Fraction.from_float(
-                self.args[0] / self.args[1]).limit_denominator(1000).numerator
 
     def grow_radius(self):
         """Increase the grab circle radius after a while."""
@@ -376,7 +347,7 @@ class Sculptor(Artist):
 
 
 class Display(Artist):
-    """Simple Artist able to hold a plot and some parameters."""
+    """Simple Artist able to hold a curve and some parameters."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -384,44 +355,9 @@ class Display(Artist):
         self.curve = self.ax.plot([])[0]
         self.args = None
 
-        self.fixed_curve = None
-        self.moving_curve = None
-        self.tracing_point = None
-
-        self.text = None
-
-    def draw_spiro(self):
-        """Draw the spirograph corresponding to its arguments."""
-        R, r, d = self.args
-        ax = self.ax
-
-        out_gear = mpat.Circle((0, 0), R, color='r', fill=False)
-        int_gear = mpat.Circle((R - r, 0), r, color='g', fill=False)
-        hole = mpat.Circle((R - r + d, 0), r / 20, color='g', fill=False)
-
-        self.fixed_curve = ax.add_artist(out_gear)
-        self.moving_curve = ax.add_artist(int_gear)
-        self.tracing_point = ax.add_artist(hole)
-
-        dim = max(R - r + d, R) + 1
-        ax.set_xlim(-dim, dim)
-        ax.set_ylim(-dim, dim)
-
-        self.text = ax.text(0.95, 0.01, self.args, verticalalignment='bottom',
-                            horizontalalignment='right',
-                            transform=ax.transAxes)
-
-    def erase_spiro(self):
-        """Erase the spirograph."""
-        if self.fixed_curve is not None:
-            self.fixed_curve.remove()
-            self.moving_curve.remove()
-            self.tracing_point.remove()
-            self.text.remove()
-
 
 class AnimDisplay(Display):
-    """Display able to play spirograph animations."""
+    """Display able to show curve drawing animations."""
     period = 40
 
     def __init__(self, *args, **kwargs):
@@ -446,33 +382,27 @@ class AnimDisplay(Display):
                     self.timer.stop()
 
                 else:
-                    if self.moving_curve is not None:
+                    if self.data is not None:
                         self.playing = True
                         self.timer.start()
+
+    def animate(self):
+        """Create the current frame."""
+        idx = self.time % self.data.shape[1]
+        self.curve.set_data(self.data[:, :idx + 1])
+
+        self.redraw()
+        self.time += 1.
+
+    def reset(self):
+        """Reset the animation."""
+        self.curve.set_data([], [])
+        self.time = 0.
 
 #    def play(self):
 #        self.anim = manim.FuncAnimation(self.ax.figure, self.animate,
 #                                        frames=200, init_func=self.init,
 #                                        interval=20, blit=True)
-
-    def animate(self):
-        """Animate the spirograph."""
-        idx = self.time % self.data.shape[1]
-        self.curve.set_data(self.data[:, :idx + 1])
-
-        theta = self.time * 2 * np.pi * self.args[1] / self.data.shape[1]
-        r = self.args[0] - self.args[1]
-        self.moving_curve.center = [r * np.cos(theta), r * np.sin(theta)]
-
-        self.tracing_point.center = self.data[:, idx]
-
-        self.redraw()
-        self.time += 1.
-
-    def erase_spiro(self):
-        """Erase the spirograph."""
-        super().erase_spiro()
-        self.time = 0.
 
 
 class ButtonDisplay(Display):

@@ -5,6 +5,9 @@ Application for the retrieval and editing of Spirograph curves.
 
 @author: Robin Roussel
 """
+from fractions import Fraction
+
+import matplotlib.patches as mpat
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -41,8 +44,7 @@ class Spirou():
         self.edit_frame = plt.subplot2grid(
             plot_grid_size, (0, 2), rowspan=2, colspan=2,
             title="Edit here!")
-        self.edit_frame.sculptor = art.Sculptor(self.optimizer, self.edit_frame,
-                                                self)
+        self.edit_frame.sculptor = art.Sculptor(self.edit_frame, self)
 
         # Create the pickers.
         self.retrieved_frames = []
@@ -54,7 +56,7 @@ class Spirou():
         # Create the final display.
         self.show_frame = plt.subplot2grid(
             plot_grid_size, (0, 4), rowspan=2, colspan=2, title="Result")
-        self.show_frame.display = art.AnimDisplay(self.show_frame, self)
+        self.show_frame.display = SpiroDisplay(self.show_frame, self)
 
         plt.subplots_adjust(left=0.03, right=0.97, bottom=0.05, top=0.95, 
                             hspace=0.1)
@@ -81,6 +83,8 @@ class Spirou():
             # Perform deep copy of the args since they are actively modified in
             # the sculptor.
             scl.args = picker.args.copy()
+            scl.sym_order = Fraction.from_float(
+                scl.args[0] / scl.args[1]).limit_denominator(1000).numerator
             # Adapt the plot limits (keeping the frame square).
             dim = scl.data.max() * 1.5
             self.edit_frame.set_xlim(-dim, dim)
@@ -130,9 +134,28 @@ class Spirou():
             self.transmit_picker_to_display(ax.picker)
             self.transmit_picker_to_pickers(ax.picker)
         if ax == self.edit_frame:
+            self.update_sculptor_data()
             self.transmit_sculptor_to_pickers()
             self.transmit_sculptor_to_display()
+    
+    def update_sculptor_data(self):
+        """Update the sculptor after curve editing."""
+        scl = self.edit_frame.sculptor
+        # Optimization
+        if scl.to_opt and self.optimizer is not None:
+            opt_d = self.optimizer.optimize(target_curve=scl.data,
+                                            init_guess=scl.args).x
+            scl.args[2] = opt_d
 
+            curve_pts = cg.get_curve(scl.args)
+            curve_pts *= abs(scl.data).max() / abs(curve_pts).max()
+
+            scl.data = curve_pts
+            scl.curve.set_data(scl.data)
+            scl.to_opt = False
+
+            scl.redraw()
+ 
     def update_pickers_plots(self, args, scale):
         """Update display of the pickers."""
         # Update pickers' plots.
@@ -156,12 +179,60 @@ class Spirou():
         """Update data and gears in the display pane."""
         dsp = self.show_frame.display
         dsp.args = args
-        dsp.erase_spiro()
-        dsp.draw_spiro()
-
+        dsp.clear()
         dsp.data = np.asarray(data)[:, :-1]
-        
+        dsp.init_draw()
+
         dsp.redraw()
+
+
+class SpiroDisplay(art.AnimDisplay):
+    """Specialization of AnimDisplay to animate Spirograph machines."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)        
+        self.shapes = []
+        self.text = None
+
+    def init_draw(self):
+        """Draw the spirograph corresponding to its arguments."""
+        R, r, d = self.args
+        ax = self.ax
+
+        out_gear = mpat.Circle((0, 0), R, color='r', fill=False)
+        int_gear = mpat.Circle((R - r, 0), r, color='g', fill=False)
+        hole = mpat.Circle((R - r + d, 0), r / 20, color='g', fill=False)
+
+        self.shapes.append(ax.add_artist(out_gear))
+        self.shapes.append(ax.add_artist(int_gear))
+        self.shapes.append(ax.add_artist(hole))
+
+        dim = max(R - r + d, R) + 1
+        ax.set_xlim(-dim, dim)
+        ax.set_ylim(-dim, dim)
+
+        self.text = ax.text(0.95, 0.01, self.args, verticalalignment='bottom',
+                            horizontalalignment='right',
+                            transform=ax.transAxes)
+    
+    def animate(self):
+        """Create the current frame."""
+        idx = self.time % self.data.shape[1]
+        theta = idx * 2 * np.pi * self.args[1] / self.data.shape[1]
+        r = self.args[0] - self.args[1]
+        self.shapes[1].center = [r * np.cos(theta), r * np.sin(theta)]
+
+        self.shapes[2].center = self.data[:, idx]        
+        super().animate()
+
+    def clear(self):
+        """Erase the plotted shapes, curve and text."""
+        for shape in self.shapes:
+            shape.remove()
+        self.shapes.clear()
+        if self.text is not None:
+            self.text.remove()
+        self.reset()
 
 
 def main():
