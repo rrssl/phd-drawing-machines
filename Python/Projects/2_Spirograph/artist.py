@@ -13,24 +13,24 @@ import numpy as np
 class Artist():
     """Base class for frame interfaces."""
 
-    def __init__(self, axes, context):
+    def __init__(self, axes, update):
         self.ax = axes
-        self.ctxt = context
+        self.update = update
 
         self.press = False
 
         axes.get_xaxis().set_visible(False)
         axes.get_yaxis().set_visible(False)
         axes.set_aspect('equal')
-        
+
         connect = axes.figure.canvas.mpl_connect
         connect('axes_enter_event', self.on_enter)
         connect('axes_leave_event', self.on_leave)
         connect('button_press_event', self.on_press)
-        connect('button_release_event',self.on_release)
+        connect('button_release_event', self.on_release)
         connect('motion_notify_event', self.on_move)
         connect('key_press_event', self.on_key_press)
-        connect('key_release_event',self.on_key_release)
+        connect('key_release_event', self.on_key_release)
 
     def on_enter(self, event):
         """Manage entering mouse events."""
@@ -103,7 +103,7 @@ class Painter(Artist):
             self.xdata.clear()
             self.ydata.clear()
 
-            self.ctxt.update_data(event)
+            self.update(self.ax)
 
 # TODO: resorb the code duplication due to the useless distinction between
 # grab_circle and aux_grab_circles.
@@ -114,28 +114,41 @@ class Sculptor(Artist):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        # Plot
+        self.args = None
         self.data = np.array([])
         self.curve = self.ax.plot([], 'x-')[0]
-
+        self.sym_order = 0
+        # Logic
         self.to_opt = False
+        self.r_press = False
+        # User input
+        self.mouse_pos = np.zeros(2)
+        # Simple selection
         self.radius_coeff = Sculptor.init_radius_coeff
+        self.grab_circle = None
         self.moving_points = None
         self.coeffs = None
-        self.mouse_pos = np.zeros(2)
-
-        self.grab_circle = None
+        # Multiple selection
+        self.aux_grab_circles = []
+        self.aux_moving_points = []
+        self.aux_coeffs = []
+        # Long selection
         self.time = 0.
         self.timer = self.ax.figure.canvas.new_timer(interval=Sculptor.period)
         self.timer.add_callback(self.grow_radius)
 
-        self.r_press = False
-        self.aux_grab_circles = []
-        self.aux_moving_points = []
-        self.aux_coeffs = []
-
-        self.args = None
-        self.sym_order = 0
+    def reset(self, args, data, sym_order=0):
+        """Reset the data."""
+        self.args = args
+        self.data = np.asarray(data)
+        self.curve.set_data(self.data)
+        self.sym_order = sym_order
+        self.to_opt = False
+        # Adapt the plot limits (keeping the frame square).
+        dim = self.data.max() * 1.5
+        self.ax.set_xlim(-dim, dim)
+        self.ax.set_ylim(-dim, dim)
 
     def on_enter(self, event):
         """Manage entering mouse events."""
@@ -222,7 +235,7 @@ class Sculptor(Artist):
             # Update
                 if not self.to_opt:
                     self.redraw()
-            self.ctxt.update_data(event)
+            self.update(self.ax)
 
     def on_key_press(self, event):
         """Manage key press events."""
@@ -373,6 +386,17 @@ class AnimDisplay(Display):
             interval=AnimDisplay.period)
         self.timer.add_callback(self.animate)
 
+    def reset(self, args, data):
+        """Reset the data."""
+        self.args = args
+        self.data = np.asarray(data)[:, :-1]
+        self.curve.set_data([], [])
+        self.time = 0.
+        # Adapt the plot limits (keeping the frame square).
+        dim = self.data.max() * 1.1
+        self.ax.set_xlim(-dim, dim)
+        self.ax.set_ylim(-dim, dim)
+
     def on_key_press(self, event):
         """Manage key press events."""
         if self.check_tb_inactive() and event.inaxes == self.ax:
@@ -394,11 +418,6 @@ class AnimDisplay(Display):
         self.redraw()
         self.time += 1.
 
-    def reset(self):
-        """Reset the animation."""
-        self.curve.set_data([], [])
-        self.time = 0.
-
 #    def play(self):
 #        self.anim = manim.FuncAnimation(self.ax.figure, self.animate,
 #                                        frames=200, init_func=self.init,
@@ -413,6 +432,20 @@ class ButtonDisplay(Display):
         super().__init__(*args, **kwargs)
 
         self.hold = False
+
+    def reset(self, args, data):
+        """Reset the data."""
+        self.curve.set_data(data[0], data[1])
+        # Adapt the plot limits (keeping the frame square).
+        dim = data.max() * 1.1
+        self.ax.set_xlim(-dim, dim)
+        self.ax.set_ylim(-dim, dim)
+
+        self.args = args
+        # Unselect if previously selected.
+        if self.hold:
+            self.hold = False
+            self.ax.set_axis_bgcolor(ButtonDisplay.bg_colors[0])
 
     def on_enter(self, event):
         """Manage entering mouse events."""
@@ -437,4 +470,4 @@ class ButtonDisplay(Display):
     def on_release(self, event):
         """Manage mouse release events."""
         if event.inaxes == self.ax:
-            self.ctxt.update_data(event)
+            self.update(self.ax)
