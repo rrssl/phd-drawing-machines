@@ -7,20 +7,20 @@ Tools for the matching, retrieval and classification of curves.
 import numpy as np
 import scipy.optimize as opt
 
-import curvegen as cg
-
 
 class CurveMatcher:
     """Adapter transforming a curve distance into a curve matcher."""
     
-    def __init__(self, distance):
+    def __init__(self, distance, curve_func):
         self.distance = distance
+        self.curve_func = curve_func
 
     def __call__(self, target_curve, cand_params):
         """Find the candidate best matching the input curve."""
         # Compare each candidate curve.
-        distances = np.array([self.distance(cg.get_curve(cand), target_curve)
-                              for cand in cand_params])
+        distances = np.array([
+            self.distance(self.curve_func(cand), target_curve)
+            for cand in cand_params])
         return cand_params[np.argsort(distances), :]
         
     
@@ -30,7 +30,7 @@ def classify_curve(target_curve, cand_params, curve_matcher, threshold):
     belongs = np.zeros(cand_params.shape[0], dtype=bool)
     for i, cand in enumerate(cand_params):
         # Generate the curve.
-        cand_curve = cg.get_curve(cand)
+        cand_curve = curve_matcher.curve_func(cand)
         # Compute the distance.
         dist = curve_matcher(cand_curve, target_curve)
 #        print(dist, c)
@@ -41,21 +41,26 @@ def classify_curve(target_curve, cand_params, curve_matcher, threshold):
 class CurveOptimizer:
     """Precise optimization of a candidate curve on a target curve."""
     
-    def __init__(self, distance, target_curve=None, init_guess=None):
+    def __init__(self, distance, curve_func, target_curve=None, bounds=None, 
+                 init_guess=None):
         self.distance = distance
-        self.init = init_guess
+        self.curve_func = curve_func
         self.target = target_curve
+        self.bounds = bounds
+        self.init = init_guess
         
     def get_objective(self, x):
         params = np.hstack([self.init[:2], x])
-        cand_curve = cg.get_curve(params)
+        cand_curve = self.curve_func(params)
         return self.distance(cand_curve, self.target)
         
-    def optimize(self, display=False, target_curve=None, init_guess=None):
+    def optimize(self, display=False, target_curve=None, bounds=None,
+                 init_guess=None):
         if target_curve is not None:
             self.target = target_curve
+        if bounds is not None:
+            self.bounds = bounds
         if init_guess is not None:
             self.init = init_guess
-        param_bounds = (0., self.init[1])
-        return opt.minimize_scalar(self.get_objective, bounds=param_bounds,
+        return opt.minimize_scalar(self.get_objective, bounds=self.bounds,
                                    method='bounded')

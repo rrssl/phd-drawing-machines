@@ -126,6 +126,7 @@ class Spirou():
         # Optimization
         if scl.to_opt and self.optimizer is not None:
             opt_d = self.optimizer.optimize(target_curve=scl.data,
+                                            bounds=(0., scl.params[1]),
                                             init_guess=scl.params).x
             args = scl.params.copy()
             args[2:] = opt_d
@@ -229,8 +230,8 @@ def main():
     plt.ioff()
 
     distance = cdist.DistanceField()
-    matcher = cmat.CurveMatcher(distance.get_dist)
-    optimizer = cmat.CurveOptimizer(distance.get_dist)
+    matcher = cmat.CurveMatcher(distance.get_dist, cg.get_curve)
+    optimizer = cmat.CurveOptimizer(distance.get_dist, cg.get_curve)
     Spirou(matcher, optimizer)
     plt.show()
 
