@@ -93,10 +93,10 @@ class Spirou():
     def transmit_picker_to_sculptor(self, picker):
         """Update sculptor data from selected picker."""
         scl = self.edit_frame.sculptor
-        if picker.args is not None:
+        if picker.params is not None:
             # Perform deep copy of the args since they are actively modified in
             # the sculptor.
-            args = picker.args.copy()
+            args = picker.params.copy()
             data = picker.curve.get_data()
             sym_order = Fraction.from_float(
                 args[0] / args[1]).limit_denominator(1000).numerator
@@ -106,9 +106,9 @@ class Spirou():
 
     def transmit_picker_to_display(self, picker):
         """Update display data from selected picker."""
-        if picker.args is not None:
+        if picker.params is not None:
             dsp = self.show_frame.display
-            dsp.reset(picker.args, picker.curve.get_data())
+            dsp.reset(picker.params, picker.curve.get_data())
             dsp.redraw()
 
 # TODO: put in a ButtonDisplayRow class?
@@ -126,8 +126,8 @@ class Spirou():
         # Optimization
         if scl.to_opt and self.optimizer is not None:
             opt_d = self.optimizer.optimize(target_curve=scl.data,
-                                            init_guess=scl.args).x
-            args = scl.args.copy()
+                                            init_guess=scl.params).x
+            args = scl.params.copy()
             args[2:] = opt_d
             curve_pts = cg.get_curve(args)
 
@@ -137,7 +137,7 @@ class Spirou():
     def transmit_sculptor_to_pickers(self):
         """Update pickers from curve editing."""
         scl = self.edit_frame.sculptor
-        args = scl.args
+        args = scl.params
         if args is None:
             return
         # Get closest curves.
@@ -150,9 +150,9 @@ class Spirou():
     def transmit_sculptor_to_display(self):
         """Update display data from curve editing."""
         scl = self.edit_frame.sculptor
-        if scl.args is not None:
+        if scl.params is not None:
             dsp = self.show_frame.display
-            dsp.reset(scl.args, scl.curve.get_data())
+            dsp.reset(scl.params, scl.curve.get_data())
             dsp.redraw()
 
 # TODO: put in a ButtonDisplayRow class?
@@ -173,11 +173,11 @@ class SpiroDisplay(art.AnimDisplay):
         self.shapes = []
         self.text = None
 
-    def reset(self, args, data):
+    def reset(self, params, data):
         """Reset the data."""
-        super().reset(args, data)
+        super().reset(params, data)
 
-        R, r, d = self.args
+        R, r, d = self.params
         if self.shapes:
             self.shapes[0].radius = R
             self.shapes[1].center = (R - r, 0.)
@@ -185,7 +185,7 @@ class SpiroDisplay(art.AnimDisplay):
             self.shapes[2].center = (R - r + d, 0.)
             self.shapes[2].radius = r / 20
 
-            self.text.set_text(self.args)
+            self.text.set_text(self.params)
         else:
             self.init_draw()
 
@@ -197,7 +197,7 @@ class SpiroDisplay(art.AnimDisplay):
 
     def init_draw(self):
         """Draw the spirograph corresponding to its arguments."""
-        R, r, d = self.args
+        R, r, d = self.params
         ax = self.ax
 
         out_gear = mpat.Circle((0., 0.), R, color='r', fill=False)
@@ -208,15 +208,16 @@ class SpiroDisplay(art.AnimDisplay):
         self.shapes.append(ax.add_artist(int_gear))
         self.shapes.append(ax.add_artist(hole))
 
-        self.text = ax.text(0.95, 0.01, self.args, verticalalignment='bottom',
+        self.text = ax.text(0.95, 0.01, self.params,
+                            verticalalignment='bottom',
                             horizontalalignment='right',
                             transform=ax.transAxes)
 
     def animate(self):
         """Create the current frame."""
         idx = self.time % self.data.shape[1]
-        theta = idx * 2 * np.pi * self.args[1] / self.data.shape[1]
-        r = self.args[0] - self.args[1]
+        theta = idx * 2 * np.pi * self.params[1] / self.data.shape[1]
+        r = self.params[0] - self.params[1]
         self.shapes[1].center = [r * np.cos(theta), r * np.sin(theta)]
 
         self.shapes[2].center = self.data[:, idx]

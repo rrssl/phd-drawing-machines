@@ -105,57 +105,38 @@ class Painter(Artist):
 
             self.update(self.ax)
 
+
 # TODO: resorb the code duplication due to the useless distinction between
 # grab_circle and aux_grab_circles.
-class Sculptor(Artist):
-    """Artist for continuous curve editing."""
+class Selector(Artist):
+    """Artist for advanced vertex selection."""
     init_radius_coeff = 0.05
     period = 40 # in milliseconds
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Plot
-        self.args = None
-        self.data = np.array([])
-        self.curve = self.ax.plot([], 'x-')[0]
-        self.sym_order = 0
         # Logic
-        self.to_opt = False
         self.r_press = False
-        # User input
-        self.mouse_pos = np.zeros(2)
         # Simple selection
-        self.radius_coeff = Sculptor.init_radius_coeff
+        self.radius_coeff = Selector.init_radius_coeff
         self.grab_circle = None
-        self.moving_points = None
-        self.coeffs = None
         # Multiple selection
+        self.sym_order = 0
         self.aux_grab_circles = []
-        self.aux_moving_points = []
-        self.aux_coeffs = []
         # Long selection
         self.time = 0.
-        self.timer = self.ax.figure.canvas.new_timer(interval=Sculptor.period)
+        self.timer = self.ax.figure.canvas.new_timer(interval=Selector.period)
         self.timer.add_callback(self.grow_radius)
 
-    def reset(self, args, data, sym_order=0):
+    def reset(self, sym_order=0):
         """Reset the data."""
-        self.args = args
-        self.data = np.asarray(data)
-        self.curve.set_data(self.data)
         self.sym_order = sym_order
-        self.to_opt = False
-        # Adapt the plot limits (keeping the frame square).
-        dim = self.data.max() * 1.5
-        self.ax.set_xlim(-dim, dim)
-        self.ax.set_ylim(-dim, dim)
 
     def on_enter(self, event):
         """Manage entering mouse events."""
         if self.check_tb_inactive() and event.inaxes == self.ax:
             if self.grab_circle is None:
-                self.mouse_pos[:] = [event.xdata, event.ydata]
-                self.grab_circle = self.draw_circle(self.mouse_pos,
+                self.grab_circle = self.draw_circle((event.xdata, event.ydata),
                                                     self.get_radius())
                 if self.r_press: self.draw_aux_grab_circles()
                 self.redraw()
@@ -170,52 +151,30 @@ class Sculptor(Artist):
                 self.erase_aux_grab_circles()
                 self.redraw()
 
-                self.radius_coeff = Sculptor.init_radius_coeff
+                self.radius_coeff = Selector.init_radius_coeff
                 self.timer.stop()
                 self.time = 0.
 
     def on_press(self, event):
         """Manage mouse press events."""
         if self.check_tb_inactive() and event.inaxes == self.ax:
-            if self.data.size:
-                self.press = True
-
-                self.mouse_pos[:] = [event.xdata, event.ydata]
-                self.grab_points()
+            self.press = True
             self.timer.start()
 
     def on_move(self, event):
         """Manage mouse move events."""
         if event.inaxes == self.ax:
-            redraw = False
             if self.grab_circle is not None:
                 if self.press:
                     self.timer.stop()
-                self.grab_circle.center = [event.xdata, event.ydata]
-                redraw = True
+                self.grab_circle.center = (event.xdata, event.ydata)
 
                 if self.aux_grab_circles:
                     aux_centers = self.get_rot_sym(self.grab_circle.center)[1:]
                     for gcirc, acnt in zip(self.aux_grab_circles, aux_centers):
                         gcirc.center = acnt
 
-            if self.press and self.moving_points is not None:
-                diff = [event.xdata, event.ydata] - self.mouse_pos
-                self.data[:, self.moving_points] += (
-                    diff.reshape(2, 1) * self.coeffs)
-                self.mouse_pos[:] = [event.xdata, event.ydata]
-
-                if self.aux_grab_circles:
-                    aux_diffs = self.get_rot_sym(diff)[1:]
-                    for adiff, ampts, acoeff in zip(aux_diffs,
-                                                    self.aux_moving_points,
-                                                    self.aux_coeffs):
-                        self.data[:, ampts] += adiff.reshape(2, 1) * acoeff
-
-                self.to_opt = True
-                self.curve.set_data(self.data)
-                redraw = True
-            if redraw: self.redraw()
+                self.redraw()
 
     def on_release(self, event):
         """Manage mouse release events."""
@@ -226,16 +185,9 @@ class Sculptor(Artist):
         if self.press:
             # Cleanup
             self.press = False
-            self.moving_points = None
-            self.coeffs = None
             if not self.r_press:
                 self.erase_aux_grab_circles()
-                self.aux_moving_points = []
-                self.aux_coeffs = []
-            # Update
-                if not self.to_opt:
-                    self.redraw()
-            self.update(self.ax)
+                self.redraw()
 
     def on_key_press(self, event):
         """Manage key press events."""
@@ -254,8 +206,6 @@ class Sculptor(Artist):
 
             if not self.press:
                 self.erase_aux_grab_circles()
-                self.aux_moving_points = []
-                self.aux_coeffs = []
                 self.redraw()
 
     def draw_circle(self, center, radius):
@@ -278,9 +228,9 @@ class Sculptor(Artist):
     def erase_aux_grab_circles(self):
         """Erase the auxiliary selection circles."""
         if self.aux_grab_circles:
-            for gc in self.aux_grab_circles:
-                gc.remove()
-            self.aux_grab_circles = []
+            for agc in self.aux_grab_circles:
+                agc.remove()
+            self.aux_grab_circles.clear()
 
     def get_rot_sym(self, point):
         """Get points that are rotationally symmetric around the center."""
@@ -313,8 +263,98 @@ class Sculptor(Artist):
                     gcirc.radius *= coeff
                 self.redraw()
 
-                if self.data.size:
-                    self.grab_points()
+
+# TODO: resorb the code duplication due to the useless distinction between
+# grab_circle and aux_grab_circles.
+class Sculptor(Selector):
+    """Artist for continuous curve editing."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Plot
+        self.params = None
+        self.data = np.array([])
+        self.curve = self.ax.plot([], 'x-')[0]
+        # Logic
+        self.to_opt = False
+        # User input
+        self.mouse_pos = np.zeros(2)
+        # Simple selection
+        self.moving_points = None
+        self.coeffs = None
+        # Multiple selection
+        self.aux_moving_points = []
+        self.aux_coeffs = []
+
+    def reset(self, params, data, *args, **kwargs):
+        """Reset the data."""
+        super().reset(*args, **kwargs)
+        self.params = params
+        self.data = np.asarray(data)
+        self.curve.set_data(self.data)
+        self.to_opt = False
+        # Adapt the plot limits (keeping the frame square).
+        dim = self.data.max() * 1.5
+        self.ax.set_xlim(-dim, dim)
+        self.ax.set_ylim(-dim, dim)
+
+    def on_press(self, event):
+        """Manage mouse press events."""
+        if self.check_tb_inactive() and event.inaxes == self.ax:
+            if self.data.size:
+                self.mouse_pos[:] = (event.xdata, event.ydata)
+                self.grab_points()
+            super().on_press(event)
+
+    def on_move(self, event):
+        """Manage mouse move events."""
+        if event.inaxes == self.ax:
+            if self.press and self.moving_points is not None:
+                diff = (event.xdata, event.ydata) - self.mouse_pos
+                self.data[:, self.moving_points] += (
+                    diff.reshape(2, 1) * self.coeffs)
+                self.mouse_pos[:] = (event.xdata, event.ydata)
+
+                if self.aux_grab_circles:
+                    aux_diffs = self.get_rot_sym(diff)[1:]
+                    for adiff, ampts, acoeff in zip(aux_diffs,
+                                                    self.aux_moving_points,
+                                                    self.aux_coeffs):
+                        self.data[:, ampts] += adiff.reshape(2, 1) * acoeff
+
+                self.to_opt = True
+                self.curve.set_data(self.data)
+            super().on_move(event)
+
+    def on_release(self, event):
+        """Manage mouse release events."""
+        if self.press:
+            # Cleanup
+            self.moving_points = None
+            self.coeffs = None
+            self.aux_moving_points.clear()
+            self.aux_coeffs.clear()
+            super().on_release(event)
+            # Update
+            self.update(self.ax)
+
+    def on_key_release(self, event):
+        """Manage key release events."""
+        if event.key == 'r' and self.r_press:
+            if not self.press:
+                self.aux_moving_points.clear()
+                self.aux_coeffs.clear()
+            super().on_key_release(event)
+
+    def grow_radius(self):
+        """Increase the grab circle radius after a while."""
+        if self.grab_circle is not None:
+            super().grow_radius()
+            if self.time > 20. and self.data.size:
+                if self.aux_moving_points:
+                    self.aux_moving_points.clear()
+                    self.aux_coeffs.clear()
+                self.grab_points()
 
     def grab_points(self):
         """Grab the contiguous points closest to the center within radius."""
@@ -330,8 +370,10 @@ class Sculptor(Artist):
             else:
                 # Only keep the string of points containing the closest one.
                 start = end = dist.argmin()
-                while inside[(start - 1) % nb_pts]: start -= 1
-                while inside[(end + 1) % nb_pts]: end += 1
+                while inside[(start - 1) % nb_pts]:
+                    start -= 1
+                while inside[(end + 1) % nb_pts]:
+                    end += 1
                 self.moving_points = np.arange(start, end) % nb_pts
 
             self.coeffs = 1. - dist[self.moving_points] / radius
@@ -351,8 +393,10 @@ class Sculptor(Artist):
                 for row, ins in zip(distances, inside):
                     # Only keep the string of points containing the closest one.
                     start = end = row.argmin()
-                    while ins[(start - 1) % nb_pts]: start -= 1
-                    while ins[(end + 1) % nb_pts]: end += 1
+                    while ins[(start - 1) % nb_pts]:
+                        start -= 1
+                    while ins[(end + 1) % nb_pts]:
+                        end += 1
 
                     ids = np.arange(start, end) % nb_pts
                     self.aux_moving_points.append(ids)
@@ -366,7 +410,7 @@ class Display(Artist):
         super().__init__(*args, **kwargs)
 
         self.curve = self.ax.plot([])[0]
-        self.args = None
+        self.params = None
 
 
 class AnimDisplay(Display):
@@ -386,9 +430,9 @@ class AnimDisplay(Display):
             interval=AnimDisplay.period)
         self.timer.add_callback(self.animate)
 
-    def reset(self, args, data):
+    def reset(self, params, data):
         """Reset the data."""
-        self.args = args
+        self.params = params
         self.data = np.asarray(data)[:, :-1]
         self.curve.set_data([], [])
         self.time = 0.
@@ -433,7 +477,7 @@ class ButtonDisplay(Display):
 
         self.hold = False
 
-    def reset(self, args, data):
+    def reset(self, params, data):
         """Reset the data."""
         self.curve.set_data(data[0], data[1])
         # Adapt the plot limits (keeping the frame square).
@@ -441,7 +485,7 @@ class ButtonDisplay(Display):
         self.ax.set_xlim(-dim, dim)
         self.ax.set_ylim(-dim, dim)
 
-        self.args = args
+        self.params = params
         # Unselect if previously selected.
         if self.hold:
             self.hold = False
@@ -464,7 +508,7 @@ class ButtonDisplay(Display):
     def on_press(self, event):
         """Manage mouse press events."""
         if event.inaxes == self.ax:
-            if self.args is not None:
+            if self.params is not None:
                 self.hold = True
 
     def on_release(self, event):
