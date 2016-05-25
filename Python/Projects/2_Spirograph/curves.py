@@ -5,10 +5,34 @@ Library of parametric curves.
 @author: Robin Roussel
 """
 
-from fractions import Fraction
+#from fractions import Fraction
 import numpy as np
 import scipy.optimize as opt
 import scipy.special as spec
+
+
+def farey(n, asc=True):
+    """Get a generator of the nth Farey sequence (ascending or descending)."""
+    # See farey_bench.py for sources and comparison with other implementations.
+    if asc: 
+        a, b, c, d = 0, 1,  1 , n
+    else:
+        a, b, c, d = 1, 1, n-1, n
+    yield (a,b)
+    while (asc and c <= n) or (not asc and a > 0):
+        k = int((n + b)/d)
+        a, b, c, d = c, d, k*c - a, k*d - b
+        yield (a,b)
+
+def skipends(itr):
+    """Adapt a generator to ignore the first and last item."""
+    # Source: http://stackoverflow.com/a/2429118
+    itr = iter(itr)  # Ensure we have an iterator
+    next(itr) # Ship the first
+    prev = next(itr)
+    for item in itr:
+        yield prev
+        prev = item
 
 class Curve:
     """Base class for curves."""
@@ -29,17 +53,30 @@ class Hypotrochoid(Curve):
         self.r = int_gear_radius
         self.d = tracer_dist
 
+#    @staticmethod
+#    def get_param_combinations(num_R_vals, num_d_vals):
+#        """Get an array of all possible parameter combinations."""
+#        if num_R_vals == 0 or num_d_vals == 0:
+#            return np.empty(0)
+#        combi = np.empty((0, 3))
+#        for R in range(1, num_R_vals + 1):
+#            for r in range(1, R):
+#                if Fraction(R, r).denominator == r: # Avoid repeating patterns
+#                    for d in np.linspace(0, r, num_d_vals + 1, endpoint=False):
+#                        if d != 0.: # Exclude d=0 and d=r
+#                            combi = np.vstack([combi, np.array([R, r, d])])
+#            
+#        return combi
+
     @staticmethod
-    def get_param_combinations(num_R_vals, num_d_vals):
-        """Get an array of all possible parameter combinations."""
-        combi = np.empty((0, 3))
-        for R in range(1, num_R_vals + 1):
-            for r in range(1, R):
-                if Fraction(R, r).denominator == r: # Avoid repeating patterns
-                    for d in np.linspace(0, r, num_d_vals + 1, endpoint=False):
-                        if d != 0.: # Exlude d=0 and d=r
-                            combi = np.vstack([combi, np.array([R, r, d])])
-        return combi
+    def sample_parameters(nb_grid_nodes):
+        """Get a regular sampling of the parameter space with a generator."""
+        n_R, n_d = nb_grid_nodes[0], nb_grid_nodes[-1]          
+        d_arr = [np.linspace(0, l * (n_d - 1) / n_d, n_d) 
+                 for l in range(1, n_R)]
+        for r, R in skipends(farey(n_R)):
+            for d in d_arr[r - 1]:
+                yield R, r, d
 
     def get_point(self, t):
         """Get the [x(t), y(t)] point(s)."""
