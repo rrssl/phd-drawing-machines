@@ -13,7 +13,6 @@ from matplotlib.widgets import Slider
 import numpy as np
 import scipy.special as spec
 
-import curvegen as cg
 import curves as cu
 from discreteslider import DiscreteSlider
 
@@ -33,7 +32,7 @@ class SpiroPlot:
         self.r_vals = np.arange(self.r_min_val, self.r_max_val + 1, 1)
         self.r = 5
 
-        self.d_min_val = 0.01
+        self.d_min_val = 0.
         self.d_max_val = 10. # included
         self.d = 0.5
 
@@ -72,11 +71,18 @@ class SpiroPlot:
         R = self.R
         r = self.r
         d = self.d
-#        N = Fraction(int(R), int(r)).denominator # /!\ R & r are numpy floats
-        N = Fraction.from_float(R / r).limit_denominator(100).denominator
+        if d:
+            N = Fraction.from_float(R / r).limit_denominator(100).denominator
+        else:
+            # Degenerate case. The period of the trochoid becomes 2pi.
+            N = 1
         ax = self.ax
 
-        hypo = cg.get_curve((R, r, d), N)
+        nb_samples = N * 2 ** 6 + 1
+        interval_length = N * 2 * np.pi
+        param_range = np.linspace(0., interval_length, nb_samples)
+        hypo = cu.Hypotrochoid(R, r, d).get_point(param_range)
+
         if self.show_spiro:
             out_gear = pat.Circle((0,0), R, color='r', fill=False)
             int_gear = pat.Circle((R - r,0), r, color='g', fill=False)
@@ -118,10 +124,11 @@ class SpiroGridPlot:
     def draw_grid(self):
         """Draw the grid of figures."""
         num_R_vals = 10
-        num_d_vals = 5
+        num_d_vals = 10
 
         # Compute combinations.
-        combi = cg.get_param_combinations((num_R_vals, num_d_vals))
+        combi = np.array(list(
+            cu.Hypotrochoid.sample_parameters((num_R_vals, num_d_vals))))
         if self.plot_increasing_ratios:
             ratios = (combi[:,1] / combi[:,0]) + 1e-6 * combi[:,2]
             sorted_indices = np.argsort(ratios)
@@ -158,7 +165,12 @@ class SpiroGridPlot:
 
     def draw_grid_cell(self, parameters, position):
         """Draw a single cell of the grid."""
-        curve = cg.get_curve(parameters)
+        N = parameters[1] if parameters[2] else 1
+        nb_samples = N * 2 ** 5 + 1
+        interval_length = N * 2 * np.pi
+        param_range = np.linspace(0., interval_length, nb_samples)
+        curve = cu.Hypotrochoid(*parameters).get_point(param_range)
+
         curve = curve / abs(curve).max()
         curve = curve + position.reshape(2, 1)
 
@@ -262,12 +274,24 @@ class RoulettePlot:
                 ell = cu.Ellipse(a, b)
                 self.roulette = cu.Roulette(ell, cir, d, 'moving')
                 
-                N = Fraction.from_float(R / S).limit_denominator(100).numerator
-#                t = np.linspace(0., N * 2 * np.pi, N * 128 + 1)
-#                curve = self.roulette.get_point(t)
+                # General period is R * 2pi.
+                frac = Fraction.from_float(R / S).limit_denominator(100)
+                N = frac.numerator
+                if not d:
+                    # Degenerate cases.
+                    if a == b:
+                        # Period degenerates to (R/S) * 2pi.
+                        N = float(frac)
+                    elif frac.denominator % 2 == 0:
+                        # If den. is even then num. is necessarily odd.
+                        # Period degenerates to R * pi.
+                        N /= 2
+                self.frac = frac
+
                 # We have to take care of using a power of 2 so that 
                 # get_range uses its optimizations.
-                curve = self.roulette.get_range(0., N * 2 * np.pi, N * 128 + 1)
+                curve = self.roulette.get_range(0., N * 2 * np.pi, 
+                                                N * 2 ** 7 + 1)
 
             if self.show_gears:
                 out_gear = pat.Circle((0., 0.), R, color='r', fill=False)
@@ -302,8 +326,10 @@ class RoulettePlot:
         We use a single function to avoid multiple calls to self.draw().
         """
         if parameter == 'd':
+            not_degenerate = ((self.d and self.s_d.val) or
+                              self.e and self.frac.denominator % 2)
             self.d = self.s_d.val
-            self.draw(update_tracer_only=True)
+            self.draw(update_tracer_only=not_degenerate)
         else:
             if parameter == 'S':
                 self.S = self.s_S.val
@@ -378,11 +404,11 @@ def main():
     """Entry point."""
     plt.ioff()
 
-#    SpiroPlot(show_spiro=True)
+    SpiroPlot(show_spiro=True)
 
 #    SpiroGridPlot()
 
-    RoulettePlot(show_gears=True)
+#    RoulettePlot(show_gears=True)
 
     plt.show()
 
