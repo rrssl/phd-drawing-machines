@@ -429,6 +429,8 @@ class AnimDisplay(Display):
         self.timer = self.ax.figure.canvas.new_timer(
             interval=AnimDisplay.period)
         self.timer.add_callback(self.animate)
+        
+        self.nb_frames = 0
 
     def reset(self, params, data):
         """Reset the data."""
@@ -436,6 +438,7 @@ class AnimDisplay(Display):
         self.data = np.asarray(data)[:, :-1]
         self.curve.set_data([], [])
         self.time = 0.
+        self.nb_frames = self.data.shape[1]
         # Adapt the plot limits (keeping the frame square).
         dim = self.data.max() * 1.1
         self.ax.set_xlim(-dim, dim)
@@ -456,7 +459,7 @@ class AnimDisplay(Display):
 
     def animate(self):
         """Create the current frame."""
-        idx = self.time % self.data.shape[1]
+        idx = self.time % self.nb_frames
         self.curve.set_data(self.data[:, :idx + 1])
 
         self.redraw()
@@ -481,7 +484,7 @@ class ButtonDisplay(Display):
         """Reset the data."""
         self.curve.set_data(data[0], data[1])
         # Adapt the plot limits (keeping the frame square).
-        dim = data.max() * 1.1
+        dim = abs(data).max() * 1.1
         self.ax.set_xlim(-dim, dim)
         self.ax.set_ylim(-dim, dim)
 
