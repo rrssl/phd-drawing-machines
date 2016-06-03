@@ -46,7 +46,7 @@ class Curve:
 
 
 class Hypotrochoid(Curve):
-    """Hypotrochoid class (parameters R, r, d)."""
+    """Hypotrochoid class."""
 
     def __init__(self, ext_gear_radius, int_gear_radius, tracer_dist):
         self.R = ext_gear_radius
@@ -91,6 +91,10 @@ class Circle(Curve):
     """Parametric curve of a circle."""
 
     def __init__(self, radius):
+        self.reset(radius)
+    
+    def reset(self, radius):
+        """Reset the class fields."""
         self.r = radius
 
     def get_point(self, t):
@@ -118,10 +122,10 @@ class Circle(Curve):
         return s / self.r
         
     def get_min_curvature(self):
-        return 1 / self.r
+        return 1 / self.r if self.r else np.inf
         
     def get_max_curvature(self):
-        return 1 / self.r
+        return 1 / self.r if self.r else np.inf
     
     def get_period(self):
         return 2 * np.pi
@@ -134,13 +138,20 @@ class Ellipse(Curve):
     """Parametric curve of an ellipse."""
 
     def __init__(self, semimajor, semiminor):
+        self.reset(semimajor, semiminor)
+
+    def reset(self, semimajor, semiminor):
+        """Reset the class fields."""
         self.a = semimajor
         self.b = semiminor
         # /!\ This scipy implementation uses the convention E(phi, m) with m
         # the elliptic parameter, which in our case needs to be e**2.
-        self.e2 = 1 - semiminor * semiminor / (semimajor * semimajor)
-
-        self.ellipe_val = spec.ellipe(self.e2)
+        if semimajor:
+            self.e2 = 1 - semiminor * semiminor / (semimajor * semimajor)
+            self.ellipe_val = spec.ellipe(self.e2)
+        else:
+            self.e2 = 1
+            self.ellipe_val = 0
 
     def get_point(self, t):
         """Get the [x(t), y(t)] point(s)."""
@@ -179,10 +190,10 @@ class Ellipse(Curve):
         return opt.fsolve(obj_func, init_guess, fprime=obj_jac)
 
     def get_min_curvature(self):
-        return self.b / (self.a * self.a)
+        return self.b / (self.a * self.a) if self.a else np.inf
         
     def get_max_curvature(self):
-        return self.a / (self.b * self.b)
+        return self.a / (self.b * self.b) if self.b else np.inf
 
     def get_period(self):
         return 2 * np.pi
@@ -220,12 +231,7 @@ class Roulette(Curve):
         self.n_obj = nonmoving_obj
         
         if not self.check_curvature_constraint():
-            min_K_m = self.m_obj.get_min_curvature()
-            max_K_m = self.n_obj.get_max_curvature()
-            print("Warning: The minimum curvature of the moving curve should "
-                  "be greater than the maximum curvature of the nonmoving "
-                  "curve (min(K_m) = "
-                  "{:.2f}, max(K_n) = {:.2f}).".format(min_K_m, max_K_m))  
+            self.print_curvature_warning()
                   
         self.T = np.array([[tracer_dist], [0.]])
         self.par = parametrization
@@ -236,7 +242,25 @@ class Roulette(Curve):
         """
         m_K = self.m_obj.get_min_curvature()
         n_K = self.n_obj.get_max_curvature()
-        return m_K > n_K
+        if np.isfinite(m_K) and np.isfinite(n_K):
+            return m_K > n_K
+        else:
+            return True
+    
+    def print_curvature_warning(self):
+            min_K_m = self.m_obj.get_min_curvature()
+            max_K_m = self.n_obj.get_max_curvature()
+            print("Warning: The minimum curvature of the moving curve should "
+                  "be greater than the maximum curvature of the nonmoving "
+                  "curve (min(K_m) = "
+                  "{:.2f}, max(K_n) = {:.2f}).".format(min_K_m, max_K_m))  
+
+    def reset(self, moving_param, nonmoving_param):
+        self.m_obj.reset(*moving_param)
+        self.n_obj.reset(*nonmoving_param)
+
+        if not self.check_curvature_constraint():
+            self.print_curvature_warning()
     
     def get_point(self, t):
         """Get the [x(t), y(t)] point(s).
