@@ -116,7 +116,7 @@ if CV2_IMPORTED:
     class DistanceField(CurveDistance):
         """Shape distance based on the distance transform of the target."""
 
-        def __init__(self, mask_size=5, resol=(512, 512), *args, **kwargs):
+        def __init__(self, mask_size=5, resol=(512,512), *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.mask_size = mask_size
             self.resol = resol
@@ -145,8 +145,11 @@ if CV2_IMPORTED:
             normalization_factor = self.diag_ratio_dist_normalization * diag
             # Compute the average normalized distance.
             nb_samples = cand_curve.shape[1]
-            return sum(df[int(y), int(x)] / normalization_factor
-                       for x, y in cand_curve.T) / nb_samples
+            # Unoptimized version: 
+            # return sum(df[int(y), int(x)] / normalization_factor
+            #            for x, y in cand_curve.T) / nb_samples
+            return (df[tuple(cand_curve[::-1].astype(np.intp))].sum() / 
+                    (nb_samples * normalization_factor))
 
     # Bug: these constants are not defined in the OpenCV Python namespace.
     cv2.CV_CONTOURS_MATCH_I1 = 1
