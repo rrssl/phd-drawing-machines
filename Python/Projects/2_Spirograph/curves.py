@@ -48,10 +48,10 @@ class Curve:
 class Hypotrochoid(Curve):
     """Hypotrochoid class."""
 
-    def __init__(self, ext_gear_radius, int_gear_radius, tracer_dist):
+    def __init__(self, ext_gear_radius, int_gear_radius, pole_dist):
         self.R = ext_gear_radius
         self.r = int_gear_radius
-        self.d = tracer_dist
+        self.d = pole_dist
 
 #    @staticmethod
 #    def get_param_combinations(num_R_vals, num_d_vals):
@@ -85,6 +85,33 @@ class Hypotrochoid(Curve):
         d = self.d
         return np.vstack([(R - r) * np.cos(t) + d * np.cos(t * (R - r) / r),
                           (R - r) * np.sin(t) - d * np.sin(t * (R - r) / r)])
+
+
+class Epitrochoid(Curve):
+    """Epitrochoid class."""
+
+    def __init__(self, int_gear_radius, ext_gear_radius, pole_dist):
+        self.R = int_gear_radius
+        self.r = ext_gear_radius
+        self.d = pole_dist
+
+    @staticmethod
+    def sample_parameters(nb_grid_nodes):
+        """Get a regular sampling of the parameter space with a generator."""
+        n_R, n_d = nb_grid_nodes[0], nb_grid_nodes[-1]          
+        d_arr = [np.linspace(0, l * (n_d - 1) / n_d, n_d) 
+                 for l in range(1, n_R)]
+        for r, R in skipends(farey(n_R)):
+            for d in d_arr[r - 1]:
+                yield R, r, d
+
+    def get_point(self, t):
+        """Get the [x(t), y(t)] point(s)."""
+        R = self.R
+        r = self.r
+        d = self.d
+        return np.vstack([(R + r) * np.cos(t) - d * np.cos(t * (R + r) / r),
+                          (R + r) * np.sin(t) - d * np.sin(t * (R + r) / r)])
 
 
 class Circle(Curve):
@@ -144,10 +171,15 @@ class Ellipse(Curve):
         """Reset the class fields."""
         self.a = semimajor
         self.b = semiminor
-        # /!\ This scipy implementation uses the convention E(phi, m) with m
-        # the elliptic parameter, which in our case needs to be e**2.
+        if self.a < self.b:
+            print("Warning: the semimajor axis must be greater than the"
+                  "semiminor axis "
+                  "(a = {:.2f}, b = {:.2f}).".format(self.a, self.b))
+
         if semimajor:
             self.e2 = 1 - semiminor * semiminor / (semimajor * semimajor)
+            # /!\ scipy's implementation uses the convention E(phi, m) with m
+            # the elliptic parameter, which in our case needs to be e**2.
             self.ellipe_val = spec.ellipe(self.e2)
         else:
             self.e2 = 1
@@ -225,7 +257,7 @@ class Roulette(Curve):
             (equal to the polar angle), but requires the inversion of the 
             arc length function of the Ellipse.
     """
-    def __init__(self, moving_obj, nonmoving_obj, tracer_dist,
+    def __init__(self, moving_obj, nonmoving_obj, pole_dist,
                  parametrization='nonmoving'):
         self.m_obj = moving_obj
         self.n_obj = nonmoving_obj
@@ -233,7 +265,7 @@ class Roulette(Curve):
         if not self.check_curvature_constraint():
             self.print_curvature_warning()
                   
-        self.T = np.array([[tracer_dist], [0.]])
+        self.T = np.array([[pole_dist], [0.]])
         self.par = parametrization
         
     def check_curvature_constraint(self):
@@ -255,9 +287,10 @@ class Roulette(Curve):
                   "curve (min(K_m) = "
                   "{:.2f}, max(K_n) = {:.2f}).".format(min_K_m, max_K_m))  
 
-    def reset(self, moving_param, nonmoving_param):
+    def reset(self, moving_param, nonmoving_param, pole_dist):
         self.m_obj.reset(*moving_param)
         self.n_obj.reset(*nonmoving_param)
+        self.T[0] = pole_dist
 
         if not self.check_curvature_constraint():
             self.print_curvature_warning()
@@ -359,16 +392,35 @@ class Roulette(Curve):
             self.rot = _get_rotation(aux_jacs, ref_jacs)
         return self._get_curve_from_data()
                                       
-    def update_tracer(self, tracer_dist):
-        """Update the roulette to a different tracer position.
+    def update_pole(self, pole_dist):
+        """Update the roulette to a different pole position.
 
         This convenience function is here to avoid recomputing the same
-        intermediary data when all that is needed is a change to the tracer
+        intermediary data when all that is needed is a change to the pole
         position.
         In order to work, get_point() or get_range() must have been called
         earlier.
         """
-        self.T[0] = tracer_dist
+        self.T[0] = pole_dist
         # This will raise an AttributeError if the function is called before
         # the data has been cached.        
         return self._get_curve_from_data()
+
+
+class CircleInvolute(Curve):
+    """Parametric involute of a circle."""
+    
+    def __init__(self, radius, phase=0):
+        self.reset(radius, phase)
+    
+    def reset(self, radius, phase):
+        """Reset the class fields."""
+        self.r = radius
+        self.phi = phase
+
+    def get_point(self, t):
+        """Get the [x(t), y(t)] point(s)."""
+        cos = np.cos(t + self.phi)
+        sin = np.sin(t + self.phi)
+        return self.r * np.vstack([cos + t * sin, sin - t * cos])         
+    
