@@ -11,16 +11,15 @@ import scipy.optimize as opt
 class CurveMatcher:
     """Adapter transforming a curve distance into a curve matcher."""
     
-    def __init__(self, distance, curve_func):
+    def __init__(self, distance, get_curve):
         self.distance = distance
-        self.curve_func = curve_func
+        self.get_curve = get_curve
 
     def __call__(self, target_curve, cand_params):
         """Find the candidate best matching the input curve."""
         # Compare each candidate curve.
-        distances = np.array([
-            self.distance(self.curve_func(cand), target_curve)
-            for cand in cand_params])
+        distances = np.array([self.distance(self.get_curve(cand), target_curve)
+                              for cand in cand_params])
         return cand_params[np.argsort(distances), :]
         
     
@@ -37,30 +36,54 @@ def classify_curve(target_curve, cand_params, curve_matcher, threshold):
         belongs[i] = dist <= threshold
 
     return belongs
-    
+
+
 class CurveOptimizer:
     """Precise optimization of a candidate curve on a target curve."""
     
-    def __init__(self, distance, curve_func, target_curve=None, bounds=None, 
-                 init_guess=None):
+    def __init__(self, distance, get_curve, target_curve=None, bounds=None, 
+                 constraints=None, init_guess=None):
         self.distance = distance
-        self.curve_func = curve_func
+        self.get_curve = get_curve
         self.target = target_curve
         self.bounds = bounds
+        self.constr = constraints
         self.init = init_guess
         
-    def get_objective(self, x):
-        params = np.hstack([self.init[:2], x])
-        cand_curve = self.curve_func(params)
-        return self.distance(cand_curve, self.target)
+    def _get_objective(self, x):
+        """Get f(x), with f the objective function."""
+        return self.distance(self.get_curve(x), self.target)
         
-    def optimize(self, display=False, target_curve=None, bounds=None,
-                 init_guess=None):
-        if target_curve is not None:
-            self.target = target_curve
-        if bounds is not None:
-            self.bounds = bounds
-        if init_guess is not None:
-            self.init = init_guess
-        return opt.minimize_scalar(self.get_objective, bounds=self.bounds,
-                                   method='bounded')
+    def optimize(self, target_curve=None, bounds=None, constraints=None,
+                 init_guess=None, display=False):
+        """Get the optimal parameters for the target curve."""
+        self.target = target_curve if target_curve is not None else self.target
+        self.bounds = bounds if bounds is not None else self.bounds
+        self.constr = constraints if constraints is not None else self.constr
+        self.init = init_guess if init_guess is not None else self.init
+        
+        options = {'options': {'disp': display}}
+        if len(self.init) <= 1:
+            opt_func = opt.minimize_scalar
+            if self.bounds is not None:
+                options['bounds'] = self.bounds
+                options['method'] = 'bounded'
+            else:
+                options['method'] = 'brent'
+        else:
+            opt_func = opt.minimize
+            options['x0'] = self.init
+            if self.bounds is not None:
+                options['bounds'] = self.bounds
+                if self.constr is not None:
+                    options['constraints'] = self.constr
+                    options['method'] = 'SLSQP'
+                else:
+                    options['method'] = 'L-BFGS-B'
+            elif self.constr is not None:
+                options['constraints'] = self.constr
+                options['method'] = 'COBYLA'
+            else:
+                options['method'] = 'BFGS'
+        print("Method: ", options['method'])
+        return opt_func(self._get_objective, **options)
