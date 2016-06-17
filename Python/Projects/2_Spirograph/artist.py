@@ -360,11 +360,11 @@ class Sculptor(Selector):
         """Grab the contiguous points closest to the center within radius."""
         target = self.mouse_pos.reshape(self.data.shape[0], 1)
         radius = self.get_radius()
+        nb_pts = self.data.shape[1]
 
         dist = abs(self.data - target).sum(axis=0)
         inside = dist <= radius
         if inside.any():
-            nb_pts = self.data.shape[1]
             if inside.all():
                 self.moving_points = np.arange(nb_pts)
             else:
@@ -484,7 +484,7 @@ class ButtonDisplay(Display):
         """Reset the data."""
         self.curve.set_data(data[0], data[1])
         # Adapt the plot limits (keeping the frame square).
-        dim = abs(data).max() * 1.1
+        dim = abs(data).max() * 1.2
         self.ax.set_xlim(-dim, dim)
         self.ax.set_ylim(-dim, dim)
 

@@ -268,7 +268,7 @@ class RoulettePlot:
 
         if S:
             if update_tracer_only:
-                curve = self.roulette.update_tracer(self.d)
+                curve = self.roulette.update_pole(self.d)
             else:
                 cir = cu.Circle(R)
                 ell = cu.Ellipse(a, b)
@@ -404,11 +404,11 @@ def main():
     """Entry point."""
     plt.ioff()
 
-    SpiroPlot(show_spiro=True)
+#    SpiroPlot(show_spiro=True)
 
 #    SpiroGridPlot()
 
-#    RoulettePlot(show_gears=True)
+    RoulettePlot(show_gears=True)
 
     plt.show()
 
