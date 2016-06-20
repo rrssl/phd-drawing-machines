@@ -29,57 +29,10 @@ if CV2_IMPORTED:
 import curvematching as cmat
 import curveplotlib as cplt
 import matcheval as mev
+import curveproc as cpr
 
 
 TEST_IMG_INPUT = False
-
-
-def test_curve_retrieval(target_curve, distance):
-    """Test the retrieving capacities of a distance."""
-    num_retrieved = 5
-    # Compute combinations.
-    cand_params = cg.get_param_combinations()
-    # Compare each candidate curve.
-    distances = np.array([distance(cg.get_curve(cand), target_curve)
-                          for cand in cand_params])
-    # Collect the closest curves.
-    sortid = np.argsort(distances)
-    mindist = distances[sortid][:num_retrieved]
-    argmin = cand_params[sortid, :][:num_retrieved, :]
-
-    return argmin, mindist
-
-
-def show_curve_retrieval(target_curve, optimized_curve, retrieved_curves, 
-                         distances, title):
-    """Show the curve retrieval results for a given distance."""
-    nb_retrieved = retrieved_curves.shape[0]    
-    plt.figure(figsize=(16, 9))
-    plt.suptitle(title)
-    plot_grid_size = (3, nb_retrieved)
-    
-    # Show the target.
-    frame = plt.subplot2grid(
-        plot_grid_size, (0, 0), rowspan=2, colspan=nb_retrieved,
-        title="Target curve. {}".format(np.array([5, 3, 1.5])))
-    cplt.plot(target_curve, 'r-', label="Target")
-    cplt.plot(optimized_curve, 'b--', label="Optimized")
-    plt.legend(loc='best')
-    frame.set_aspect('equal')
-    
-    # Show the retrieved curves.
-    for i, c in enumerate(retrieved_curves):
-        frame = plt.subplot2grid(
-            plot_grid_size, (2, i), sharex=frame, sharey=frame,
-            title="d = {:.3f}\n{}".format(distances[i], c))
-        curve_pts = cg.get_curve(c)
-        curve_pts = curve_pts * abs(target_curve).max() / abs(curve_pts).max()
-        cplt.plot(curve_pts)
-        frame.set_aspect('equal')
-        
-    plt.subplots_adjust(left=0.05, right=0.95, top=0.90, hspace=0.5)
-    plt.autoscale()
-    plt.margins(0.1)
 
 
 def plot_distance(target_curve, distance, name):
@@ -119,6 +72,62 @@ def plot_distance(target_curve, distance, name):
     ax.set_zlabel('D')
     plt.title("Plot of the " + name + " dissimilarity measure\n"
               "as a function of the candidate hypotrochoid's parameters.")
+              
+
+def test_curve_retrieval(target_curve, distance):
+    """Test the retrieving capacities of a distance."""
+    num_retrieved = 5
+    # Compute combinations.
+    cand_params = cg.get_param_combinations()
+    # Compare each candidate curve.
+    distances = np.array([distance(cg.get_curve(cand), target_curve)
+                          for cand in cand_params])
+    # Collect the closest curves.
+    sortid = np.argsort(distances)
+    mindist = distances[sortid][:num_retrieved]
+    argmin = cand_params[sortid, :][:num_retrieved, :]
+
+    return argmin, mindist
+
+
+#def show_curve_retrieval(target_curve, optimized_curve, retrieved_curves, 
+#                         distances, title):
+#    """Show the curve retrieval results for a given distance."""
+#    nb_retrieved = retrieved_curves.shape[0]    
+#    plt.figure(figsize=(16, 9))
+#    plt.suptitle(title)
+#    plot_grid_size = (3, nb_retrieved)
+#
+#    # Show the painter.
+#    frame = plt.subplot2grid(
+#        plot_grid_size, (0, 0), rowspan=2, colspan=2, title="Draw here!")        
+#    frame.painter = Painter(frame)
+#    
+#    # Show the target.
+#    frame = plt.subplot2grid(
+#        plot_grid_size, (0, 2), rowspan=2, colspan=nb_retrieved - 2,
+#        title="Target curve. {}".format(np.array([5, 3, 1.5])))
+#    cplt.plot(target_curve, 'r-', label="Target")
+#    cplt.plot(optimized_curve, 'b--', label="Optimized")
+#    plt.legend(loc='best')
+#    frame.set_aspect('equal')
+#    
+#    # Show the retrieved curves.
+#    for i, c in enumerate(retrieved_curves):
+#        frame = plt.subplot2grid(
+#            plot_grid_size, (2, i), sharex=frame, sharey=frame,
+#            title="d = {:.3f}\n{}".format(distances[i], c))
+#        curve_pts = cg.get_curve(c)
+#        curve_pts = curve_pts * abs(target_curve).max() / abs(curve_pts).max()
+#        cplt.plot(curve_pts)
+#        frame.set_aspect('equal')
+#        
+#        
+#    plt.subplots_adjust(left=0.05, right=0.95, top=0.90, hspace=0.5)
+#    plt.autoscale()
+#    plt.margins(0.1)
+    
+
 
 
 def main():
@@ -160,12 +169,12 @@ def main():
 
     distances = {
 #        "Distance field.": cdist.DistanceField(),
-#        "Curvature's features.": cdist.CurvatureFeatures(sampling_rate),
+        "Curvature's features.": cdist.CurvatureFeatures(sampling_rate),
 #        "Hu moments.": cdist.HuMoments(contour_method=None),
-#        "Zernike moments.": cdist.ZernikeMoments(radius=128, degree=6,
+#        "Zernike moments.": cdist.ZernikeMoments(radius=128, degree=8,
 #                                                 contour_method=None,
 #                                                 filled_contour=False),
-        "Perceptual features.": cdist.PerceptualFeatures()
+#        "Perceptual features.": cdist.PerceptualFeatures()
         }
 
     for name, dist in distances.items():
@@ -178,18 +187,19 @@ def main():
         # Test curve matching.
         dist_func = dist.get_dist
         print("Target arguments: {}".format(ref_params))
-        matcher = cmat.CurveMatcher(dist_func)
+        matcher = cmat.CurveMatcher(dist_func, cg.get_curve)
 #        retrieved_args = []
-        retrieved_args = matcher(ref_curve, combi)
+        retrieved_args = matcher(ref_curve, combi)[0, :]
         print("Retrieved arguments: {}".format(retrieved_args))
         
         # Test curve optimization.
-        optimizer = cmat.CurveOptimizer(dist_func, retrieved_args, ref_curve)
+        optimizer = cmat.CurveOptimizer(dist_func, cg.get_curve, ref_curve, 
+                                        retrieved_args)
         optimized_args = np.hstack([retrieved_args[:2], 
                                      optimizer.optimize(display=True).x])
         print("Optimized arguments: {}".format(optimized_args))
 
-        # Plot the curve dissimilarity measure.
+        # Plot the curve dissimilarity measure.        
 #        plot_distance(ref_curve, dist_func, name)
 
         # Get the relative parametric error.
@@ -198,14 +208,19 @@ def main():
 #        print("Relative parametric error"
 #              " mean, median and std: {}".format(error_dist))
 
+        rob_eval = mev.Robustness(matcher, distorsion=0.001)
+        rob_succ_rate = rob_eval.get_success_rate()
+        print("Robustness - success rate with noise: {}".format(rob_succ_rate))        
+
 #        # Get the precision and recall.
 #        prec_rec = mev.get_precision_recall(dist_func)
 #        print("Precision and recall: {}".format(prec_rec))
 
-        # Show curve retrieval.
-        show_curve_retrieval(ref_curve, cg.get_curve(optimized_args),
-                             *test_curve_retrieval(ref_curve, dist_func),
-                             title=name)
+#        # Show curve retrieval.
+#        hand_curve = cpr.get_hand_drawn(ref_curve, amplitude=0.01)
+#        show_curve_retrieval(hand_curve, cg.get_curve(optimized_args),
+#                             *test_curve_retrieval(hand_curve, dist_func),
+#                             title=name)
         print('\n')
         
         plt.show()
