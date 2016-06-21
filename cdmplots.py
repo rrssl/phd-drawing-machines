@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Simulation and display of the Cycloid Drawing Machine.
@@ -6,7 +7,7 @@ Simulation and display of the Cycloid Drawing Machine.
 """
 import math
 import numpy as np
-import matplotlib.lines as line
+import matplotlib.collections as col
 import matplotlib.patches as pat
 import matplotlib.pyplot as plt
 
@@ -15,60 +16,103 @@ class SingleGearFixedFulcrum:
     """Simulation of the Cycloid Drawing Machine with the 'simple setup'."""
     points_per_cycle = 100
     
-    def __init__(self):
-        pass
-
-def get_curve(canvas_pos, canvas_rad, pinion_pos, pinion_rad, tracer_dist):
-    points_per_cycle = 100
-    N = canvas_rad
-    t = np.linspace(0, N * 2 * math.pi, N * points_per_cycle)
+    def __init__(self, turntable_radius, gear_radius, fulcrum_dist, 
+                 fulcrum_gear_angle, fulcrum_penholder_dist, gear_slider_dist):
+        self.R_t = turntable_radius
+        self.R_g = gear_radius
+        self.d_f = fulcrum_dist
+        self.theta_g = fulcrum_gear_angle
+        self.d_p = fulcrum_penholder_dist
+        self.d_s = gear_slider_dist
+        # Gear center
+        self.C_g = (self.R_t + self.R_g) * np.array([math.cos(self.theta_g),
+                                                     math.sin(self.theta_g)])
+        # Fulcrum center
+        self.C_f = np.array([self.d_f, 0.])
     
-    curve = (pinion_pos.reshape((2, 1)) + 
-             pinion_rad * np.vstack([np.cos(t), np.sin(t)]))
-    curve *= tracer_dist / np.linalg.norm(curve, axis=0)
+    def simulate_cycle(self):
+        """Simulate a complete cycle of the mechanism."""
+        N_cycles = self.R_t
+        # Parameter range
+        t = np.linspace(0, N_cycles * 2 * math.pi, 
+                        N_cycles * SingleGearFixedFulcrum.points_per_cycle)
+        # Slider curve
+        curve = (self.d_s * np.vstack([np.cos(t), np.sin(t)]) + 
+                 self.C_g.reshape((2, 1)))
+        # Connecting rod vector
+        curve -= self.C_f.reshape((2, 1))
+        # Penholder curve
+        curve *= self.d_p / np.linalg.norm(curve, axis=0)
+        curve += self.C_f.reshape((2, 1))
+        # Space rotation
+        ratio = self.R_g / self.R_t
+        cos = np.cos(t * ratio)
+        sin = np.sin(t * ratio)
+        rot = np.array([[cos, -sin], [sin, cos]])
+        curve = np.einsum('ijk,jk->ik', rot, curve)
+        
+        return curve
     
-    cos = np.cos(t * pinion_rad / canvas_rad)
-    sin = np.sin(t * pinion_rad / canvas_rad)
-    rot = np.array([[cos, -sin], [sin, cos]])
-    curve = (np.einsum('ijk,jk->ik', rot, curve - canvas_pos.reshape((2, 1))) + 
-             canvas_pos.reshape((2, 1)))
+    def draw(self):
+        """Draw the curve and the machine."""
+        curve = self.simulate_cycle()
+        
+        patches = [
+            # Gears
+            pat.Circle((0., 0.), self.R_t, color='grey', alpha=0.7),
+            pat.Circle((0., 0.), self.R_t * 0.1, color='grey', alpha=0.7),
+            pat.Circle(self.C_g, self.R_g, color='grey', alpha=0.7),
+            pat.Circle(self.C_g, self.R_g * 0.1, color='grey', alpha=0.7),
+            # Fulcrum
+            pat.Circle(self.C_f, 0.3, color='red', alpha=0.7)]
+        # Slider
+        slider_pos = self.C_g + (self.d_s, 0.)
+        patches.append(pat.Circle(slider_pos, 0.3, color='green', alpha=0.7))
+        # Connecting rod
+        rod_vect = slider_pos - self.C_f
+        rod_length = np.linalg.norm(rod_vect)
+        rod_angle = math.atan2(rod_vect[1], rod_vect[0])
+        rod_thickness = 0.2
+        rectangle_offset = ((rod_thickness / 2) * 
+                            np.array([ math.sin(rod_angle),
+                                      -math.cos(rod_angle)]))
+        patches.append(pat.Rectangle(
+            self.C_f + rectangle_offset, 
+            width=rod_length*1.5, 
+            height=rod_thickness,
+            angle=rod_angle*180/math.pi,
+            color='grey', alpha=0.7))
+        # Penholder
+        penholder_pos = self.C_f + rod_vect * self.d_p / rod_length
+        patches.append(
+            pat.Circle(penholder_pos, 0.3, color='lightblue', alpha=0.7))
 
-    return curve
+        _, ax = plt.subplots()
+        ax.set_aspect('equal')
+        
+        patches = col.PatchCollection(patches, match_original=True)
+        ax.add_collection(patches)
+        
+        # Tip: calling plot() at the end will call autoscale_view()
+        ax.plot(curve[0], curve[1])
+        
+
 
 def main():
-    gear_1_center = np.array([11., 9.])
-    gear_1_radius = 7
-    gear_2_center = np.array([18., 2.])
-    gear_2_radius = 3
-    tracer_dist = 12.
-    curve = get_curve(gear_1_center, gear_1_radius, gear_2_center,
-                      gear_2_radius, tracer_dist)
-    
-    gear_1 = pat.Circle(gear_1_center, gear_1_radius, color='grey', alpha=0.7)
-    gear_2 = pat.Circle(gear_2_center, gear_2_radius, color='grey', alpha=0.7)
-    slider_pos = gear_2_center + (gear_2_radius, 0.)
-    bar = line.Line2D((0., slider_pos[0] * 1.1), (0., slider_pos[1] * 1.1), 
-                      linewidth=5, color='grey', alpha=0.7)
-    tracer_pos = slider_pos * tracer_dist / np.linalg.norm(slider_pos)
-    tracer = pat.Circle(tracer_pos, 0.3, color='red', alpha=0.7)
-    origin = pat.Circle((0., 0.), 0.3, color='grey', alpha=0.7)
-    slider = pat.Circle(slider_pos, 0.3, color='green', alpha=0.7)
-    
     plt.ioff()
-    _, ax = plt.subplots()
-    ax.set_aspect('equal')
-    
-    ax.add_artist(gear_1)
-    ax.add_artist(gear_2)
-    ax.add_artist(bar)
-    ax.add_artist(tracer)
-    ax.add_artist(origin)
-    ax.add_artist(slider)
-    plt.plot(curve[0], curve[1])
-    ax.set_xlim(-1., 23.)
-    ax.set_ylim(-3., 21.)
 
+    params = {
+        'turntable_radius': 5, 
+        'gear_radius': 3, 
+        'fulcrum_dist': 7, 
+        'fulcrum_gear_angle': 2 * math.pi / 3, 
+        'fulcrum_penholder_dist': 6, 
+        'gear_slider_dist': 2}
+    cdm = SingleGearFixedFulcrum(**params)
+    cdm.draw()
+    
     plt.show()
+
 
 if __name__ == "__main__":
     main()
