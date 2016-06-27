@@ -10,11 +10,15 @@ import numpy as np
 import curves as cu
 
 
-class InvoluteGear:
+class GearProfile:
+    points_per_tooth = 20
+
+class Involute(GearProfile):
     """Circular involute spur gear profile.
 
     Conventional values for the pressure angle: 14.5°, 20°, 25°.
     """
+
     def __init__(self, pitch_radius, nb_teeth, pressure_angle=20,
                  internal=False):
         self.pitch_radius = pitch_radius
@@ -163,7 +167,7 @@ class InvoluteGear:
         return np.hstack([halftooth, mirror[:, ::-1]])
 
 
-class SinusoidalGear:
+class Sinusoidal(GearProfile):
     """Circular sinusoidal gear profile."""
 
     def __init__(self, pitch_radius, nb_teeth, tooth_radius):
@@ -176,12 +180,13 @@ class SinusoidalGear:
         R = self.pitch_radius
         N = self.nb_teeth
         r = self.tooth_radius
-        t = np.linspace(0, 2 * math.pi, 20 * N)
+        t = np.linspace(0, 2 * math.pi, GearProfile.points_per_tooth * N)
         return (R + r * np.cos(t * N)) * np.vstack([np.cos(t), np.sin(t)])
 
 
-class CycloidalGear:
+class Cycloidal(GearProfile):
     """Circular cycloidal gear profile."""
+
     def __init__(self, pitch_radius, nb_teeth):
         self.pitch_radius = pitch_radius
         self.nb_teeth = nb_teeth
@@ -210,8 +215,8 @@ class CycloidalGear:
         epi = cu.Epitrochoid(self.pitch_radius, tooth_radius, tooth_radius)
         # Compute the arguments.
         period_angle = 2 * math.pi / self.nb_teeth
-        te = np.linspace(0, period_angle / 2, 20)
-        th = np.linspace(period_angle / 2, period_angle, 20)
+        te = np.linspace(0, period_angle / 2, GearProfile.points_per_tooth)
+        th = np.linspace(period_angle / 2, period_angle, GearProfile.points_per_tooth)
         # Compute the tooth.
         tooth = np.hstack([epi.get_point(te)[:, :-1], hypo.get_point(th)])
         # Rotate it to be coherent with the other gear profiles.
@@ -221,3 +226,29 @@ class CycloidalGear:
                         [sin, cos]])
 
         return rot.dot(tooth)
+
+
+class SinusoidalElliptic(GearProfile):
+    """Sinusoidal elliptic gear profile."""
+
+    def __init__(self, pitch_semimajor, pitch_semiminor, nb_teeth, tooth_radius):
+        self.pitch_semimajor = pitch_semimajor
+        self.pitch_semiminor = pitch_semiminor
+        self.nb_teeth = nb_teeth
+        self.tooth_radius = tooth_radius
+
+    def get_profile(self):
+        """Create a circular gear profile."""
+        shape = cu.Ellipse(self.pitch_semimajor, self.pitch_semiminor)
+        N = self.nb_teeth
+        r = self.tooth_radius
+        t = np.linspace(0, 2 * math.pi, GearProfile.points_per_tooth * N)
+#        theta = np.arctan((b / a) * np.tan(t))
+
+        primitive = shape.get_point(t)
+        profile = shape.get_normal(t)
+        profile /= np.linalg.norm(profile, axis=0)
+        length_ratios = shape.get_arclength(t) / shape.get_perimeter()
+        profile *= r * np.cos(length_ratios * N * 2 * math.pi)
+
+        return primitive + profile

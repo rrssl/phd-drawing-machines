@@ -5,11 +5,14 @@ Example showing the different types of circular spur gears available.
 
 @author: Robin Roussel
 """
+import math
+from fractions import Fraction
 import matplotlib.pyplot as plt
 import matplotlib.patches as pat
 
 import context
-from gearprofile import InvoluteGear, SinusoidalGear, CycloidalGear
+from gearprofile import Involute, Sinusoidal, Cycloidal, SinusoidalElliptic
+from curves import Ellipse
 
 
 def main():
@@ -24,52 +27,77 @@ def main():
     get_primint = lambda: pat.Circle((radext - radint, 0), radint, color='red',
                                      linestyle='dashed', fill=False)
 
-    # First gear type: involute
-    ax = plt.subplot(131)
-    gearext = InvoluteGear(radext, radial_pitch*radext, internal=True)
+#    # First gear type: involute
+#    ax = plt.subplot(221)
+#    gearext = Involute(radext, radial_pitch*radext, internal=True)
+#    profext = gearext.get_profile()
+#    plt.plot(profext[0], profext[1])
+#
+#    gearint = Involute(radint, radial_pitch*radint)
+#    profint = gearint.get_profile()
+#    profint[0] += radext - radint
+#    plt.plot(profint[0], profint[1])
+#
+#    ax.set_aspect('equal')
+#    ax.add_patch(get_primext())
+#    ax.add_patch(get_primint())
+#
+#
+#    # Second gear type: sinusoidal
+#    ax = plt.subplot(222)
+#    gearext = Sinusoidal(radext, radial_pitch*radext, tooth_radius=0.1)
+#    profext = gearext.get_profile()
+#    plt.plot(profext[0], profext[1])
+#
+#    gearint = Sinusoidal(radint, radial_pitch*radint, tooth_radius=0.1)
+#    profint = gearint.get_profile()
+#    profint[0] += radext - radint
+#    plt.plot(profint[0], profint[1])
+#
+#    ax.set_aspect('equal')
+#    ax.add_patch(get_primext())
+#    ax.add_patch(get_primint())
+#
+#
+#    # Third gear type: cycloidal
+#    ax = plt.subplot(223)
+#    gearext = Cycloidal(radext, radial_pitch*radext)
+#    profext = gearext.get_profile()
+#    plt.plot(profext[0], profext[1])
+#
+#    gearint = Cycloidal(radint, radial_pitch*radint)
+#    profint = gearint.get_profile()
+#    profint[0] += radext - radint
+#    plt.plot(profint[0], profint[1])
+#
+#    ax.set_aspect('equal')
+#    ax.add_patch(get_primext())
+#    ax.add_patch(get_primint())
+#
+#
+    # Fourth gear type: elliptic
+    # Compute the ellipse parameters s.t. its perimeter is equivalent to a 
+    # circle of radius 'radint'.
+    ecc = 0.6
+    semimajor, semiminor = Ellipse.convert_reduced_to_semiaxes(radint, ecc**2)
+
+#    ax = plt.subplot(224)
+    ax = plt.subplot(111)
+    gearext = Sinusoidal(radext, radial_pitch*radext, tooth_radius=0.1)
     profext = gearext.get_profile()
     plt.plot(profext[0], profext[1])
 
-    gearint = InvoluteGear(radint, radial_pitch*radint)
+    gearint = SinusoidalElliptic(semimajor, semiminor, radial_pitch*radint,
+                                 tooth_radius=0.1)
     profint = gearint.get_profile()
-    profint[0] += radext - radint
+    profint[0] += radext - semimajor
     plt.plot(profint[0], profint[1])
 
     ax.set_aspect('equal')
     ax.add_patch(get_primext())
-    ax.add_patch(get_primint())
-
-
-    # Second gear type: sinusoidal
-    ax = plt.subplot(132)
-    gearext = SinusoidalGear(radext, radial_pitch*radext, tooth_radius=0.1)
-    profext = gearext.get_profile()
-    plt.plot(profext[0], profext[1])
-
-    gearint = SinusoidalGear(radint, radial_pitch*radint, tooth_radius=0.1)
-    profint = gearint.get_profile()
-    profint[0] += radext - radint
-    plt.plot(profint[0], profint[1])
-
-    ax.set_aspect('equal')
-    ax.add_patch(get_primext())
-    ax.add_patch(get_primint())
-
-
-    #    # Third gear type: cycloidal
-    ax = plt.subplot(133)
-    gearext = CycloidalGear(radext, radial_pitch*radext)
-    profext = gearext.get_profile()
-    plt.plot(profext[0], profext[1])
-
-    gearint = CycloidalGear(radint, radial_pitch*radint)
-    profint = gearint.get_profile()
-    profint[0] += radext - radint
-    plt.plot(profint[0], profint[1])
-
-    ax.set_aspect('equal')
-    ax.add_patch(get_primext())
-    ax.add_patch(get_primint())
+    ax.add_patch(
+        pat.Ellipse((radext - semimajor, 0), 2*semimajor, 2*semiminor, 
+                    color='red', linestyle='dashed', fill=False))
 
     plt.ioff()
     plt.show()
