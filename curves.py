@@ -6,6 +6,7 @@ Library of parametric curves.
 """
 
 #from fractions import Fraction
+import math
 import numpy as np
 import scipy.optimize as opt
 import scipy.special as spec
@@ -134,7 +135,7 @@ class Circle(Curve):
 
     def get_perimeter(self):
         """Get the full perimeter of the circle."""
-        return 2 * np.pi * self.r
+        return 2 * math.pi * self.r
 
     def get_arclength(self, t):
         """Get the arc length(s) s(t)."""
@@ -155,7 +156,7 @@ class Circle(Curve):
         return 1 / self.r if self.r else np.inf
     
     def get_period(self):
-        return 2 * np.pi
+        return 2 * math.pi
 
     def has_even_arclength(self):
         return True
@@ -177,17 +178,25 @@ class Ellipse(Curve):
                   "(a = {:.2f}, b = {:.2f}).".format(self.a, self.b))
 
         if semimajor:
-            self.e2 = 1 - semiminor * semiminor / (semimajor * semimajor)
+            self.e2 = 1. - semiminor * semiminor / (semimajor * semimajor)
             # /!\ scipy's implementation uses the convention E(phi, m) with m
             # the elliptic parameter, which in our case needs to be e**2.
             self.ellipe_val = spec.ellipe(self.e2)
         else:
-            self.e2 = 1
-            self.ellipe_val = 0
+            self.e2 = 1.
+            self.ellipe_val = 0.
 
     def get_point(self, t):
         """Get the [x(t), y(t)] point(s)."""
         return np.vstack([self.a * np.cos(t), self.b * np.sin(t)])
+    
+    def get_normal(self, t):
+        """Get the [n_x(t), n_y(t)] normals(s)."""
+        return np.vstack([self.b * np.cos(t), self.a * np.sin(t)])
+
+    def get_range(self, start, end, nb_pts):
+        """Get [x(t), y(t)] with the t values evenly sampled in [start, end]."""
+        return self.get_point(np.linspace(start, end, nb_pts))
 
     def get_jac(self, t):
         """Get the [x'(t), y'(t)] jacobian(s)."""
@@ -204,7 +213,7 @@ class Ellipse(Curve):
         # /!\ The "amplitude" phi of E(phi, k) as it is often found in the
         # litterature is NOT the same as our ellipse parameter here. To get the
         # arc length right we have to use s(t) = E(t + pi/2, e) - E(e).
-        return self.a * (spec.ellipeinc(t + (np.pi / 2), self.e2) -
+        return self.a * (spec.ellipeinc(t + (math.pi / 2), self.e2) -
                          self.ellipe_val)
 
     def get_arclength_der(self, t):
@@ -217,7 +226,7 @@ class Ellipse(Curve):
         obj_func = lambda t: self.get_arclength(t) - s
         obj_jac = lambda t: np.diag(self.get_arclength_der(t))
         # Initialize by approximating with a circle of equal perimeter.
-        init_guess = 2 * np.pi * s / self.get_perimeter()
+        init_guess = 2 * math.pi * s / self.get_perimeter()
 
         return opt.fsolve(obj_func, init_guess, fprime=obj_jac)
 
@@ -228,10 +237,23 @@ class Ellipse(Curve):
         return self.a / (self.b * self.b) if self.b else np.inf
 
     def get_period(self):
-        return 2 * np.pi
+        return 2 * math.pi
     
     def has_even_arclength(self):
         return True
+    
+    @staticmethod
+    def convert_reduced_to_semiaxes(scale, e_squared):
+        """Get the semiaxes from the scale factor and squared eccentricity."""
+        if not scale:
+            return (0., 0.)
+        if not e_squared:
+            return (scale, scale)
+
+        a = scale * math.pi * 0.5 / spec.ellipe(e_squared)
+        b = a * math.sqrt(1 - e_squared)
+        
+        return (a, b)
 
 
 def _get_rotation(u, v):
