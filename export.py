@@ -53,13 +53,14 @@ def export_internal_gear_svg(gear, filename):
 
     margin = 0.2
     profile += dims * margin * 0.5
-    dims *= 1 + margin
+#    dims *= 1 + margin
     
-    cont = get_svg_context(filename, dims)
+    cont = get_svg_context(filename, dims*(1+margin))
     cut = cont.add(cont.g(fill='none', stroke='red', stroke_width=0.01))
     cut.add(cont.polyline(points=profile))
     # External boundary
-    cut.add(cont.circle(center=dims*0.5, r=gear.pitch_radius*(1+margin)))
+    cut.add(cont.rect(insert=dims*margin*0.25, size=dims*(1+margin/2)))
+#    cut.add(cont.circle(center=(), r=0))
     
     cont.save()
 

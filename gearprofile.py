@@ -181,7 +181,10 @@ class Sinusoidal(GearProfile):
         N = self.nb_teeth
         r = self.tooth_radius
         t = np.linspace(0, 2 * math.pi, GearProfile.points_per_tooth * N)
-        return (R + r * np.cos(t * N)) * np.vstack([np.cos(t), np.sin(t)])
+        # Note: the actual formula for the profile is 
+        # r*cos(2*pi*N*arclength(t)/perimeter) = r*cos(2*pi*N*r*t/(2*pi*r))
+        #                                      = r*cos(N*t)
+        return (R + r * np.cos(N * t)) * np.vstack([np.cos(t), np.sin(t)])
 
 
 class Cycloidal(GearProfile):
@@ -216,7 +219,8 @@ class Cycloidal(GearProfile):
         # Compute the arguments.
         period_angle = 2 * math.pi / self.nb_teeth
         te = np.linspace(0, period_angle / 2, GearProfile.points_per_tooth)
-        th = np.linspace(period_angle / 2, period_angle, GearProfile.points_per_tooth)
+        th = np.linspace(period_angle / 2, period_angle, 
+                         GearProfile.points_per_tooth)
         # Compute the tooth.
         tooth = np.hstack([epi.get_point(te)[:, :-1], hypo.get_point(th)])
         # Rotate it to be coherent with the other gear profiles.
@@ -238,17 +242,16 @@ class SinusoidalElliptic(GearProfile):
         self.tooth_radius = tooth_radius
 
     def get_profile(self):
-        """Create a circular gear profile."""
+        """Create an elliptic gear profile."""
         shape = cu.Ellipse(self.pitch_semimajor, self.pitch_semiminor)
         N = self.nb_teeth
         r = self.tooth_radius
         t = np.linspace(0, 2 * math.pi, GearProfile.points_per_tooth * N)
-#        theta = np.arctan((b / a) * np.tan(t))
 
         primitive = shape.get_point(t)
         profile = shape.get_normal(t)
         profile /= np.linalg.norm(profile, axis=0)
         length_ratios = shape.get_arclength(t) / shape.get_perimeter()
-        profile *= r * np.cos(length_ratios * N * 2 * math.pi)
+        profile *= r * np.cos(2 * math.pi * N * length_ratios)
 
         return primitive + profile
