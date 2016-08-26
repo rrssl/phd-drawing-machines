@@ -177,7 +177,7 @@ class SpiroGridPlot:
         plt.plot(curve[0], curve[1], 'b-')
 
 
-# TODO: rather than updating the boundaries by changing the slider's scale, 
+# TODO: rather than updating the boundaries by changing the slider's scale,
 # add another slider in the same slideraxes symbolizing the upper limit.
 class RoulettePlot:
     """Forward geometric simulation of a roulette curve (ellipse in circle)."""
@@ -273,7 +273,7 @@ class RoulettePlot:
                 cir = cu.Circle(R)
                 ell = cu.Ellipse(a, b)
                 self.roulette = cu.Roulette(ell, cir, d, 'moving')
-                
+
                 # General period is R * 2pi.
                 frac = Fraction.from_float(R / S).limit_denominator(100)
                 N = frac.numerator
@@ -288,9 +288,9 @@ class RoulettePlot:
                         N /= 2
                 self.frac = frac
 
-                # We have to take care of using a power of 2 so that 
+                # We have to take care of using a power of 2 so that
                 # get_range uses its optimizations.
-                curve = self.roulette.get_range(0., N * 2 * np.pi, 
+                curve = self.roulette.get_range(0., N * 2 * np.pi,
                                                 N * 2 ** 7 + 1)
 
             if self.show_gears:
@@ -305,6 +305,7 @@ class RoulettePlot:
                 ax.add_artist(int_gear)
                 ax.add_artist(hole)
             ax.plot(curve[0], curve[1])
+#            ax.scatter(2.8, 0., c='g', edgecolor='w', s=50, zorder=3) # (5.,3.,0.,.8)
 
             dim = max(R - a + d, R) + 1
             ax.set_xlim(-dim, dim)
@@ -408,7 +409,7 @@ def main():
 
 #    SpiroGridPlot()
 
-    RoulettePlot(show_gears=True)
+    RoulettePlot(show_gears=False)
 
     plt.show()
 

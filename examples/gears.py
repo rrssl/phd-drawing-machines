@@ -10,7 +10,7 @@ import matplotlib.patches as pat
 
 import context
 from gearprofile import Involute, Sinusoidal, Cycloidal, SinusoidalElliptic
-from curves import Ellipse
+from curves import Ellipse2
 
 
 def main():
@@ -76,10 +76,11 @@ def main():
     # Fourth gear type: elliptic
     get_primint = lambda a,b: pat.Ellipse(
         (radext - a, 0), 2*a, 2*b, color='red', linestyle='dashed', fill=False)
-    # Compute the ellipse parameters s.t. its perimeter is equivalent to a 
+    # Compute the ellipse parameters s.t. its perimeter is equivalent to a
     # circle of radius 'radint'.
     ecc = 0.6
-    semimajor, semiminor = Ellipse.convert_reduced_to_semiaxes(radint, ecc**2)
+    ellip = Ellipse2(radint, ecc**2)
+    semimajor, semiminor = ellip.a, ellip.b
 
     ax = plt.subplot(224)
 #    ax = plt.subplot(111)
