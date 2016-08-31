@@ -36,6 +36,8 @@ class ControlPane:
         self.update = update_func
         self.subspec = subplot_spec
 
+        self.draw()
+
     def _create_update_func(self, id_):
         return lambda val: self.update(id_, val)
 

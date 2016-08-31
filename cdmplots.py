@@ -47,7 +47,6 @@ class SingleGearFixedFulcrum:
         self.init_canvas()
 
         self.control_pane = ControlPane(self.fig, self.init_data, self.update)
-        self.control_pane.draw()
 
     def init_canvas(self):
         """Initialize the canvas elements."""
