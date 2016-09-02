@@ -57,6 +57,9 @@ class CDMPlot:
         bounds = []
         for i in range(len(self.mecha.props)):
             bounds.append(self.mecha.get_prop_bounds(i))
+            if i > 1:
+                # Account for slider imprecision wrt bounds.
+                bounds[-1] = bounds[-1][0] + 1e-3, bounds[-1][1] - 1e-3
         self.control_pane = ControlPane(self.fig, self.init_data, self.update,
                                         bounds=bounds)
 
@@ -68,11 +71,15 @@ class CDMPlot:
         if success:
             for i in range(len(self.mecha.props)):
                 bounds = self.mecha.get_prop_bounds(i)
+                if i > 1:
+                    # Account for slider imprecision wrt bounds.
+                    bounds = bounds[0] + 1e-3, bounds[1] - 1e-3
                 # Slider id is the same as parameter id.
                 self.control_pane.set_bounds(i, bounds)
-
             self.crv = self.mecha.get_curve()
             self.redraw()
+        else:
+            print("Val", val, "with bounds", self.mecha.get_prop_bounds(pid))
 
     def redraw(self):
         """Redraw the canvas."""
@@ -127,17 +134,17 @@ def main():
         (0,                     # Radius of the turntable.
          {'valmin': 1,
           'valmax': 25,
-          'valinit': 23,
+          'valinit': 13,
           'label': "Turntable radius"}),
         (1,                     # Radius of the gear.
          {'valmin': 1,
           'valmax': 20,
-          'valinit': 17,
+          'valinit': 9,
           'label': "Gear radius"}),
         (2,                     # Distance from origin to fulcrum.
          {'valmin': 5.,
           'valmax': 30.,
-          'valinit': 24,
+          'valinit': 15,
           'label': "Fulcrum dist"}),
         (3,                     # Polar angle of the gear center.
          {'valmin': 0.,
@@ -152,7 +159,7 @@ def main():
         (5,                     # Distance from gear center to slider.
          {'valmin': 0.,
           'valmax': 15.,
-          'valinit': 10,
+          'valinit': 6,
           'label': "Gear-slider dist"})
         )
 

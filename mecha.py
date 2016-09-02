@@ -33,7 +33,7 @@ class Mechanism:
         purpose (e.g. by filtering out redundant constraints, or avoiding
         costly bound computations).
         """
-        eps = 1e-12
+        eps = 1e-6
 
         @classmethod
         def get_constraints(cls, cstr={}):
@@ -432,20 +432,21 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
                 return cstr[cls]
             except KeyError:
                 cstr[cls] = (
-                    lambda p: p[0] - 1,                         # R_t > 0
-                    lambda p: cls.max_nb_turns - p[0],          # R_t <= B
-                    lambda p: p[1] - 1,                         # R_g > 0
-                    lambda p: cls.max_nb_turns - p[1],          # R_g <= B
-                    lambda p: p[2] - p[0] - cls.eps,            # d_f > R_t
-                    lambda p: 2*cls.max_nb_turns - p[2],        # d_f <= 2B
-                    lambda p: p[3],                             # theta_g >= 0
-                    lambda p: math.pi - p[3],                   # theta_g <= pi
-                    lambda p: p[4] - cls.eps,                   # d_p > 0
+                    lambda p: p[0] - 1,                     # 00: R_t > 0
+                    lambda p: cls.max_nb_turns - p[0],      # 01: R_t <= B
+                    lambda p: p[1] - 1,                     # 02 R_g > 0
+                    lambda p: cls.max_nb_turns - p[1],      # 03: R_g <= B
+                    lambda p: p[2] - p[0] - cls.eps,        # 04: d_f > R_t
+                    lambda p: 2*cls.max_nb_turns - p[2],    # 05: d_f <= 2B
+                    lambda p: p[3],                         # 06: theta_g >= 0
+                    lambda p: math.pi - p[3],               # 07: theta_g <= pi
+                    lambda p: p[4] - cls.eps,               # 08: d_p > 0
                     lambda p: cls._get_FG(*p[:4]) - p[1] - p[4] - cls.eps,
-                                                                # d_p < FG-R_g
-                    lambda p: p[5],                             # d_s >= 0
-                    lambda p: p[1] - p[5] - cls.eps,            # d_s < R_g
-                    lambda p: p[0] - cls._get_OP_max(*p)        # R_t >= OP_max
+                                                            # 09: d_p < FG-R_g
+                    lambda p: p[5],                         # 10: d_s >= 0
+                    lambda p: p[1] - p[5] - cls.eps,        # 11: d_s < R_g
+                    lambda p: p[0]**2 - cls._get_OP2_max(*p)
+                                                            # 12: R_t >= OP_max
                     )
                 return cstr[cls]
 
@@ -473,9 +474,9 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             cstrs = [adapt(cstrs[i]) for i in ids]
 
             min_ = opt.fmin_cobyla(
-                lambda x: x, prop[pid], cons=cstrs, disp=0)
+                lambda x: x, prop[pid], cons=cstrs, disp=0) + 2*cls.eps
             max_ = opt.fmin_cobyla(
-                lambda x: -x, prop[pid], cons=cstrs, disp=0)
+                lambda x: -x, prop[pid], cons=cstrs, disp=0) - 2*cls.eps
 
             if pid == 0 or pid == 1:
                 min_ = math.ceil(min_)
@@ -495,15 +496,14 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             return math.sqrt(d_f**2 + OG**2 - 2*d_f*OG*math.cos(theta_g))
 
         @classmethod
-        def _get_OP_max(cls, R_t, R_g, d_f, theta_g, d_p, d_s):
+        def _get_OP2_max(cls, R_t, R_g, d_f, theta_g, d_p, d_s):
             """Get the maximum distance between the center and the penholder."""
             OG =  R_t + R_g
             FG = cls._get_FG(R_t, R_g, d_f, theta_g)
             alpha = math.atan2(d_s, FG)
             theta_fg = math.pi - math.atan2(OG*math.sin(theta_g),
                                             d_f - OG*math.cos(theta_g))
-            return math.sqrt(
-                d_f**2 + d_p**2 + 2*d_f*d_p*math.cos(theta_fg-alpha))
+            return d_f**2 + d_p**2 + 2*d_f*d_p*math.cos(theta_fg-alpha)
 
 
     class Simulator(Mechanism.Simulator):
