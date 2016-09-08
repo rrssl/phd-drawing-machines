@@ -57,12 +57,13 @@ class ControlPane:
     """
 
     def __init__(self, figure, param_data, update_func, subplot_spec=None,
-                 bounds=[]):
+                 bounds=[], show_init=False):
         self.fig = figure
         self.param_data = param_data
         self.update = update_func
         self.subspec = subplot_spec
         self.bounds = bounds
+        self.show_init = show_init
 
         self.sliders = {}
 
@@ -104,6 +105,8 @@ class ControlPane:
             else:
                 slider = Slider(ax, **args)
             slider.on_changed(self._create_update_func(id_))
+            if not self.show_init:
+                slider.vline.remove()
             self.sliders[id_] = slider
 
     def set_val(self, id_, val):
