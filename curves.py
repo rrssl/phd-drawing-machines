@@ -197,7 +197,7 @@ class Ellipse(Curve):
         # Initialize by approximating with a circle of equal perimeter.
         init_guess = 2 * math.pi * s / self.get_perimeter()
 
-        return opt.fsolve(obj_func, init_guess, fprime=obj_jac)[0]
+        return opt.fsolve(obj_func, init_guess, fprime=obj_jac)
 
     def get_min_curvature(self):
         return self.b / (self.a * self.a) if self.a else np.inf

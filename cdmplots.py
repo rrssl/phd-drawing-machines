@@ -40,9 +40,9 @@ class CDMPlot:
             pat.Circle((0., 0.), 0., color='grey', alpha=0.7),
             pat.Circle((0., 0.), 0., color='grey', alpha=0.7),
             # Fulcrum
-            pat.Circle((0., 0.), 1., color='red', alpha=0.7),
+            pat.Circle((0., 0.), 1., color='pink', alpha=0.7),
             # Slider
-            pat.Circle((0., 0.), 1., color='green', alpha=0.7),
+            pat.Circle((0., 0.), 1., color='lightgreen', alpha=0.7),
             # Connecting rod
             pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
                           color='grey', alpha=0.7),
