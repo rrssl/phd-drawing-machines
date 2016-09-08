@@ -196,7 +196,8 @@ class FixIsectPosDemo:
         self.control = self.create_slider(gs[-1, 0])
         # Sometimes the slider is unresponsive. Bug seems to be with
         # Matplotlib. Workaround: call set_val with one the sliders.
-        self.control.sliders[0].set_val(self.control.sliders[0].valinit)
+        self.control.sliders['app'].set_val(
+            self.control.sliders['app'].valinit)
 
     def create_slider(self, subplot_spec):
         """Create the slider to explore the invariant space."""
