@@ -485,9 +485,33 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             return min_, max_
 
         @classmethod
-        def sample_feasible_domain(cls, grid_resol):
-            """Sample the feasible domain."""
-            return None
+        def sample_feasible_domain(cls, grid_resol=(10, 10, 10, 10)):
+            """Sample the feasible domain.
+            Works if the domain is convex (the necessary condition is a bit
+            more complex).
+            """
+            n = grid_resol[-4:]
+            p = [0, 0] +  4*[0.]
+            for R_t, R_g in skipends(farey(cls.max_nb_turns)):
+
+                p[:2] = R_t, R_g
+                for d_f in np.linspace(p[0]+cls.eps, 2*cls.max_nb_turns, n[0]):
+
+                    p[2] = d_f
+                    for theta_g in np.linspace(0., np.pi, n[1]):
+
+                        p[3] = theta_g
+                        for d_p in np.linspace(
+                            cls.eps, cls._get_FG(*p[:4]), n[2]):
+
+                            p[4] = d_p
+                            for d_s in np.linspace(
+                                *cls.get_bounds(p, 5), num=n[3]):
+                                p[5] = d_s
+                                yield p.copy()
+
+            for R_g, R_t in skipends(farey(cls.max_nb_turns)):
+                pass # Copy sub-loops
 
         @staticmethod
         def _get_FG(R_t, R_g, d_f, theta_g):
