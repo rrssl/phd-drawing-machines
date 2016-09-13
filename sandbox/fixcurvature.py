@@ -134,7 +134,7 @@ class FixKrvDemo:
                         "The point of interest's curvature is fixed by the "
                         "user.")
         # Draw the reference curve...
-        frame.plot(self.ref_crv[0], self.ref_crv[1], 'b-', alpha=.4,
+        frame.plot(self.ref_crv[0], self.ref_crv[1], 'b-', alpha=1.,
                    label="Reference curve")
         ref_point = self.ref_crv[:, self.ref_par]
         # ... its point of interest...
@@ -142,18 +142,18 @@ class FixKrvDemo:
                       zorder=3, label="Ref. pt of interest")
         # ... and its osculating circle.
         ref_rk = 1 / compute_curvature(self.ref_crv)[self.ref_par]
-        osc = Circle(ref_point-(ref_rk, 0.), ref_rk, color='b', alpha=1.,
+        osc = Circle(ref_point-(ref_rk, 0.), ref_rk, color='b', alpha=.4,
                      fill=False, label="Ref. osc. circle")
         frame.add_patch(osc)
         # Draw the new curve (empty for now)...
-        self.new_crv_plt = frame.plot([], [], 'r-', alpha=.4,
+        self.new_crv_plt = frame.plot([], [], 'r-', alpha=1.,
                                       label="New curve")[0]
         # ... its point of interest...
         self.new_poi = frame.scatter([], [], s=100, c='r', marker='o',
                                      edgecolor='w', zorder=3,
                                      label="New pt of interest")
         # ... and its osculating circle.
-        self.new_osc = Circle((0,0), 0, color='r', alpha=1.,
+        self.new_osc = Circle((0,0), 0, color='r', alpha=.4,
                               fill=False, label="New osc. circle")
         frame.add_patch(self.new_osc)
         # Draw the legend.
@@ -266,7 +266,7 @@ class FixKrvDemo:
                                                     curves[1:])
         feats = np.asarray(get_features(curves, params))
         dists = get_dist(feats[0], feats[1:].T)
-        return np.exp(-dists**2)
+        return np.exp(-dists)
 
 
 def main():

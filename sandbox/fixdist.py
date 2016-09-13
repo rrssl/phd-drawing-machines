@@ -323,7 +323,7 @@ class FixDistDemo:
                                                     curves[1:])
         feats = np.asarray(get_features(curves, params))
         dists = get_dist(feats[0], feats[1:].T)
-        return np.exp(-dists**2)
+        return np.exp(-dists)
 
 
 def main():

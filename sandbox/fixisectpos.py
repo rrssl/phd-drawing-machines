@@ -194,10 +194,6 @@ class FixIsectPosDemo:
         self.draw_prop_space(self.ax[1])
 
         self.control = self.create_slider(gs[-1, 0])
-        # Sometimes the slider is unresponsive. Bug seems to be with
-        # Matplotlib. Workaround: call set_val with one the sliders.
-        self.control.sliders['app'].set_val(
-            self.control.sliders['app'].valinit)
 
     def create_slider(self, subplot_spec):
         """Create the slider to explore the invariant space."""
@@ -244,7 +240,7 @@ class FixIsectPosDemo:
         frame.set_xlabel('$x$')
         frame.set_ylabel('$y$')
         frame.set_title("Curve space (visible in the UI).\n"
-                        "The point of interest's curvature is fixed by the "
+                        "The point of interest's position is fixed by the "
                         "user.")
         # Draw the reference curve...
         frame.plot(self.ref_crv[0], self.ref_crv[1], 'b-', alpha=1.,
@@ -385,7 +381,7 @@ class FixIsectPosDemo:
         par.append(self.ref_par)
         feats = np.asarray(get_features(curves, par, poi))
         dists = get_dist(feats[-1], feats[:-1].T)
-        return np.exp(-dists**2)
+        return np.exp(-dists)
 
 
 def main():

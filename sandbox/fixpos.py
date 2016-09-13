@@ -132,7 +132,6 @@ class FixPosDemo:
         self.draw_prop_space(self.ax[1])
 
         self.slider = self.create_slider(gs[-1, 0])
-        self.slider.draw()
 
     def create_slider(self, subplot_spec):
         """Create the slider to explore the invariant space."""
@@ -275,7 +274,7 @@ class FixPosDemo:
                                                     curves[1:])
         feats = np.asarray(get_features(curves, params))
         dists = get_dist(feats[0], feats[1:].T)
-        return np.exp(-dists**2)
+        return np.exp(-dists)
 
 
 def main():
