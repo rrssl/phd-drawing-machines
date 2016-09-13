@@ -46,10 +46,6 @@ class Mechanism:
         @classmethod
         def check_constraints(cls, props):
             """Check that the input properties comply with the constraints."""
-            result = all(cons(props) >= 0 for cons in cls.get_constraints())
-            if not result:
-                print("Constraints: ",
-                      [cons(props) for cons in cls.get_constraints()])
             return all(cons(props) >= 0 for cons in cls.get_constraints())
 
         @classmethod
@@ -82,10 +78,11 @@ class Mechanism:
             raise NotImplementedError
 
 
-    def __init__(self, *props):
+    def __init__(self, *props, verbose=False):
         self.constraint_solver = type(self).ConstraintSolver
         self._simulator = None
         self.structure_graph = None
+        self.verbose = verbose
 
         self.reset(*props)
 
@@ -98,7 +95,11 @@ class Mechanism:
             else:
                 self._simulator = type(self).Simulator(props)
         else:
-            print("Error: invalid mechanism properties.", props)
+            if self.verbose:
+                print("Error: invalid mechanism properties.", props)
+                print("Constraints: ",
+                      [cons(props)
+                       for cons in self.constraint_solver.get_constraints()])
 
     def update_prop(self, pid, value, check=True):
         """Update the property referenced by the input index.
@@ -115,8 +116,12 @@ class Mechanism:
             self._simulator.update_prop(pid, value)
             return True
         else:
+            if self.verbose:
+                print("Error: invalid mechanism property.", pid, value)
+                print("Constraints: ",
+                      [cons(self.props)
+                       for cons in self.constraint_solver.get_constraints()])
             self.props[pid] = oldval
-            print("Error: invalid mechanism properties.", pid, value)
             return False
 
     def get_prop_bounds(self, pid):
