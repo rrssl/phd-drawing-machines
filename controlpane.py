@@ -57,7 +57,7 @@ class ControlPane:
     """
 
     def __init__(self, figure, param_data, update_func, subplot_spec=None,
-                 bounds=[], show_init=False):
+                 bounds=None, show_init=False):
         self.fig = figure
         self.param_data = param_data
         self.update = update_func
@@ -89,7 +89,7 @@ class ControlPane:
             else:
                 ax = self.fig.add_subplot(gs[i, :])
             # Add optional bounds.
-            if self.bounds:
+            if self.bounds is not None:
                 low, up = self.bounds[i]
                 if low is not None:
                     args['slidermin'] = SliderBound(
@@ -109,9 +109,24 @@ class ControlPane:
                 slider.vline.remove()
             self.sliders[id_] = slider
 
-    def set_val(self, id_, val):
-        """Change the value of slider 'id_'."""
-        self.sliders[id_].set_val(val)
+        self.fig.canvas.draw()
+
+    def set_val(self, id_, val, incognito=False):
+        """Change the value of slider 'id_'.
+        Incognito mode will not fire callbacks nor redraw the slider.
+        """
+        s = self.sliders.get(id_)
+        if s is None:
+            return
+
+        if incognito:
+            flags = s.drawon, s.eventson
+            s.drawon, s.eventson = False, False
+
+        s.set_val(val)
+
+        if incognito:
+            s.drawon, s.eventson = flags
 
     def set_bounds(self, id_, bounds):
         """Change the bounds of slider 'id_'."""
