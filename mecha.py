@@ -187,7 +187,7 @@ class BaseSpirograph(DrawingMechanism):
             if pid == 0:
                 return prop[1] + 1, cls.max_nb_turns
             elif pid == 1:
-                return 1, prop[0] - 1
+                return max(1, int(prop[2]+1)), prop[0] - 1
             else:
                 return 0., prop[1] - 2*cls.eps
 
@@ -221,9 +221,11 @@ class BaseSpirograph(DrawingMechanism):
         def simulate_cycle(self):
             """Simulate one cycle of the assembly's motion."""
             if self.trocho.d:
-                nb_turns = self.trocho.r
+                gcd_ = gcd(self.trocho.R, self.trocho.r)
+                nb_turns = self.trocho.r / gcd_
             else:
-                nb_turns = 1 # Degenerate case.
+                # Degenerate case.
+                nb_turns = 1
             if self.per_turn:
                 nb_samples = nb_turns * self.nb_samples + 1
             else:
@@ -302,7 +304,7 @@ class EllipticSpirograph(DrawingMechanism):
             if pid == 0:
                 return prop[1] + 1, cls.max_nb_turns
             elif pid == 1:
-                return 1, prop[0] - 1
+                return max(1, cls._get_reqmin(*prop[2:])), prop[0] - 1
             elif pid == 2:
                 return 0., cls._get_e2max(prop[0], prop[1]) - 2*cls.eps
             else:
@@ -340,6 +342,11 @@ class EllipticSpirograph(DrawingMechanism):
             """Get the upper bound of the pole distance."""
             return req * math.pi / (2 * spec.ellipe(e2)) # dmax = semimajor
 
+        @staticmethod
+        def _get_reqmin(e2, d):
+            """Get the lower bound of the equivalent radius."""
+            return int((2 * d * spec.ellipe(e2) / math.pi) + 1)
+
 
     class Simulator(Mechanism.Simulator):
         """Class for simulating the movement of the parts."""
@@ -363,7 +370,8 @@ class EllipticSpirograph(DrawingMechanism):
 
         def simulate_cycle(self, reuse=True):
             """Simulate one cycle of the assembly's motion."""
-            nb_turns = self.roul.n_obj.r
+            gcd_ = gcd(self.roul.n_obj.r, self.roul.m_obj.req)
+            nb_turns = self.roul.n_obj.r / gcd_
             if not self.roul.T[0]:
                 # Degenerate cases.
                 if not self.roul.m_obj.e2:
