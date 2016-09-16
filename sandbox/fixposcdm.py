@@ -3,7 +3,7 @@
 Finding the 'kernel' in property space of a curve invariant in feature space.
 
 Here the curve invariant is the following:
-    "The intersection angle is constant."
+    "The position of the PoI is constant."
 
 Moreover, the correspondance between PoIs is defined as follows:
     "Corresponding PoIs are the closest PoIs of the same type."
@@ -31,7 +31,7 @@ from wpca import WPCA
 import context
 from controlpane import ControlPane
 from mecha import SingleGearFixedFulcrumCDM
-from fixpos import get_dist, interp2d, get_highest_quantile
+from fixpos import get_dist, get_highest_quantile#, interp2d
 #from fixisectpos import get_corresp
 
 def get_corresp(ref_crv, ref_par, curves):
@@ -136,7 +136,7 @@ class FixPosCDM:
         self.cont_prop = (7., 2.4, 6., 1.5)
         self.pts_per_dim = 5
         self.nbhood_size = .1
-        self.ndim_invar_space = 2
+        self.ndim_invar_space = 4
         self.mecha = SingleGearFixedFulcrumCDM(*self.disc_prop+self.cont_prop)
 #        self.nb = 2**5
         # Reference curve and parameter(s).
@@ -158,13 +158,11 @@ class FixPosCDM:
         self.new_cont_prop = None
         self.invar_space_bnds = None
         self.compute_local_invar_space()
-        # Redefine bounds.
 #        # Optimal solution.
 #        self.opt_path = np.asarray(self.get_optimal_path())
 #        self.inv_crv_opt = interp.interp1d(*self.opt_path)
 #
         self.init_draw()
-#        self.make_gif()
 
         # Controller
         self.slider_active = False
@@ -187,16 +185,19 @@ class FixPosCDM:
             print("Warning: too few samples for the PCA ({})".format(len(ids)))
         self.phi, self.phi_inv, pca = fit_linear_map(samples[ids], scores[ids],
                                                      self.ndim_invar_space)
-        # Check for possible incoherences between the old and new bases.
+        # Ensure consistency between the old and new bases.
         if self.pca is None:
             self.pca = pca
         else:
-            # We can't do anything about axes possibly swapping...
             var_scores = pca.explained_variance_ratio_[:self.ndim_invar_space]
             if anyclose(var_scores):
+                # TODO: in case of ambiguity, consider the last base vector
+                # explored, x_i. Find x_j', a vector from the new base, such that
+                # the cross product of x_i and x_j' is minimized. Permutate vectors
+                # in the new base so that x_j' has now the index i.
                 print("Warning: variances are close; PCA axes may swap.")
                 print("Variance ratios: {}".format(var_scores))
-            # However we can make sure that the directions are coherent.
+            # Make sure that the directions are consistent.
             flip = np.sign(np.diag(np.dot(
                 pca.components_, self.pca.components_.T
                 ))).reshape(-1, 1)
