@@ -789,6 +789,12 @@ class HootNanny(DrawingMechanism):
 
         def __init__(self, properties, nb_samples=2**6, per_turn=True):
             self.reset(properties, nb_samples, per_turn)
+            # Structure dict. (useful if we do animations later)
+            self.assembly = {
+                'pivot_1': None,
+                'pivot_2': None,
+                'pen': None
+            }
 
         def reset(self, properties, nb_samples=2**6, per_turn=True):
             """Reset the properties."""
@@ -800,12 +806,7 @@ class HootNanny(DrawingMechanism):
             self.d2 = properties[5] # Pivot-gear center distance for gear 2
             self.l1 = properties[6] # Length of arm 1
             self.l2 = properties[7] # Length of arm 2
-            # Structure dict. (useful if we do animations later)
-            self.assembly = {
-                'pivot_1': None,
-                'pivot_2': None,
-                'pen': None
-            }
+
             self.nb_samples = nb_samples
             self.per_turn = per_turn
 
@@ -897,7 +898,6 @@ class HootNanny(DrawingMechanism):
         """
         self._simulator.nb_samples = nb
         self._simulator.per_turn = per_turn
-        self._simulator.simulate_cycle()
         return self._simulator.simulate_cycle()
 
     def get_point(self, t):

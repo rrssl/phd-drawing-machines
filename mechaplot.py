@@ -240,6 +240,11 @@ class HootNanny:
         C_G1 = np.array([r_T + r_G1, 0.])
         C_G2 = (r_T + r_G2) * np.array([math.cos(theta_12),
                                         math.sin(theta_12)])
+        # TODO: stop accessing _simulator here, for we don't know if the data
+        # matches the current property values. Instead, move 'assembly' to
+        # the Mechanism instance, and whenever 'update_prop' or 'reset' is
+        # called, update the assembly data as well. We don't need to simulate
+        # a full cycle, only to simulate t=0.
         C_P1 = self.mecha._simulator.assembly['pivot_1'][:, 0]
         C_P2 = self.mecha._simulator.assembly['pivot_2'][:, 0]
         C_PH = self.mecha._simulator.assembly['pen'][:, 0]
@@ -283,7 +288,7 @@ class HootNanny:
         self.shapes[9].set_transform(rot)
         # Penholder
         self.shapes[10].center = C_PH
-        self.shapes[10].radius = r_T * 0.1
+        self.shapes[10].radius = r_T * 0.05
 #
         self.bg_coll.set_paths(self.shapes[:6])
         self.fg_coll.set_paths(self.shapes[6:])
