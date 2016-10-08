@@ -105,7 +105,8 @@ class ControlPane:
                 slider = DiscreteSlider(ax, allowed_vals=vals, **args)
             else:
                 slider = Slider(ax, **args)
-            slider.on_changed(self._create_update_func(id_))
+            if self.update is not None:
+                slider.on_changed(self._create_update_func(id_))
             if not self.show_init:
                 slider.vline.remove()
             slider.valtext.set_visible(self.show_value)
