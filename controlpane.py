@@ -15,7 +15,10 @@ class SliderBound:
 
     def __init__(self, sliderax, valmin, valmax, type_='lower'):
         self.poly = sliderax.axvspan(valmin, valmax, 0, 1, alpha=.8, color='r')
-
+        # Order of the vertices:
+        # 1--2
+        # |  |
+        # 0--3
         if type_ == 'lower':
             self.val = valmax
             self.xy_ids = (2, 3)    # Poly's vertices to update in set_val.
@@ -33,6 +36,34 @@ class SliderBound:
         self.poly.xy = xy
 
 
+def make_slider(ax, bounds=None, show_init=False, show_value=True,
+                **kwargs):
+    """Factory function with more options than the classic Slider.
+
+    See ControlPane doc for info on the arguments.
+    """
+    # Add optional bounds.
+    if bounds is not None:
+        low, up = bounds
+        if low is not None:
+            kwargs['slidermin'] = SliderBound(
+                ax, kwargs.get('valmin'), low, type_='lower')
+        if up is not None:
+            kwargs['slidermax'] = SliderBound(
+                ax, up, kwargs.get('valmax'), type_='upper')
+    # Create slider.
+    if (type(kwargs.get('valmin')) == int
+        and type(kwargs.get('valmax')) == int):
+        vals = range(kwargs.get('valmin'), kwargs.get('valmax') + 1)
+        slider = DiscreteSlider(ax, allowed_vals=vals, **kwargs)
+    else:
+        slider = Slider(ax, **kwargs)
+    if not show_init:
+        slider.vline.remove()
+    slider.valtext.set_visible(show_value)
+    return slider
+
+
 class ControlPane:
     """Control pane.
 
@@ -40,9 +71,9 @@ class ControlPane:
      -- figure:
          matplotlib figure.
      -- param_data:
-         sequence of (id, dict) pairs, where 'id' is whatever identifier you
+         sequence of (id, kwargs) pairs, where 'id' is whatever identifier you
          want to give to the callback when the corresp. slider is changed, and
-         'dict' contains the keys: 'valmin', 'valmax', 'valinit', and 'label'.
+         'kwargs' contains the Slider arguments.
      -- update_func:
          callable object with arguments (id, value).
      -- subplot_spec:
@@ -83,33 +114,19 @@ class ControlPane:
             gs = GridSpecFromSubplotSpec(N, 1, subplot_spec=self.subspec)
 
         for i, (id_, args) in enumerate(self.param_data):
-            args['alpha'] = .5
+            if args.get('alpha') is None:
+                args['alpha'] = .5
             # Create Axes instance.
             if self.subspec is None:
                 ax = self.fig.add_axes([.3, .05 * (N-i), .4, .02])
             else:
                 ax = self.fig.add_subplot(gs[i, :])
-            # Add optional bounds.
-            if self.bounds is not None:
-                low, up = self.bounds[i]
-                if low is not None:
-                    args['slidermin'] = SliderBound(
-                        ax, args.get('valmin'), low, type_='lower')
-                if up is not None:
-                    args['slidermax'] = SliderBound(
-                        ax, up, args.get('valmax'), type_='upper')
-            # Create sliders.
-            if (type(args.get('valmin')) == int
-                and type(args.get('valmax')) == int):
-                vals = range(args.get('valmin'), args.get('valmax') + 1)
-                slider = DiscreteSlider(ax, allowed_vals=vals, **args)
-            else:
-                slider = Slider(ax, **args)
+            # Create slider.
+            bnds = None if self.bounds is None else self.bounds[i]
+            slider = make_slider(ax, bnds, self.show_init, self.show_value,
+                                 **args)
             if self.update is not None:
                 slider.on_changed(self._create_update_func(id_))
-            if not self.show_init:
-                slider.vline.remove()
-            slider.valtext.set_visible(self.show_value)
             self.sliders[id_] = slider
 
         self.fig.canvas.draw()
@@ -132,7 +149,30 @@ class ControlPane:
             s.drawon, s.eventson = flags
 
     def set_bounds(self, id_, bounds):
-        """Change the bounds of slider 'id_'."""
+        """Change the dynamic bounds of slider 'id_'."""
         assert(self.bounds is not None)
         self.sliders[id_].slidermin.set_val(bounds[0])
         self.sliders[id_].slidermax.set_val(bounds[1])
+
+    def set_valminmax(self, id_, valmin, valmax):
+        """Change the valmin and valmax of slider 'id_'."""
+        slider = self.sliders[id_]
+        slider.valmin = valmin
+        slider.valmax = valmax
+        slider.ax.set_xlim((valmin, valmax))
+        # Update poly
+        xy = slider.poly.xy
+        xy[0] = valmin, 0
+        xy[1] = valmin, 1
+        slider.poly.xy = xy
+        # Update bounds' polys
+        if slider.slidermin is not None:
+            xy_smin = slider.slidermin.poly.xy
+            xy_smin[0] = valmin, 0
+            xy_smin[1] = valmin, 1
+            slider.slidermin.poly.xy = xy_smin
+        if slider.slidermax is not None:
+            xy_smax = slider.slidermax.poly.xy
+            xy_smax[2] = valmax, 1
+            xy_smax[3] = valmax, 0
+            slider.slidermax.poly.xy = xy_smax
