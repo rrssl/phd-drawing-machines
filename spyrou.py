@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 import numpy as np
 
-from controlpane import ControlPane
+from controlpane import ControlPane, make_slider
 from mecha import EllipticSpirograph
 
 
@@ -62,6 +62,11 @@ class Model:
         # List of dicts with keys ('type', 'props', 'curve')
         self.search_res = []
         self.mecha = None
+        self.dprops = []
+        self.cprops = []
+        self.nb_cp = 2
+        self.nb_dp = 2
+        self.cbounds = []
 
     def search_mecha(self, nb):
         self.search_res.clear()
@@ -72,6 +77,26 @@ class Model:
                 'props': mecha.props.copy(),
                 'curve': mecha.get_curve()
                 })
+
+    def set_mecha(self, mecha):
+        self.mecha = mecha
+        self.crv = self.mecha.get_curve()
+        self.dprops = self.mecha.props[:self.nb_dp]
+        self.cprops = self.mecha.props[self.nb_dp:]
+        self.cbounds = [self.mecha.get_prop_bounds(i+self.nb_dp)
+                        for i, prop in enumerate(self.cprops)]
+
+    def set_cont_prop(self, props):
+        """Set the continuous property vector, update data."""
+        self.cprops = props
+        # We need to update all the parameters before getting the bounds.
+        self.mecha.reset(*np.r_[self.dprops, props])
+        self.cbounds = [self.mecha.get_prop_bounds(i+self.nb_dp)
+                        for i, prop in enumerate(props)]
+        # Update curve and PoI.
+        self.crv = self.mecha.get_curve()
+#        self.poi = self.get_corresp(
+#            self.ref_crv, self.ref_par, [self.new_crv])[0][0]
 
 
 class View:
@@ -97,9 +122,14 @@ class View:
         self.sk_layer = []
         self.draw_sketcher_tab()
 
+        self.max_nb_props = 5
+        self.nb_props = 0
+
         self.ed_head = None
         self.ed_layer = []
+        self.controls = None
         self.draw_editor_tab()
+        self.update_controls([], [], redraw=False)
         self.hide_layer(self.ed_layer)
 
         self.draw_bottom_pane()
@@ -127,9 +157,8 @@ class View:
 #        ax.spines['right'].set_color('none')
 #        ax.spines['left'].set_color('none')
 
-#==============================================================================
-# Low-level graphical elements (buttons, separators, etc.)
-#==============================================================================
+
+    ### Low-level graphical elements (buttons, separators, etc.)
 
     def draw_sketch_canvas(self):
         canvas = plt.subplot2grid(
@@ -179,31 +208,19 @@ class View:
         title.set_color('.9')
         return ax
 
-    def draw_sym_slider(self, grid_pos, label, width):
-        gs = GridSpec(*self.grid_size)
-        sub_spec = gs[grid_pos[0]:grid_pos[0]+1,
-                      grid_pos[1]:grid_pos[1]+width]
-        data = (
-            ('sym', {'valmin': 0,
-                     'valmax': 25,
-                     'valinit': 1,
-                     'label': label,
-                     'color': 'lightgreen'
-                    }),
-            )
-        cp = ControlPane(self.fig, data, None, sub_spec, show_value=True)
-        slider = cp.sliders['sym']
-        slider.ax.set_axis_bgcolor('.9')
-        self.remove_axes(slider.ax)
-        slider.poly.set_alpha(1)
+    def draw_slider(self, grid_pos, slider_args, width):
+        ax = plt.subplot2grid(
+            self.grid_size, grid_pos, rowspan=1, colspan=width, axisbg='.9')
+        self.remove_axes(ax)
+        slider_args['color'] = 'lightgreen'
+        slider = make_slider(ax, **slider_args)
         slider.label.set_weight('bold')
         slider.label.set_color('.9')
         slider.label.set_x(-0.25)
         slider.label.set_horizontalalignment('center')
         slider.valtext.set_weight('bold')
         slider.valtext.set_color('.9')
-        slider.disconnect(0)
-        return cp.sliders['sym']
+        return slider
 
     def draw_button(self, grid_pos, label, width):
         bt_ax = plt.subplot2grid(
@@ -275,9 +292,31 @@ class View:
             self.sk_canvas.lines = (self.sk_canvas.lines[-order:] +
                                  self.sk_canvas.lines[:-order])
 
-#==============================================================================
-# High-level graphical elements (tabs and panels)
-#==============================================================================
+    def draw_controls(self, grid_pos, data, bounds, width):
+        gs = GridSpec(*self.grid_size)
+        sub_spec = gs[grid_pos[0]:grid_pos[0]+len(data),
+                      grid_pos[1]:grid_pos[1]+width]
+        for item in data:
+            item[1]['color'] = 'lightgreen'
+            item[1]['alpha'] = 1
+        cp = ControlPane(self.fig, data, lambda x: x, sub_spec, bounds,
+                         show_value=False)
+        for _, slider in cp.sliders.items():
+            ax = slider.ax
+            ax.set_axis_bgcolor('.9')
+            ax.spines['bottom'].set_color('.2')
+            ax.spines['bottom'].set_linewidth(5)
+            ax.spines['top'].set_color('.2')
+            ax.spines['top'].set_linewidth(5)
+            ax.spines['right'].set_color('none')
+            ax.spines['left'].set_color('none')
+            if slider.slidermin is not None:
+                slider.slidermin.poly.set_color('orange')
+            if slider.slidermax is not None:
+                slider.slidermax.poly.set_color('orange')
+        return cp
+
+    ### High-level graphical elements (tabs and panels)
 
     def draw_sketcher_tab(self):
         tab_width = (self.grid_size[1] - self.grid_size[0]) // 2
@@ -294,8 +333,10 @@ class View:
             tab_width)
         self.sk_layer.append(self.widgets['sk_bnd'].ax)
 
-        self.widgets['sk_sym'] = self.draw_sym_slider(
-            (7, self.grid_size[0]+tab_width*3//4), "Symmetry\norder",
+        slider_args = {'valmin': 0, 'valmax': 25, 'valinit': 1,
+                       'label': "Symmetry\norder"}
+        self.widgets['sk_sym'] = self.draw_slider(
+            (7, self.grid_size[0]+tab_width*3//4), slider_args,
             tab_width*5//4)
         self.sk_layer.append(self.widgets['sk_sym'].ax)
 
@@ -317,13 +358,60 @@ class View:
 
     def draw_editor_tab(self):
         tab_width = (self.grid_size[1] - self.grid_size[0]) // 2
+
+        # Put material in sketcher tab aside so that there is not conflict
+        # when instantiating axes. Yes, it's ugly.
+        for panel in self.sk_layer:
+            pos = panel.get_position()
+            pos.y0 -= 2*tab_width
+            pos.y1 -= 2*tab_width
+            panel.set_position(pos)
+
         self.ed_head = self.draw_tab_header(
             (0, self.grid_size[0]+tab_width), "Editor")
 
+        self.ed_layer.append(
+            self.draw_section_title((3, self.grid_size[0]+tab_width//2),
+                                    "Invariants")
+            )
+
+        self.ed_layer.append(
+            self.draw_separator((8, self.grid_size[0]))
+            )
+
+        self.ed_layer.append(
+            self.draw_section_title((10, self.grid_size[0]+tab_width//2),
+                                    "Controls")
+            )
+
+        data = []
+        bounds = []
+        for i in range(self.max_nb_props):
+            bounds.append((0., 1.))
+            data.append(
+                (i, {'valmin': 0.,
+                     'valmax': 1.,
+                     'valinit': 0.,
+                     'label': '',
+                     })
+                )
+        self.controls = self.draw_controls(
+            (11, self.grid_size[0]+tab_width//4), data, bounds, tab_width*7//4)
+        for id_, slider in self.controls.sliders.items():
+            self.widgets['ed_prop_{}'.format(id_)] = slider
+            self.ed_layer.append(slider.ax)
+
+        # Put back the slider tab in place.
+        for panel in self.sk_layer:
+            pos = panel.get_position()
+            pos.y0 += 2*tab_width
+            pos.y1 += 2*tab_width
+            panel.set_position(pos)
+
     def draw_bottom_pane(self):
         width = (self.grid_size[1] - self.grid_size[0]) // 2
-        self.draw_separator((14, self.grid_size[0]))
-        self.draw_section_title((16, self.grid_size[0]+width//2),
+        self.draw_separator((15, self.grid_size[0]))
+        self.draw_section_title((17, self.grid_size[0]+width//2),
                                 "Drawing machine")
         self.widgets['search'] = self.draw_button(
             (18, self.grid_size[0]+width//2), "Search database", width)
@@ -348,9 +436,7 @@ class View:
             self.widgets['se_cell_{}'.format(i)] = cell
             self.se_layer.append(cell.ax)
 
-#==============================================================================
-# Update appearance
-#==============================================================================
+    ### Update view
 
     @staticmethod
     def hide_layer(layer):
@@ -381,9 +467,9 @@ class View:
         canvas.patches = []
         canvas.set_axis_bgcolor('1.')
 
-    def redraw_canvas(self, canvas):
-        canvas.redraw_in_frame()
-#        self.fig.canvas.blit(self.sk_canvas)
+    def redraw_axes(self, ax):
+        ax.redraw_in_frame()
+#        self.fig.canvas.blit(ax)
         self.fig.canvas.update()
 
     def show_search_menu(self, results, redraw=True):
@@ -457,6 +543,59 @@ class View:
         if redraw:
             self.fig.canvas.draw()
 
+    def awaken_widget(self, label):
+        wg = self.widgets.get(label)
+        if wg is None:
+            # Widget has been killed.
+            wg = self.widgets.pop('_'+label)
+            self.widgets[label] = wg
+            # The tab layers can be repeatedly shown/hidden:
+            if label.startswith('ed_'):
+                self.ed_layer.append(wg.ax)
+            elif label.startswith('sk_'):
+                self.ed_layer.append(wg.ax)
+            self.show_layer([wg.ax])
+            wg.set_active(True)
+
+    def kill_widget(self, label):
+        wg = self.widgets.get(label)
+        if wg is not None:
+            # Widget is alive.
+            self.widgets['_'+label] = self.widgets.pop(label)
+            # The tab layers can be repeatedly shown/hidden:
+            if label.startswith('ed_'):
+                self.ed_layer.pop(self.ed_layer.index(wg.ax))
+            elif label.startswith('sk_'):
+                self.sk_layer.pop(self.sk_layer.index(wg.ax))
+            self.hide_layer([wg.ax])
+            wg.set_active(False)
+
+    def update_controls(self, data, bounds, redraw=True):
+        assert(len(data) == len(bounds))
+        self.nb_props = len(data)
+        for i in range(self.max_nb_props):
+            if i < self.nb_props:
+                _, args = data[i]
+                self.controls.set_valminmax(i, args['valmin'],
+                                            args['valmax'])
+                self.controls.set_bounds(i, bounds[i])
+                self.controls.set_val(i, args['val'], incognito=True)
+
+                self.awaken_widget('ed_prop_{}'.format(i))
+            else:
+                self.kill_widget('ed_prop_{}'.format(i))
+
+        if redraw:
+            self.fig.canvas.draw()
+
+    def update_editor_plot(self, curve):
+        if not len(self.ed_canvas.lines):
+            self.ed_canvas.plot(*curve, lw=2, c='b', alpha=.8)
+        else:
+            self.ed_canvas.lines[0].set_data(*curve)
+            self.ed_canvas.relim()
+            self.ed_canvas.autoscale()
+
 
 class Controller:
 
@@ -477,13 +616,14 @@ class Controller:
     def connect_widgets(self):
         self.view.sk_head.on_clicked(self.select_sk_tab)
         self.view.ed_head.on_clicked(self.select_ed_tab)
-        self.view.widgets['sk_bnd'].on_clicked(self.set_bounds)
+        self.view.widgets['sk_bnd'].on_clicked(self.set_sketch_bounds)
         self.view.widgets['sk_undo'].on_clicked(self.undo_stroke)
         self.view.widgets['sk_redo'].on_clicked(self.redo_stroke)
         self.view.widgets['search'].on_clicked(self.search_mecha)
         self.view.widgets['show'].on_clicked(self.show_mecha)
         self.view.widgets['export'].on_clicked(self.export_mecha)
         self.view.widgets['sk_sym'].on_changed(self.set_symmetry)
+        self.view.controls.update = self.update_mecha_prop
 
     def connect_canvas(self):
         self.view.fig.canvas.mpl_connect(
@@ -513,7 +653,7 @@ class Controller:
             self.mode = Modes.editor
             self.view.switch_mode(self.mode)
 
-    def set_bounds(self, event):
+    def set_sketch_bounds(self, event):
         print("Set the bounds of the drawing.")
         self.action = Actions.set_min_bound
         # Flush previous bounds.
@@ -534,7 +674,7 @@ class Controller:
             print("Undo the last sketch stroke.")
             self.model.undone_strokes.append(self.model.strokes.pop())
             self.view.undone_plots.append(self.view.sk_canvas.lines.pop())
-            self.view.redraw_canvas(self.view.sk_canvas)
+            self.view.redraw_axes(self.view.sk_canvas)
 
     def redo_stroke(self, event):
         if not len(self.model.undone_strokes):
@@ -543,7 +683,7 @@ class Controller:
             print("Redo the last undone sketch stroke.")
             self.model.strokes.append(self.model.undone_strokes.pop())
             self.view.sk_canvas.lines.append(self.view.undone_plots.pop())
-            self.view.redraw_canvas(self.view.sk_canvas)
+            self.view.redraw_axes(self.view.sk_canvas)
 
     def search_mecha(self, event):
         if not len(self.model.strokes):
@@ -561,16 +701,28 @@ class Controller:
                     wg.on_clicked(self.choose_mecha)
 
     def choose_mecha(self, event):
+        # Update controller
         id_ = event.inaxes.cell_id
         print("A mechanism was chosen: {}".format(id_))
         self.action = Actions.none
         self.mode = Modes.editor
-
+        # Update model
         choice = self.model.search_res[id_]
-        self.model.mecha = choice['type'](*choice['props'])
+        self.model.set_mecha(choice['type'](*choice['props']))
 
+        # Update view
         self.view.clear_canvas(self.view.ed_canvas)
-        self.view.ed_canvas.plot(*choice['curve'], lw=2, c='b', alpha=.8)
+        self.view.update_editor_plot(choice['curve'])
+        data = []
+        for i in range(self.model.nb_cp):
+            data.append(
+                (i, {'valmin': .5*self.model.cbounds[i][0],
+                     'valmax': 1.5*self.model.cbounds[i][1],
+                     'val': self.model.cprops[i],
+                     'label': ''
+                     })
+                )
+        self.view.update_controls(data, self.model.cbounds, redraw=False)
         self.view.hide_search_menu(redraw=False)
         self.view.switch_mode(self.mode, redraw=True)
 
@@ -610,9 +762,9 @@ class Controller:
                 self.model.strokes[-nb_sym+i].append(xy_)
                 self.view.sk_canvas.lines[-nb_sym+i].set_data(
                     *np.asarray(self.model.strokes[-nb_sym+i]).T)
-        self.view.redraw_canvas(self.view.sk_canvas)
+        self.view.redraw_axes(self.view.sk_canvas)
 
-    def set_bound(self, radius):
+    def update_sketch_bound(self, radius):
         if self.action is Actions.set_min_bound:
             if self.view.borders[0] is None:
                 self.view.draw_inner_bound(radius)
@@ -623,7 +775,17 @@ class Controller:
                 self.view.draw_outer_bound(radius)
             else:
                 self.view.borders[1].radius = radius
-        self.view.redraw_canvas(self.view.sk_canvas)
+        self.view.redraw_axes(self.view.sk_canvas)
+
+    def update_mecha_prop(self, id_, value):
+        # Update model
+        cprops = self.model.cprops
+        cprops[id_] = value
+        self.model.set_cont_prop(cprops)
+        # Update view
+        self.view.update_editor_plot(self.model.crv)
+        for i, cbounds in enumerate(self.model.cbounds):
+            self.view.controls.set_bounds(i, cbounds)
 
     def on_move(self, event):
         if self.check_tb_inactive() and event.inaxes == self.view.sk_canvas:
@@ -631,7 +793,7 @@ class Controller:
                 if (self.action is Actions.set_min_bound
                     or self.action is Actions.set_max_bound):
                     radius = math.sqrt(event.xdata**2 + event.ydata**2)
-                    self.set_bound(radius)
+                    self.update_sketch_bound(radius)
                 elif self.action is Actions.sketch:
                     self.add_sketch_point([event.xdata, event.ydata])
 
