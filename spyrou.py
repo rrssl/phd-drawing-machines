@@ -15,6 +15,7 @@ import numpy as np
 
 from controlpane import ControlPane, make_slider
 from mecha import EllipticSpirograph
+from pois import find_krv_max, find_isect
 
 
 Modes = Enum('Modes', 'sketcher editor')
@@ -30,7 +31,7 @@ class FancyButton(Button):
         ax.set_axis_bgcolor('none')
         ratio = ax.bbox.width / ax.bbox.height
         ax.set_xlim(0, ratio)
-        for _, s in ax.spines.items():
+        for s in ax.spines.values():
             s.set_color('none')
         pad = .15
         shape = FancyBboxPatch((pad, pad), ratio-2*pad, (1-2*pad),
@@ -67,6 +68,15 @@ class Model:
         self.nb_cp = 2
         self.nb_dp = 2
         self.cbounds = []
+        self.crv = None
+        self.krv_pois = None
+        self.isect_pois = None
+
+    def find_pois(self):
+        self.krv_pois = find_krv_max(self.crv)
+        self.isect_pois = find_isect(self.crv)
+#        print(self.krv_pois)
+#        print(self.isect_pois)
 
     def search_mecha(self, nb):
         self.search_res.clear()
@@ -85,6 +95,7 @@ class Model:
         self.cprops = self.mecha.props[self.nb_dp:]
         self.cbounds = [self.mecha.get_prop_bounds(i+self.nb_dp)
                         for i, prop in enumerate(self.cprops)]
+        self.find_pois()
 
     def set_cont_prop(self, props):
         """Set the continuous property vector, update data."""
@@ -95,8 +106,6 @@ class Model:
                         for i, prop in enumerate(props)]
         # Update curve and PoI.
         self.crv = self.mecha.get_curve()
-#        self.poi = self.get_corresp(
-#            self.ref_crv, self.ref_par, [self.new_crv])[0][0]
 
 
 class View:
@@ -143,13 +152,14 @@ class View:
         self.undone_plots = []
         self.borders = [None, None]
         self.sym_lines = []
+        self.locked_pois = []
 
     @staticmethod
     def remove_axes(ax):
         """Remove the actual 'axes' from a matplotlib Axes object."""
         ax.get_xaxis().set_ticks([])
         ax.get_yaxis().set_ticks([])
-        for _, s in ax.spines.items():
+        for s in ax.spines.values():
             s.set_color('none')
         # For the record, here's the more detailed version:
 #        ax.spines['bottom'].set_color('none')
@@ -251,7 +261,7 @@ class View:
         ax = self.fig.add_axes(coords, axisbg='.9', zorder=2)
         ax.set_aspect('equal', 'datalim')
         ax.margins(.1)
-        for _, s in ax.spines.items():
+        for s in ax.spines.values():
             s.set_color('.2')
             s.set_linewidth(10)
         if drawing is not None:
@@ -301,7 +311,7 @@ class View:
             item[1]['alpha'] = 1
         cp = ControlPane(self.fig, data, lambda x: x, sub_spec, bounds,
                          show_value=False)
-        for _, slider in cp.sliders.items():
+        for slider in cp.sliders.values():
             ax = slider.ax
             ax.set_axis_bgcolor('.9')
             ax.spines['bottom'].set_color('.2')
@@ -596,6 +606,31 @@ class View:
             self.ed_canvas.relim()
             self.ed_canvas.autoscale()
 
+    def update_pois(self, pois_xy):
+        for item in self.ed_canvas.patches:
+            if item not in self.locked_pois:
+                item.remove()
+        if pois_xy.size:
+            locked_xy = [poi.center.tolist() for poi in self.locked_pois]
+            for xy in pois_xy:
+                if xy.tolist() not in locked_xy:
+                    self.ed_canvas.add_patch(
+                        Circle(xy, radius=.1, fill=True, fc='lightgreen',
+                               ec='none', zorder=3, picker=True)
+                        )
+
+    def lock_poi(self, poi_patch):
+        self.locked_pois.append(poi_patch)
+        poi_patch.set_facecolor('none')
+        poi_patch.set_edgecolor('lightgreen')
+        poi_patch.set_linewidth(4)
+
+    def unlock_poi(self, poi_patch):
+        self.locked_pois.remove(poi_patch)
+        poi_patch.set_facecolor('lightgreen')
+        poi_patch.set_edgecolor('none')
+        poi_patch.set_linewidth(1)
+
 
 class Controller:
 
@@ -604,6 +639,9 @@ class Controller:
         self.view = View()
         self.connect_widgets()
         self.connect_canvas()
+
+        # Some options
+        self.poi_capture_radius = .1 # In normalized coordinates
 
         # Base state
         self.mode = Modes.sketcher
@@ -632,6 +670,8 @@ class Controller:
             'button_release_event', self.on_release)
         self.view.fig.canvas.mpl_connect(
             'motion_notify_event', self.on_move)
+        self.view.fig.canvas.mpl_connect(
+            'pick_event', self.on_pick)
 
     def check_tb_inactive(self):
         """Check if the matplotlib toolbar plugin is inactive."""
@@ -787,15 +827,46 @@ class Controller:
         for i, cbounds in enumerate(self.model.cbounds):
             self.view.controls.set_bounds(i, cbounds)
 
+    def find_close_pois(self, position):
+        if self.model.krv_pois is None:
+            if self.model.isect_pois is None:
+                return None
+            else:
+                pois = self.model.isect_pois[:, :2]
+        else:
+            if self.model.isect_pois is None:
+                pois = self.model.krv_pois[:, :2]
+            else:
+                pois = np.vstack([self.model.krv_pois[:, :2],
+                                  self.model.isect_pois[:, :2]])
+        position = np.asarray(position).reshape(1, 2)
+        extent = self.view.ed_canvas.get_xlim()
+        radius = self.poi_capture_radius * abs(extent[1] - extent[0])
+        valid = np.linalg.norm(pois-position, axis=1) <= radius
+        return pois[valid, :]
+
     def on_move(self, event):
-        if self.check_tb_inactive() and event.inaxes == self.view.sk_canvas:
-            if self.mode is Modes.sketcher:
+        if self.check_tb_inactive():
+            if event.inaxes == self.view.sk_canvas:
                 if (self.action is Actions.set_min_bound
                     or self.action is Actions.set_max_bound):
                     radius = math.sqrt(event.xdata**2 + event.ydata**2)
                     self.update_sketch_bound(radius)
                 elif self.action is Actions.sketch:
                     self.add_sketch_point([event.xdata, event.ydata])
+            elif event.inaxes == self.view.ed_canvas:
+                pois = self.find_close_pois((event.xdata, event.ydata))
+                self.view.update_pois(pois)
+                self.view.redraw_axes(self.view.ed_canvas)
+
+    def on_pick(self, event):
+        if self.check_tb_inactive():
+            if event.mouseevent.inaxes == self.view.ed_canvas:
+                if event.artist in self.view.locked_pois:
+                    self.view.unlock_poi(event.artist)
+                else:
+                    self.view.lock_poi(event.artist)
+                self.view.redraw_axes(self.view.ed_canvas)
 
     def on_press(self, event):
         if self.check_tb_inactive():
@@ -818,23 +889,27 @@ class Controller:
                 print("Canvas was clicked.")
                 event.canvas.release_mouse(self.view.sk_canvas)
 
-                if self.mode is Modes.sketcher:
-                    if self.action is Actions.set_min_bound:
-                        self.model.crv_bnds[0] = self.view.borders[0].radius
-                        print("Inner bound set: {}".format(
-                              self.model.crv_bnds[0]))
-                        self.action = Actions.set_max_bound
-                    elif self.action is Actions.set_max_bound:
-                        self.model.crv_bnds[1] = self.view.borders[1].radius
-                        print("Outer bound set: {}".format(
-                              self.model.crv_bnds[1]))
-                        self.action = Actions.none
-                    elif self.action is Actions.sketch:
-                        self.action = Actions.none
+                if self.action is Actions.set_min_bound:
+                    self.model.crv_bnds[0] = self.view.borders[0].radius
+                    print("Inner bound set: {}".format(
+                          self.model.crv_bnds[0]))
+                    self.action = Actions.set_max_bound
+                elif self.action is Actions.set_max_bound:
+                    self.model.crv_bnds[1] = self.view.borders[1].radius
+                    print("Outer bound set: {}".format(
+                          self.model.crv_bnds[1]))
+                    self.action = Actions.none
+                elif self.action is Actions.sketch:
+                    self.action = Actions.none
 
             elif self.action is Actions.search:
                 if event.inaxes == self.view.overlay:
                     self.quit_search_mecha()
+
+            elif event.inaxes in [s.ax for s in
+                                  self.view.controls.sliders.values()]:
+                self.model.find_pois()
+
 
 def main():
     c = Controller()
