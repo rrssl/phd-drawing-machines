@@ -4,8 +4,10 @@ Spyrou, the drawing-machine designer.
 
 @author: Robin Roussel
 """
+from collections import OrderedDict
 from enum import Enum
 import math
+import textwrap
 
 from matplotlib.gridspec import GridSpec
 from matplotlib.patches import FancyBboxPatch, Circle
@@ -21,6 +23,8 @@ from pois import find_krv_max, find_isect
 Modes = Enum('Modes', 'sketcher editor')
 Actions = Enum('Actions',
                'none sketch set_min_bound set_max_bound set_sym search show')
+Invariants = Enum('Invariants',
+                  'position curvature intersection_angle distance on_line')
 
 
 class FancyButton(Button):
@@ -53,7 +57,47 @@ class FancyButton(Button):
                 self.ax.figure.canvas.draw()
 
 
+class CheckButton(Button):
+
+    def __init__(self, *args, **kwargs):
+        self.pushcolor = kwargs.pop('pushcolor', None)
+        super().__init__(*args, **kwargs)
+        self.pushed = False
+        self.on_clicked(self.push)
+
+    def push(self, event):
+        self.pushed = not self.pushed
+        if self.pushed:
+            self.ax.set_axis_bgcolor(self.pushcolor)
+        else:
+            self.ax.set_axis_bgcolor(self._lastcolor)
+        if self.drawon:
+            self.ax.figure.canvas.draw()
+
+    def _motion(self, event):
+        if self.ignore(event):
+            return
+        if self.pushed:
+            return
+        if event.inaxes == self.ax:
+            c = self.hovercolor
+        else:
+            c = self.color
+        if c != self._lastcolor:
+            self.ax.set_axis_bgcolor(c)
+            self._lastcolor = c
+            if self.drawon:
+                self.ax.figure.canvas.draw()
+
 class Model:
+    # Dictionaries used to build each invariant. If the type is present in the
+    # dict, it means that it is supported by the Model.
+    krv_invar = OrderedDict(((Invariants.position, False),
+                             (Invariants.curvature, False),
+                             (Invariants.on_line, False)))
+    isect_invar = OrderedDict(((Invariants.position, False),
+                               (Invariants.intersection_angle, False),
+                               (Invariants.on_line, False)))
 
     def __init__(self):
         self.crv_bnds = [None, None]
@@ -69,14 +113,84 @@ class Model:
         self.nb_dp = 2
         self.cbounds = []
         self.crv = None
-        self.krv_pois = None
-        self.isect_pois = None
+        # The following are private; PoIs should be accessed with get_poi.
+        self._krv_pois = None
+        self._isect_pois = None
+        self._poi_dict = {}
+        # Dictionary of poi_key:{Invariance:bool, ...} pairs
+        self.invar_dict = {}
 
-    def find_pois(self):
-        self.krv_pois = find_krv_max(self.crv)
-        self.isect_pois = find_isect(self.crv)
-#        print(self.krv_pois)
-#        print(self.isect_pois)
+    def compute_pois(self):
+        self._krv_pois = find_krv_max(self.crv)
+        self._isect_pois = find_isect(self.crv)
+
+    def reset_pois_dict(self):
+        """Regenerate the PoI dictionary.
+
+        The PoI dict maps a unique key to a position in the corresponding
+        PoI container.
+
+        This method should be called each time the mechanism or the discrete
+        properties change, and only after compute_pois has been called.
+
+        Each PoI has a key that is given to exterior classes. This way, even
+        if the features of the PoI change, the PoI key is still valid. In other
+        words, each key 'follows' its PoI when we explore the parameter space.
+        """
+        # We assume that there won't be more than 999 PoIs.
+        if self._krv_pois is not None and self._krv_pois.size:
+            self._poi_dict = {'_krv_pois{:03d}'.format(i):i
+                             for i in range(self._krv_pois.shape[0])}
+            shift = self._krv_pois.shape[0]
+        else:
+            self._poi_dict = {}
+            shift = 0
+        if self._isect_pois is not None and self._isect_pois.size:
+            shift = self._isect_pois.shape[0]
+            self._poi_dict.update(
+                {'_isect_pois{:03d}'.format(j+shift):j
+                 for j in range(self._isect_pois.shape[0])}
+                )
+
+    def find_close_pois_keys(self, position, radius):
+        norm = np.linalg.norm
+        return [key for key, val in self._poi_dict.items()
+                if norm(getattr(self, key[:-3])[val, :2] - position) <= radius]
+
+    def get_poi(self, key):
+        value = self._poi_dict.get(key)
+        if value is None:
+            return None
+        return getattr(self, key[:-3])[value]
+
+    def get_poi_invariance(self, key):
+        """Get the current invariance state of a PoI, as an Invariance:state
+        orderred dictionary.
+
+        Do not use this function to set the invariance state of a PoI:
+        changes will not be propagated.
+        """
+        value = self.invar_dict.get(key)
+        if value is None:
+            return (Model.krv_invar.copy() if key.startswith('_krv')
+                    else Model.isect_invar.copy())
+        else:
+            return value.copy()
+
+    def set_poi_invariance(self, key, invar):
+        """Set the current invariance state of a PoI.
+
+        'invar' should be a Invariance:bool dict.
+        """
+        value = self.invar_dict.get(key)
+        if value is None:
+            base = (Model.krv_invar.copy() if key.startswith('_krv')
+                    else Model.isect_invar.copy())
+            base.update(invar)
+            self.invar_dict[key] = base
+        else:
+            value.update(invar)
+
 
     def search_mecha(self, nb):
         self.search_res.clear()
@@ -95,7 +209,8 @@ class Model:
         self.cprops = self.mecha.props[self.nb_dp:]
         self.cbounds = [self.mecha.get_prop_bounds(i+self.nb_dp)
                         for i, prop in enumerate(self.cprops)]
-        self.find_pois()
+        self.compute_pois()
+        self.reset_pois_dict()
 
     def set_cont_prop(self, props):
         """Set the continuous property vector, update data."""
@@ -133,12 +248,14 @@ class View:
 
         self.max_nb_props = 5
         self.nb_props = 0
+        self.max_nb_cstr_per_poi = 3
 
         self.ed_head = None
         self.ed_layer = []
         self.controls = None
         self.draw_editor_tab()
         self.update_controls([], [], redraw=False)
+        self.update_invariants([], [], redraw=False)
         self.hide_layer(self.ed_layer)
 
         self.draw_bottom_pane()
@@ -152,6 +269,7 @@ class View:
         self.undone_plots = []
         self.borders = [None, None]
         self.sym_lines = []
+        self.selected_poi = None
         self.locked_pois = []
 
     @staticmethod
@@ -232,13 +350,26 @@ class View:
         slider.valtext.set_color('.9')
         return slider
 
-    def draw_button(self, grid_pos, label, width):
+    def draw_button(self, grid_pos, width, height, label):
         bt_ax = plt.subplot2grid(
-            self.grid_size, grid_pos, rowspan=2, colspan=width)
+            self.grid_size, grid_pos, rowspan=height, colspan=width)
         bt = FancyButton(bt_ax, label, color='.9', hovercolor='lightgreen')
         bt.label.set_fontsize(12)
         bt.label.set_weight('bold')
         bt.label.set_color('.2')
+        return bt
+
+    def draw_check_button(self, grid_pos, width, height, label):
+        ax = plt.subplot2grid(
+            self.grid_size, grid_pos, rowspan=2, colspan=width)
+        for s in ax.spines.values():
+            s.set_color('.4')
+#            s.set_linewidth(10)
+        bt = CheckButton(ax, label, color='.2', hovercolor='.2',
+                         pushcolor='.3')
+        bt.label.set_fontsize(12)
+        bt.label.set_weight('bold')
+        bt.label.set_color('.9')
         return bt
 
     def draw_separator(self, grid_pos):
@@ -330,69 +461,93 @@ class View:
 
     def draw_sketcher_tab(self):
         tab_width = (self.grid_size[1] - self.grid_size[0]) // 2
+        row_id = 0
 
         self.sk_head = self.draw_tab_header(
-            (0, self.grid_size[0]), "Sketcher", active=True)
+            (row_id, self.grid_size[0]), "Sketcher", active=True)
+        row_id += 3
 
         self.sk_layer.append(
-            self.draw_section_title((3, self.grid_size[0]+tab_width//2),
+            self.draw_section_title((row_id, self.grid_size[0]+tab_width//2),
                                     "Construction lines")
             )
+        row_id += 1
+
         self.widgets['sk_bnd'] = self.draw_button(
-            (4, self.grid_size[0]+tab_width//2), "Set boundaries",
-            tab_width)
+            (row_id, self.grid_size[0]+tab_width//2), tab_width, 1,
+            "Set boundaries")
         self.sk_layer.append(self.widgets['sk_bnd'].ax)
+        row_id += 2
 
         slider_args = {'valmin': 0, 'valmax': 25, 'valinit': 1,
                        'label': "Symmetry\norder"}
         self.widgets['sk_sym'] = self.draw_slider(
-            (7, self.grid_size[0]+tab_width*3//4), slider_args,
+            (row_id, self.grid_size[0]+tab_width*3//4), slider_args,
             tab_width*5//4)
         self.sk_layer.append(self.widgets['sk_sym'].ax)
+        row_id += 1
 
         self.sk_layer.append(
-            self.draw_separator((8, self.grid_size[0]))
+            self.draw_separator((row_id, self.grid_size[0]))
             )
+        row_id += 2
+
         self.sk_layer.append(
-            self.draw_section_title((10, self.grid_size[0]+tab_width//2),
+            self.draw_section_title((row_id, self.grid_size[0]+tab_width//2),
                                     "Sketch")
             )
+        row_id += 1
+
         self.widgets['sk_undo'] = self.draw_button(
-            (11, self.grid_size[0]+tab_width//4), "Undo\nlast stroke",
-            tab_width*3//4)
+            (row_id, self.grid_size[0]+tab_width//4), tab_width*3//4, 2,
+            "Undo\nlast stroke")
         self.sk_layer.append(self.widgets['sk_undo'].ax)
         self.widgets['sk_redo'] = self.draw_button(
-            (11, self.grid_size[0]+tab_width*5//4), "Redo\nlast stroke",
-            tab_width*3//4)
+            (row_id, self.grid_size[0]+tab_width*5//4), tab_width*3//4, 2,
+            "Redo\nlast stroke")
         self.sk_layer.append(self.widgets['sk_redo'].ax)
 
     def draw_editor_tab(self):
         tab_width = (self.grid_size[1] - self.grid_size[0]) // 2
-
+        row_id = 0
         # Put material in sketcher tab aside so that there is not conflict
-        # when instantiating axes. Yes, it's ugly.
-        for panel in self.sk_layer:
-            pos = panel.get_position()
-            pos.y0 -= 2*tab_width
-            pos.y1 -= 2*tab_width
-            panel.set_position(pos)
+        # when instantiating axes. Yes, it's ugly, but it works.
+        self.move_layer_horizontally(self.sk_layer, -2*tab_width)
 
         self.ed_head = self.draw_tab_header(
-            (0, self.grid_size[0]+tab_width), "Editor")
+            (row_id, self.grid_size[0]+tab_width), "Editor")
+        row_id += 3
 
         self.ed_layer.append(
-            self.draw_section_title((3, self.grid_size[0]+tab_width//2),
+            self.draw_section_title((row_id, self.grid_size[0]+tab_width//2),
                                     "Invariants")
             )
+        row_id += 1
+
+        for i in range(self.max_nb_cstr_per_poi):
+            name = 'ed_invar_{}'.format(i)
+            self.widgets[name] = self.draw_check_button(
+                (row_id, self.grid_size[0]+tab_width*i*2//3), tab_width*2//3,
+                1, '')
+            self.ed_layer.append(self.widgets[name].ax)
+        row_id += 3
+
+        self.widgets['ed_apply_inv'] = self.draw_button(
+            (row_id, self.grid_size[0]+tab_width//2), tab_width, 1,
+            "Apply invariants")
+        self.ed_layer.append(self.widgets['ed_apply_inv'].ax)
+        row_id += 1
 
         self.ed_layer.append(
-            self.draw_separator((8, self.grid_size[0]))
+            self.draw_separator((row_id, self.grid_size[0]))
             )
+        row_id += 2
 
         self.ed_layer.append(
-            self.draw_section_title((10, self.grid_size[0]+tab_width//2),
+            self.draw_section_title((row_id, self.grid_size[0]+tab_width//2),
                                     "Controls")
             )
+        row_id += 1
 
         data = []
         bounds = []
@@ -406,30 +561,32 @@ class View:
                      })
                 )
         self.controls = self.draw_controls(
-            (11, self.grid_size[0]+tab_width//4), data, bounds, tab_width*7//4)
+            (row_id, self.grid_size[0]+tab_width//4), data, bounds,
+            tab_width*7//4)
         for id_, slider in self.controls.sliders.items():
             self.widgets['ed_prop_{}'.format(id_)] = slider
             self.ed_layer.append(slider.ax)
 
-        # Put back the slider tab in place.
-        for panel in self.sk_layer:
-            pos = panel.get_position()
-            pos.y0 += 2*tab_width
-            pos.y1 += 2*tab_width
-            panel.set_position(pos)
+        # Put back the sketcher tab in place.
+        self.move_layer_horizontally(self.sk_layer, 2*tab_width)
 
     def draw_bottom_pane(self):
         width = (self.grid_size[1] - self.grid_size[0]) // 2
-        self.draw_separator((15, self.grid_size[0]))
-        self.draw_section_title((17, self.grid_size[0]+width//2),
+        row_id = 16
+        self.draw_separator((row_id, self.grid_size[0]))
+        row_id += 2
+        self.draw_section_title((row_id, self.grid_size[0]+width//2),
                                 "Drawing machine")
+        row_id += 1
         self.widgets['search'] = self.draw_button(
-            (18, self.grid_size[0]+width//2), "Search database", width)
+            (row_id, self.grid_size[0]+width//2), width, 1, "Search database")
+        row_id += 2
         self.widgets['show'] = self.draw_button(
-            (21, self.grid_size[0]+width//4), "Show\nmechanism", width*3//4)
+            (row_id, self.grid_size[0]+width//4), width*3//4, 2,
+            "Show\nmechanism")
         self.widgets['export'] = self.draw_button(
-            (21, self.grid_size[0]+width*5//4), "Export\nmechanism",
-            width*3//4)
+            (row_id, self.grid_size[0]+width*5//4), width*3//4, 2,
+            "Export\nmechanism")
 
     def draw_search_menu(self, results, nb_col=3):
         nb_res = len(results)
@@ -459,6 +616,22 @@ class View:
         for panel in layer:
             panel.set_visible(True)
             panel.set_zorder(zorder)
+
+    @staticmethod
+    def move_layer_horizontally(layer, delta):
+        for panel in layer:
+            pos = panel.get_position()
+            pos.x0 += delta
+            pos.x1 += delta
+            panel.set_position(pos)
+
+    @staticmethod
+    def move_layer_vertically(layer, delta):
+        for panel in layer:
+            pos = panel.get_position()
+            pos.y0 += delta
+            pos.y1 += delta
+            panel.set_position(pos)
 
     @staticmethod
     def put_header_in_front(head):
@@ -606,30 +779,69 @@ class View:
             self.ed_canvas.relim()
             self.ed_canvas.autoscale()
 
-    def update_pois(self, pois_xy):
+    def update_pois(self, pois_xy, pois_keys):
         for item in self.ed_canvas.patches:
-            if item not in self.locked_pois:
+            if not (item in self.locked_pois or item is self.selected_poi):
                 item.remove()
-        if pois_xy.size:
-            locked_xy = [poi.center.tolist() for poi in self.locked_pois]
-            for xy in pois_xy:
-                if xy.tolist() not in locked_xy:
+
+        if pois_xy is not None and len(pois_xy):
+            exclude = [poi.poi_key for poi in self.locked_pois]
+            if self.selected_poi is not None:
+                exclude.append(self.selected_poi.poi_key)
+
+            for xy, key in zip(pois_xy, pois_keys):
+                if key not in exclude:
                     self.ed_canvas.add_patch(
                         Circle(xy, radius=.1, fill=True, fc='lightgreen',
                                ec='none', zorder=3, picker=True)
                         )
+                    self.ed_canvas.patches[-1].poi_key = key
+
+    def select_poi(self, poi_patch):
+        if poi_patch is None or poi_patch is self.selected_poi:
+            return
+        self.deselect_poi(self.selected_poi)
+        self.selected_poi = poi_patch
+        poi_patch.set_edgecolor(poi_patch.get_facecolor())
+        poi_patch.set_facecolor('none')
+        poi_patch.set_linewidth(4)
+
+    def deselect_poi(self, poi_patch):
+        if poi_patch is None:
+            return
+        poi_patch.set_facecolor(poi_patch.get_edgecolor())
+        poi_patch.set_edgecolor('none')
+        poi_patch.set_linewidth(1)
 
     def lock_poi(self, poi_patch):
         self.locked_pois.append(poi_patch)
-        poi_patch.set_facecolor('none')
-        poi_patch.set_edgecolor('lightgreen')
-        poi_patch.set_linewidth(4)
+        # PoI being locked is necessarily selected => edgecolor changes
+        poi_patch.set_edgecolor('purple')
 
     def unlock_poi(self, poi_patch):
         self.locked_pois.remove(poi_patch)
-        poi_patch.set_facecolor('lightgreen')
-        poi_patch.set_edgecolor('none')
-        poi_patch.set_linewidth(1)
+        # PoI being unlocked is necessarily selected => edgecolor changes
+        poi_patch.set_edgecolor('lightgreen')
+
+    def update_invariants(self, labels, states, redraw=True):
+        for i in range(self.max_nb_cstr_per_poi):
+            name = 'ed_invar_{}'.format(i)
+            if i < len(labels):
+                self.awaken_widget(name)
+                wg = self.widgets[name]
+                title = labels[i].capitalize().replace('_', ' ')
+                title = textwrap.fill(title, 12)
+                wg.label.set_text(title)
+                if wg.pushed != states[i]:
+                    drawon = wg.drawon
+                    wg.drawon = False
+                    wg.push(None)
+                    wg.drawon = drawon
+            else:
+                self.kill_widget(name)
+
+        if redraw:
+            self.fig.canvas.draw()
 
 
 class Controller:
@@ -661,6 +873,7 @@ class Controller:
         self.view.widgets['show'].on_clicked(self.show_mecha)
         self.view.widgets['export'].on_clicked(self.export_mecha)
         self.view.widgets['sk_sym'].on_changed(self.set_symmetry)
+        self.view.widgets['ed_apply_inv'].on_clicked(self.apply_invariants)
         self.view.controls.update = self.update_mecha_prop
 
     def connect_canvas(self):
@@ -828,22 +1041,46 @@ class Controller:
             self.view.controls.set_bounds(i, cbounds)
 
     def find_close_pois(self, position):
-        if self.model.krv_pois is None:
-            if self.model.isect_pois is None:
-                return None
-            else:
-                pois = self.model.isect_pois[:, :2]
-        else:
-            if self.model.isect_pois is None:
-                pois = self.model.krv_pois[:, :2]
-            else:
-                pois = np.vstack([self.model.krv_pois[:, :2],
-                                  self.model.isect_pois[:, :2]])
-        position = np.asarray(position).reshape(1, 2)
         extent = self.view.ed_canvas.get_xlim()
         radius = self.poi_capture_radius * abs(extent[1] - extent[0])
-        valid = np.linalg.norm(pois-position, axis=1) <= radius
-        return pois[valid, :]
+        pois_keys = self.model.find_close_pois_keys(position, radius)
+        pois_xy = [self.model.get_poi(key)[:2] for key in pois_keys]
+        return pois_xy, pois_keys
+
+    def select_poi(self, event):
+        # Change aspect
+        self.view.select_poi(event.artist)
+        # Change invariants menu
+        key = event.artist.poi_key
+        invar = self.model.get_poi_invariance(key)
+        labels = [type_.name for type_ in invar.keys()]
+        states = list(invar.values())
+        self.view.update_invariants(labels, states)
+        # Update invariants callbacks
+        for name, wg in self.view.widgets.items():
+            if name.startswith('ed_invar_'):
+                invar_type = Invariants[labels[int(name[-1])]]
+                if wg.cnt > 1:
+                    # Remove previous callback.
+                    wg.disconnect(wg.cnt-1)
+                wg.on_clicked(self.get_invar_callback(key, invar_type))
+
+    def get_invar_callback(self, key, invar_type):
+        def toggle(event):
+            print("An invariant was toggled.")
+            invar_dict = self.model.get_poi_invariance(key)
+            if not True in invar_dict.values():
+                self.view.lock_poi(self.view.selected_poi)
+            invar_dict[invar_type] = not invar_dict[invar_type]
+            if not True in invar_dict.values():
+                self.view.unlock_poi(self.view.selected_poi)
+            self.model.set_poi_invariance(key, invar_dict)
+            self.view.redraw_axes(self.view.ed_canvas)
+
+        return toggle
+
+    def apply_invariants(self, event):
+        print("Apply the invariants.")
 
     def on_move(self, event):
         if self.check_tb_inactive():
@@ -855,18 +1092,17 @@ class Controller:
                 elif self.action is Actions.sketch:
                     self.add_sketch_point([event.xdata, event.ydata])
             elif event.inaxes == self.view.ed_canvas:
-                pois = self.find_close_pois((event.xdata, event.ydata))
-                self.view.update_pois(pois)
+                xy, keys = self.find_close_pois((event.xdata, event.ydata))
+                self.view.update_pois(xy, keys)
                 self.view.redraw_axes(self.view.ed_canvas)
 
     def on_pick(self, event):
         if self.check_tb_inactive():
             if event.mouseevent.inaxes == self.view.ed_canvas:
-                if event.artist in self.view.locked_pois:
-                    self.view.unlock_poi(event.artist)
-                else:
-                    self.view.lock_poi(event.artist)
-                self.view.redraw_axes(self.view.ed_canvas)
+                print("A PoI was selected.")
+                if event.artist is not self.view.selected_poi:
+                    self.select_poi(event)
+#                self.view.redraw_axes(self.view.ed_canvas)
 
     def on_press(self, event):
         if self.check_tb_inactive():
@@ -908,7 +1144,7 @@ class Controller:
 
             elif event.inaxes in [s.ax for s in
                                   self.view.controls.sliders.values()]:
-                self.model.find_pois()
+                self.model.compute_pois()
 
 
 def main():
