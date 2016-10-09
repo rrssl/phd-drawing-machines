@@ -16,9 +16,9 @@ from matplotlib.widgets import Button
 import numpy as np
 
 from controlpane import ControlPane, make_slider
-from mecha import EllipticSpirograph
+from mecha import EllipticSpirograph#, SingleGearFixedFulcrumCDM
 from pois import find_krv_max, find_isect
-
+import curvedistances as cdist
 
 Modes = Enum('Modes', 'sketcher editor')
 Actions = Enum('Actions',
@@ -102,8 +102,11 @@ class Model:
     def __init__(self):
         self.crv_bnds = [None, None]
         self.sym_order = 1
-        self.strokes = []
+        self.strokes = [] # List of N*2 lists of points
         self.undone_strokes = []
+        # Mechanism retrieval
+        self.samples = self.get_global_sampling()
+        self.distance = cdist.DistanceField().get_dist
         # List of dicts with keys ('type', 'props', 'curve')
         self.search_res = []
         self.mecha = None
@@ -191,11 +194,45 @@ class Model:
         else:
             value.update(invar)
 
+    def get_global_sampling(self):
+        """Sample feasible parameters across all mechanisms."""
+        samples = {}
+        mechanisms_types = (EllipticSpirograph, )#SingleGearFixedFulcrumCDM)
+        for type_ in mechanisms_types:
+            samples[type_] = np.array(list(
+                type_.ConstraintSolver.sample_feasible_domain(
+                    grid_resol=(4,)*4)))
+        return samples
 
     def search_mecha(self, nb):
+        if not len(self.strokes):
+            return
+        sketch = np.hstack([np.array(stroke).T for stroke in self.strokes])
         self.search_res.clear()
-        mecha = EllipticSpirograph(5, 3, .2, 1.)
-        for _ in range(nb):
+        ranges = [0]
+        # Convert types and samples to lists to keep the order.
+        types = list(self.samples.keys())
+        samples = list(self.samples.values())
+        # Pre-filter the samples.
+        if self.sym_order > 1:
+            samples = [s[s[:, 0] == self.sym_order] for s in samples]
+        distances = []
+        for type_, type_samples in zip(types, samples):
+            ranges.append(ranges[-1] + type_samples.shape[1])
+            mecha = type_(*type_samples[0])
+            for sample in type_samples:
+                mecha.reset(*sample)
+                crv = mecha.get_curve()
+                distances.append(self.distance(crv, sketch))
+        print(len(distances))
+        best = np.argpartition(np.array(distances), nb)[:nb]
+        ranges = np.array(ranges)
+        for id_ in best:
+            # Find index in ranges with a small trick: argmax gives id of the
+            # first max value, here True.
+            typeid = np.argmax(ranges > id_) - 1
+            type_ = types[typeid]
+            mecha = type_(*samples[typeid][id_-ranges[typeid]])
             self.search_res.append({
                 'type': type(mecha),
                 'props': mecha.props.copy(),
