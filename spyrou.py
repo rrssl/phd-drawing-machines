@@ -17,7 +17,7 @@ import numpy as np
 
 from controlpane import ControlPane, make_slider
 from mecha import EllipticSpirograph#, SingleGearFixedFulcrumCDM
-from pois import find_krv_max, find_isect
+import pois
 import curvedistances as cdist
 
 Modes = Enum('Modes', 'sketcher editor')
@@ -98,6 +98,9 @@ class Model:
     isect_invar = OrderedDict(((Invariants.position, False),
                                (Invariants.intersection_angle, False),
                                (Invariants.on_line, False)))
+    # Weights used to match PoIs.
+    krv_weights = [1., 1., .05, .00001]
+    isect_weights = [1., 1., .02, .02]
 
     def __init__(self):
         self.crv_bnds = [None, None]
@@ -116,25 +119,136 @@ class Model:
         self.nb_dp = 2
         self.cbounds = []
         self.crv = None
-        # The following are private; PoIs should be accessed with get_poi.
+        # PoIs should be accessed with get_poi.
         self._krv_pois = None
         self._isect_pois = None
-        self._poi_dict = {}
-        # Dictionary of poi_key:{Invariance:bool, ...} pairs
-        self.invar_dict = {}
+        self._nb_krv_keys = 0
+        self._nb_isect_keys = 0
+        self._poi_dict = {} # key:poi_id dict
+        self._lost_pois = {} # key:poi dict
+        self.key_mappings = {} # old_key:new_key dict
+        self.invar_dicts = {} # poi_key:{Invariance:bool, ...} dict
 
-    def compute_pois(self):
-        self._krv_pois = find_krv_max(self.crv)
-        self._isect_pois = find_isect(self.crv)
+    @staticmethod
+    def _compute_pois(crv):
+        return pois.find_krv_max(crv), pois.find_isect(crv)
 
-    def reset_pois_dict(self):
+    def _update_pois(self):
+        new_krv, new_isect = self._compute_pois(self.crv)
+        self.key_mappings.clear()
+        # Inverse dicts to keep track of conflicts (dict entries pointing
+        # to the same PoI) and unmatched PoIs.
+        if new_krv is not None and new_krv.size:
+            krv_id2key = {}
+        else:
+            krv_id2key = None
+        if new_isect is not None and new_isect.size:
+            isect_id2key = {}
+        else:
+            isect_id2key = None
+        # Map old keys to new PoIs.
+        # Each PoI is mapped to a unique key.
+        for key, i_old in self._poi_dict.items():
+            # Test if key was previously lost.
+            if i_old is None:
+                poi_old = self._lost_pois[key]
+            else:
+                poi_old = getattr(self, key[:-3])[i_old]
+            # Test if it is worth looking for a new correspondence.
+            if key.startswith('_krv') and krv_id2key is not None:
+                pois_new = new_krv
+                weights = self.krv_weights
+                id2key = krv_id2key
+            elif key.startswith('_isect') and isect_id2key is not None:
+                pois_new = new_isect
+                id2key = isect_id2key
+                weights = self.isect_weights
+            else:
+                # No correspondence to find, key is now lost.
+                self._poi_dict[key] = None
+                self._lost_pois[key] = poi_old
+                continue
+
+            i_new = self.find_correspondence(poi_old, pois_new, weights)
+
+            if i_new is None:
+                # key gets lost.
+                self._poi_dict[key] = None
+                self._lost_pois[key] = poi_old
+                continue
+            last_key = id2key.get(i_new)
+            if last_key is None:
+                # No conflict, everything is fine.
+                id2key[i_new] = key
+                self._poi_dict[key] = i_new
+                self._lost_pois.pop(key, None)
+                continue
+            # Resolve conflict by giving precedence to the oldest key.
+            # Younger key is considered lost. Keep track of these
+            # remappings so that Controller can know about them.
+            if int(last_key[-3:]) > int(key[-3:]):
+                # key is older
+                # key replaces last_key
+                id2key[i_new] = key
+                self._lost_pois.pop(key, None)
+                self._poi_dict[key] = i_new
+                # last_key gets lost
+                self._poi_dict[last_key] = None
+                self._lost_pois[last_key] = poi_old
+                # Store mapping
+                self.key_mappings[last_key] = key
+                # Remove possible old mapping
+                self.key_mappings.pop(key, None)
+                # Update possible invariant (either key or last_key has it)
+                if self.invar_dicts.get(last_key) is not None:
+                    self.invar_dicts[key] = self.invar_dicts.pop(last_key)
+            else:
+                # last_key is older
+                # key gets lost
+                self._poi_dict[key] = None
+                self._lost_pois[key] = poi_old
+                # Store mapping
+                self.key_mappings[key] = last_key
+                # Remove possible old mapping
+                self.key_mappings.pop(last_key, None)
+                # Update possible invariant (either key or last_key has it)
+                if self.invar_dicts.get(key) is not None:
+                    self.invar_dicts[last_key] = self.invar_dicts.pop(key)
+        # If some unmatched PoIs remain, either the tracking failed, or new
+        # PoIs have appeared.
+        # Give new keys to unmatched PoIs.
+        if new_krv is not None and new_krv.size:
+            for i in range(len(new_krv)):
+                if i not in krv_id2key:
+                    self._nb_krv_keys += 1
+                    self._poi_dict[
+                        '_krv_pois{:03d}'.format(self._nb_krv_keys)] = i
+        if new_isect is not None and new_isect.size:
+            for i in range(len(new_isect)):
+                if i not in isect_id2key:
+                    self._nb_isect_keys += 1
+                    self._poi_dict[
+                        '_isect_pois{:03d}'.format(self._nb_isect_keys)] = i
+
+        self._krv_pois, self._isect_pois = new_krv, new_isect
+
+    @staticmethod
+    def find_correspondence(poi, cand_pois, weights=(), tol=4.):
+        diff = (cand_pois - poi.reshape(1, -1))
+        if len(weights) == cand_pois.shape[1]:
+            diff *= weights
+        distances = np.linalg.norm(diff, axis=1)
+        index = np.argmin(distances)
+        return index if distances[index] <= tol else None
+
+    def _reset_pois_dict(self):
         """Regenerate the PoI dictionary.
 
         The PoI dict maps a unique key to a position in the corresponding
         PoI container.
 
         This method should be called each time the mechanism or the discrete
-        properties change, and only after compute_pois has been called.
+        properties change, and only after recompute_pois has been called.
 
         Each PoI has a key that is given to exterior classes. This way, even
         if the features of the PoI change, the PoI key is still valid. In other
@@ -142,29 +256,30 @@ class Model:
         """
         # We assume that there won't be more than 999 PoIs.
         if self._krv_pois is not None and self._krv_pois.size:
+            self._nb_krv_keys = self._krv_pois.shape[0]
             self._poi_dict = {'_krv_pois{:03d}'.format(i):i
-                             for i in range(self._krv_pois.shape[0])}
-            shift = self._krv_pois.shape[0]
+                              for i in range(self._nb_krv_keys)}
         else:
+            self._nb_krv_keys = 0
             self._poi_dict = {}
-            shift = 0
         if self._isect_pois is not None and self._isect_pois.size:
-            shift = self._isect_pois.shape[0]
+            self._nb_isect_keys = self._isect_pois.shape[0]
             self._poi_dict.update(
-                {'_isect_pois{:03d}'.format(j+shift):j
-                 for j in range(self._isect_pois.shape[0])}
+                {'_isect_pois{:03d}'.format(i):i
+                 for i in range(self._isect_pois.shape[0])}
                 )
+        else:
+            self._nb_isect_keys = 0
 
-    def find_close_pois_keys(self, position, radius):
+    def find_close_pois_keys(self, xy, radius):
         norm = np.linalg.norm
         return [key for key, val in self._poi_dict.items()
-                if norm(getattr(self, key[:-3])[val, :2] - position) <= radius]
+                if (val is not None and
+                    norm(getattr(self, key[:-3])[val, :2] - xy) <= radius)]
 
     def get_poi(self, key):
         value = self._poi_dict.get(key)
-        if value is None:
-            return None
-        return getattr(self, key[:-3])[value]
+        return None if value is None else getattr(self, key[:-3])[value]
 
     def get_poi_invariance(self, key):
         """Get the current invariance state of a PoI, as an Invariance:state
@@ -173,7 +288,7 @@ class Model:
         Do not use this function to set the invariance state of a PoI:
         changes will not be propagated.
         """
-        value = self.invar_dict.get(key)
+        value = self.invar_dicts.get(key)
         if value is None:
             return (Model.krv_invar.copy() if key.startswith('_krv')
                     else Model.isect_invar.copy())
@@ -185,12 +300,12 @@ class Model:
 
         'invar' should be a Invariance:bool dict.
         """
-        value = self.invar_dict.get(key)
+        value = self.invar_dicts.get(key)
         if value is None:
             base = (Model.krv_invar.copy() if key.startswith('_krv')
                     else Model.isect_invar.copy())
             base.update(invar)
-            self.invar_dict[key] = base
+            self.invar_dicts[key] = base
         else:
             value.update(invar)
 
@@ -224,7 +339,6 @@ class Model:
                 mecha.reset(*sample)
                 crv = mecha.get_curve()
                 distances.append(self.distance(crv, sketch))
-        print(len(distances))
         best = np.argpartition(np.array(distances), nb)[:nb]
         ranges = np.array(ranges)
         for id_ in best:
@@ -246,8 +360,8 @@ class Model:
         self.cprops = self.mecha.props[self.nb_dp:]
         self.cbounds = [self.mecha.get_prop_bounds(i+self.nb_dp)
                         for i, prop in enumerate(self.cprops)]
-        self.compute_pois()
-        self.reset_pois_dict()
+        self._krv_pois, self._isect_pois = self._compute_pois(self.crv)
+        self._reset_pois_dict()
 
     def set_cont_prop(self, props):
         """Set the continuous property vector, update data."""
@@ -256,8 +370,9 @@ class Model:
         self.mecha.reset(*np.r_[self.dprops, props])
         self.cbounds = [self.mecha.get_prop_bounds(i+self.nb_dp)
                         for i, prop in enumerate(props)]
-        # Update curve and PoI.
+        # Update curve and PoIs.
         self.crv = self.mecha.get_curve()
+        self._update_pois()
 
 
 class View:
@@ -428,7 +543,7 @@ class View:
     def draw_search_cell(self, coords, id_, drawing=None):
         ax = self.fig.add_axes(coords, axisbg='.9', zorder=2)
         ax.set_aspect('equal', 'datalim')
-        ax.margins(.1)
+        ax.margins(.2)
         for s in ax.spines.values():
             s.set_color('.2')
             s.set_linewidth(10)
@@ -697,6 +812,8 @@ class View:
         if self.se_layer:
             for ax, result in zip(self.se_layer, results):
                 ax.lines[0].set_data(*result)
+                ax.relim()
+                ax.autoscale()
             self.show_layer(self.se_layer)
         else:
             self.draw_search_menu(results)
@@ -817,7 +934,8 @@ class View:
             self.ed_canvas.autoscale()
 
     def update_pois(self, pois_xy, pois_keys):
-        for item in self.ed_canvas.patches:
+        # /!\ Iterate over list view to remove elements!
+        for item in self.ed_canvas.patches[:]:
             if not (item in self.locked_pois or item is self.selected_poi):
                 item.remove()
 
@@ -826,10 +944,11 @@ class View:
             if self.selected_poi is not None:
                 exclude.append(self.selected_poi.poi_key)
 
+            rad = np.ptp(self.ed_canvas.get_xlim())*.02
             for xy, key in zip(pois_xy, pois_keys):
                 if key not in exclude:
                     self.ed_canvas.add_patch(
-                        Circle(xy, radius=.1, fill=True, fc='lightgreen',
+                        Circle(xy, radius=rad, fill=True, fc='lightgreen',
                                ec='none', zorder=3, picker=True)
                         )
                     self.ed_canvas.patches[-1].poi_key = key
@@ -1072,8 +1191,11 @@ class Controller:
         cprops = self.model.cprops
         cprops[id_] = value
         self.model.set_cont_prop(cprops)
+        # Update controller
+        self.remap_keys(self.model.key_mappings)
         # Update view
         self.view.update_editor_plot(self.model.crv)
+        self.update_locked_pois()
         for i, cbounds in enumerate(self.model.cbounds):
             self.view.controls.set_bounds(i, cbounds)
 
@@ -1081,18 +1203,20 @@ class Controller:
         extent = self.view.ed_canvas.get_xlim()
         radius = self.poi_capture_radius * abs(extent[1] - extent[0])
         pois_keys = self.model.find_close_pois_keys(position, radius)
+        if len(pois_keys) != len(set(pois_keys)):
+            print("Duplicate keys: {}".format(pois_keys))
         pois_xy = [self.model.get_poi(key)[:2] for key in pois_keys]
         return pois_xy, pois_keys
 
-    def select_poi(self, event):
+    def select_poi(self, patch, redraw=True):
         # Change aspect
-        self.view.select_poi(event.artist)
+        self.view.select_poi(patch)
         # Change invariants menu
-        key = event.artist.poi_key
+        key = patch.poi_key
         invar = self.model.get_poi_invariance(key)
         labels = [type_.name for type_ in invar.keys()]
         states = list(invar.values())
-        self.view.update_invariants(labels, states)
+        self.view.update_invariants(labels, states, redraw)
         # Update invariants callbacks
         for name, wg in self.view.widgets.items():
             if name.startswith('ed_invar_'):
@@ -1101,6 +1225,48 @@ class Controller:
                     # Remove previous callback.
                     wg.disconnect(wg.cnt-1)
                 wg.on_clicked(self.get_invar_callback(key, invar_type))
+
+    def update_locked_pois(self, remove_if_lost=False):
+        locked = self.view.locked_pois.copy()
+        selected = self.view.selected_poi
+        if selected is not None and selected not in locked:
+            locked.append(selected)
+
+        rad = np.ptp(self.view.ed_canvas.get_xlim())*.02
+        for poi_patch in locked:
+            poi = self.model.get_poi(poi_patch.poi_key)
+            if poi is not None:
+                poi_patch.center = poi[:2]
+                poi_patch.radius = rad
+                poi_patch.set_visible(True)
+            elif remove_if_lost:
+                if poi_patch is locked[-1]:
+                    self.view.selected_poi = None
+                    print("Unselecting PoI.")
+                elif poi_patch in self.view.locked_pois:
+                    self.view.unlock_poi(poi_patch)
+                    self.model.invar_dict.pop(poi_patch.poi_key)
+                poi_patch.remove()
+            else:
+                poi_patch.set_visible(False)
+
+        self.view.redraw_axes(self.view.ed_canvas)
+
+    def remap_keys(self, mapping):
+        """Remap all PoI keys previously stored in patches and callbacks.
+
+        Needs to be called after the model's PoIs have been updated.
+        """
+        # Remap keys in patches.
+        locked = self.view.locked_pois.copy()
+        selected = self.view.selected_poi
+        if selected is not None and selected not in locked:
+            locked.append(selected)
+        for patch in locked:
+            patch.poi_key = mapping.get(patch.poi_key) or patch.poi_key
+        # Remap keys in callbacks.
+        if selected is not None:
+            self.select_poi(selected, redraw=False)
 
     def get_invar_callback(self, key, invar_type):
         def toggle(event):
@@ -1113,7 +1279,6 @@ class Controller:
                 self.view.unlock_poi(self.view.selected_poi)
             self.model.set_poi_invariance(key, invar_dict)
             self.view.redraw_axes(self.view.ed_canvas)
-
         return toggle
 
     def apply_invariants(self, event):
@@ -1136,9 +1301,13 @@ class Controller:
     def on_pick(self, event):
         if self.check_tb_inactive():
             if event.mouseevent.inaxes == self.view.ed_canvas:
-                print("A PoI was selected.")
                 if event.artist is not self.view.selected_poi:
-                    self.select_poi(event)
+                    print("A PoI was selected: {}".format(event.artist.poi_key))
+#                    print("from patch: {}".format(id(event.artist)))
+#                    print("with picker state: {}".format(event.artist.get_picker()))
+#                    print("Current number of patches: {}".format(
+#                         len(event.mouseevent.inaxes.patches)))
+                    self.select_poi(event.artist)
 #                self.view.redraw_axes(self.view.ed_canvas)
 
     def on_press(self, event):
@@ -1181,7 +1350,7 @@ class Controller:
 
             elif event.inaxes in [s.ax for s in
                                   self.view.controls.sliders.values()]:
-                self.model.compute_pois()
+                self.update_locked_pois(remove_if_lost=True)
 
 
 def main():
