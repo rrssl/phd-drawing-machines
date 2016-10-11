@@ -34,6 +34,8 @@ class Mechanism:
         costly bound computations).
         """
         eps = 1e-6
+        nb_dprops = 0
+        nb_cprops = 0
 
         @classmethod
         def get_constraints(cls, cstr={}):
@@ -164,6 +166,8 @@ class BaseSpirograph(DrawingMechanism):
 
     class ConstraintSolver(Mechanism.ConstraintSolver):
         """Class for handling design constraints."""
+        nb_dprops = 2
+        nb_cprops = 1
         max_nb_turns = 20 # Arbitrary value
 
         @classmethod
@@ -279,6 +283,8 @@ class EllipticSpirograph(DrawingMechanism):
 
     class ConstraintSolver(Mechanism.ConstraintSolver):
         """Class for handling design constraints."""
+        nb_dprops = 2
+        nb_cprops = 2
         max_nb_turns = 20 # Arbitrary value
 
         @classmethod
@@ -436,6 +442,8 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
 
     class ConstraintSolver(Mechanism.ConstraintSolver):
         """Class for handling design constraints."""
+        nb_dprops = 2
+        nb_cprops = 4
         max_nb_turns = 25 # Arbitrary value
 
         @classmethod
@@ -523,8 +531,8 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
                                 p[5] = d_s
                                 yield p.copy()
 
-            for R_g, R_t in skipends(farey(cls.max_nb_turns)):
-                pass # Copy sub-loops
+#            for R_g, R_t in skipends(farey(cls.max_nb_turns)):
+#                pass # Copy sub-loops
 
         @staticmethod
         def _get_FG(R_t, R_g, d_f, theta_g):
@@ -647,6 +655,8 @@ class HootNanny(DrawingMechanism):
 
     class ConstraintSolver(Mechanism.ConstraintSolver):
         """Class for handling design constraints."""
+        nb_dprops = 3
+        nb_cprops = 4
         max_nb_turns = 25 # Arbitrary value
 
         @classmethod
