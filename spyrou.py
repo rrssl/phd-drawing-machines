@@ -19,12 +19,13 @@ from controlpane import ControlPane, make_slider
 from mecha import EllipticSpirograph#, SingleGearFixedFulcrumCDM
 import pois
 import curvedistances as cdist
+from smarteditor import SmartEditor
+from invariants import Invariants, get_feature
+
 
 Modes = Enum('Modes', 'sketcher editor')
 Actions = Enum('Actions',
                'none sketch set_min_bound set_max_bound set_sym search show')
-Invariants = Enum('Invariants',
-                  'position curvature intersection_angle distance on_line')
 
 
 class FancyButton(Button):
@@ -89,7 +90,7 @@ class CheckButton(Button):
             if self.drawon:
                 self.ax.figure.canvas.draw()
 
-class Model:
+class Model(SmartEditor):
     # Dictionaries used to build each invariant. If the type is present in the
     # dict, it means that it is supported by the Model.
     krv_invar = OrderedDict(((Invariants.position, False),
@@ -103,23 +104,24 @@ class Model:
     isect_weights = [1., 1., .02, .02]
 
     def __init__(self):
+        ## Sketcher
         self.crv_bnds = [None, None]
         self.sym_order = 1
         self.strokes = [] # List of N*2 lists of points
         self.undone_strokes = []
         # Mechanism retrieval
+        self.pts_per_dim = 7
         self.samples = self.get_global_sampling()
         self.distance = cdist.DistanceField().get_dist
-        # List of dicts with keys ('type', 'props', 'curve')
-        self.search_res = []
+        self.search_res = [] # list of  {'type', 'props', 'curve'} dicts
+        # Mechanism
         self.mecha = None
-        self.dprops = []
-        self.cprops = []
-        self.nb_cp = 2
-        self.nb_dp = 2
+        self.nb_crv_pts = 2**6
+        self.dprops = ()
+        self.cprops = ()
         self.cbounds = []
         self.crv = None
-        # PoIs should be accessed with get_poi.
+        # PoIs and invariants.
         self._krv_pois = None
         self._isect_pois = None
         self._nb_krv_keys = 0
@@ -129,9 +131,53 @@ class Model:
         self.key_mappings = {} # old_key:new_key dict
         self.invar_dicts = {} # poi_key:{Invariance:bool, ...} dict
 
+        ## Smart editing
+        self.keep_ratio = .2 # .05 if mechanisms with more dims
+        self.nbhood_size = .3
+        # Reference curve and parameter(s).
+        self.ref_crv = None
+        self.ref_poi = None
+        # Solution space.
+        self.pca = None
+        self.phi = None
+        self.phi_inv = None
+        self.cbounds_invar = None
+        self.ndim_invar_space = 1
+        self.cprops_invar = None
+
     @staticmethod
     def _compute_pois(crv):
         return pois.find_krv_max(crv), pois.find_isect(crv)
+
+    def _reset_pois_dict(self):
+        """Regenerate the PoI dictionary.
+
+        The PoI dict maps a unique key to a position in the corresponding
+        PoI container.
+
+        This method should be called each time the mechanism or the discrete
+        properties change, and only after recompute_pois has been called.
+
+        Each PoI has a key that is given to exterior classes. This way, even
+        if the features of the PoI change, the PoI key is still valid. In other
+        words, each key 'follows' its PoI when we explore the parameter space.
+        """
+        # We assume that there won't be more than 999 PoIs.
+        if self._krv_pois is not None and self._krv_pois.size:
+            self._nb_krv_keys = self._krv_pois.shape[0]
+            self._poi_dict = {'_krv_pois{:03d}'.format(i):i
+                              for i in range(self._nb_krv_keys)}
+        else:
+            self._nb_krv_keys = 0
+            self._poi_dict = {}
+        if self._isect_pois is not None and self._isect_pois.size:
+            self._nb_isect_keys = self._isect_pois.shape[0]
+            self._poi_dict.update(
+                {'_isect_pois{:03d}'.format(i):i
+                 for i in range(self._isect_pois.shape[0])}
+                )
+        else:
+            self._nb_isect_keys = 0
 
     def _update_pois(self):
         new_krv, new_isect = self._compute_pois(self.crv)
@@ -232,6 +278,50 @@ class Model:
 
         self._krv_pois, self._isect_pois = new_krv, new_isect
 
+    def compute_invariance(self):
+        """Temporary function for the demo."""
+        # Gather the invariants.
+        invariants = []
+        for key, invar_dict in self.invar_dicts.items():
+            invariants += [
+                (key, self.get_poi(key), invar_type)
+                for invar_type, flag in invar_dict.items() if flag
+                ]
+        # Select the first one
+        # TODO change this in the final version
+        invar = invariants[0]
+        # Bind the methods and attributes that are going to be used in the
+        # computation.
+        self.ref_crv = self.crv
+        self.ref_poi = invar[1]
+        if invar[0].startswith('_krv'):
+            get_pois = pois.find_krv_max
+            weights = self.krv_weights
+        else:
+            get_pois = pois.find_isect
+            weights = self.isect_weights
+        def get_corresp(ref_crv, ref_poi, curves):
+            pois_list = [get_pois(crv) for crv in curves]
+            return [
+                pois_[self.find_correspondence(self.ref_poi, pois_, weights)]
+                if (pois_ is not None and pois_.size) else None
+                for pois_ in pois_list]
+        self.get_corresp = get_corresp
+        self.get_features = get_feature(invar[2])()
+        print(type(self.get_features))
+        # Compute the invariant space.
+        self.compute_invar_space()
+
+    def count_invariants(self):
+        return sum(
+            sum(invdict.values()) for invdict in self.invar_dicts.values())
+
+    def find_close_pois_keys(self, xy, radius):
+        norm = np.linalg.norm
+        return [key for key, val in self._poi_dict.items()
+                if (val is not None and
+                    norm(getattr(self, key[:-3])[val, :2] - xy) <= radius)]
+
     @staticmethod
     def find_correspondence(poi, cand_pois, weights=(), tol=4.):
         diff = (cand_pois - poi.reshape(1, -1))
@@ -241,41 +331,14 @@ class Model:
         index = np.argmin(distances)
         return index if distances[index] <= tol else None
 
-    def _reset_pois_dict(self):
-        """Regenerate the PoI dictionary.
-
-        The PoI dict maps a unique key to a position in the corresponding
-        PoI container.
-
-        This method should be called each time the mechanism or the discrete
-        properties change, and only after recompute_pois has been called.
-
-        Each PoI has a key that is given to exterior classes. This way, even
-        if the features of the PoI change, the PoI key is still valid. In other
-        words, each key 'follows' its PoI when we explore the parameter space.
-        """
-        # We assume that there won't be more than 999 PoIs.
-        if self._krv_pois is not None and self._krv_pois.size:
-            self._nb_krv_keys = self._krv_pois.shape[0]
-            self._poi_dict = {'_krv_pois{:03d}'.format(i):i
-                              for i in range(self._nb_krv_keys)}
+    def get_cont_prop(self):
+        if self.is_in_invar_space():
+            return self.cprops_invar.copy()
         else:
-            self._nb_krv_keys = 0
-            self._poi_dict = {}
-        if self._isect_pois is not None and self._isect_pois.size:
-            self._nb_isect_keys = self._isect_pois.shape[0]
-            self._poi_dict.update(
-                {'_isect_pois{:03d}'.format(i):i
-                 for i in range(self._isect_pois.shape[0])}
-                )
-        else:
-            self._nb_isect_keys = 0
+            return self.cprops.copy()
 
-    def find_close_pois_keys(self, xy, radius):
-        norm = np.linalg.norm
-        return [key for key, val in self._poi_dict.items()
-                if (val is not None and
-                    norm(getattr(self, key[:-3])[val, :2] - xy) <= radius)]
+    def get_cont_bounds(self):
+        return self.cbounds_invar or self.cbounds
 
     def get_poi(self, key):
         value = self._poi_dict.get(key)
@@ -294,6 +357,9 @@ class Model:
                     else Model.isect_invar.copy())
         else:
             return value.copy()
+
+    def is_in_invar_space(self):
+        return self.cprops_invar is not None
 
     def set_poi_invariance(self, key, invar):
         """Set the current invariance state of a PoI.
@@ -314,10 +380,21 @@ class Model:
         samples = {}
         mechanisms_types = (EllipticSpirograph, )#SingleGearFixedFulcrumCDM)
         for type_ in mechanisms_types:
+            size = (self.pts_per_dim,)*type_.ConstraintSolver.nb_cprops
             samples[type_] = np.array(list(
                 type_.ConstraintSolver.sample_feasible_domain(
-                    grid_resol=(4,)*4)))
+                    grid_resol=size)))
         return samples
+
+    def project_on_invar_space(self):
+        """Project the current position in prop space onto the invar space."""
+        if not self.is_in_invar_space():
+            return
+        self.cprops = self.project_cont_prop_vect()
+        self.mecha.reset(*np.r_[self.dprops, self.cprops])
+        self.crv = self.mecha.get_curve(self.nb_crv_pts)
+        self._update_pois()
+        self.compute_invar_space()
 
     def search_mecha(self, nb):
         if not len(self.strokes):
@@ -337,7 +414,7 @@ class Model:
             mecha = type_(*type_samples[0])
             for sample in type_samples:
                 mecha.reset(*sample)
-                crv = mecha.get_curve()
+                crv = mecha.get_curve(self.nb_crv_pts)
                 distances.append(self.distance(crv, sketch))
         best = np.argpartition(np.array(distances), nb)[:nb]
         ranges = np.array(ranges)
@@ -350,28 +427,71 @@ class Model:
             self.search_res.append({
                 'type': type(mecha),
                 'props': mecha.props.copy(),
-                'curve': mecha.get_curve()
+                'curve': mecha.get_curve(self.nb_crv_pts)
                 })
 
     def set_mecha(self, mecha):
+        nb_dp = mecha.ConstraintSolver.nb_dprops
         self.mecha = mecha
-        self.crv = self.mecha.get_curve()
-        self.dprops = self.mecha.props[:self.nb_dp]
-        self.cprops = self.mecha.props[self.nb_dp:]
-        self.cbounds = [self.mecha.get_prop_bounds(i+self.nb_dp)
+        self.crv = self.mecha.get_curve(self.nb_crv_pts)
+        self.dprops = self.mecha.props[:nb_dp]
+        self.cprops = self.mecha.props[nb_dp:]
+        self.cbounds = [self.mecha.get_prop_bounds(i+nb_dp)
                         for i, prop in enumerate(self.cprops)]
+        self.clear_invar_space()
         self._krv_pois, self._isect_pois = self._compute_pois(self.crv)
         self._reset_pois_dict()
 
-    def set_cont_prop(self, props):
-        """Set the continuous property vector, update data."""
-        self.cprops = props
+    def clear_invar_space(self):
+        self.pca = None
+        self.cprops_invar = None
+        self.phi = lambda x: np.asarray(x)
+        self.phi_inv = lambda x: np.asarray(x)
+        self.cbounds_invar = None
+
+    def set_cont_prop(self, id_, value):
+        """Set a value of the continuous property vector, update data."""
+        if not self.is_in_invar_space():
+            self.cprops[id_] = value
+        else:
+            self.cprops_invar[id_] = value
+            self.cprops = self.phi(self.cprops_invar).ravel()
         # We need to update all the parameters before getting the bounds.
-        self.mecha.reset(*np.r_[self.dprops, props])
-        self.cbounds = [self.mecha.get_prop_bounds(i+self.nb_dp)
-                        for i, prop in enumerate(props)]
+        self.mecha.reset(*np.r_[self.dprops, self.cprops])
+        # Get the new bounds.
+        if self.is_in_invar_space():
+            for i in range(self.ndim_invar_space):
+                if i != id_:
+                    self.cbounds_invar[i] = self.get_bounds_invar_space(i)
+        else:
+            for i in range(len(self.cprops)):
+                if i != id_:
+                    self.cbounds[i] = self.mecha.get_prop_bounds(
+                        i+len(self.dprops))
         # Update curve and PoIs.
-        self.crv = self.mecha.get_curve()
+        self.crv = self.mecha.get_curve(self.nb_crv_pts)
+        self._update_pois()
+
+    def set_cont_props(self, props):
+        """Set the continuous property vector, update data."""
+        if not self.is_in_invar_space():
+            self.cprops= props
+        else:
+            self.cprops_invar = props
+            self.cprops = self.phi(self.cprops_invar).ravel()
+        # We need to update all the parameters before getting the bounds.
+        self.mecha.reset(*np.r_[self.dprops, self.cprops])
+        # Get the new bounds.
+        if self.is_in_invar_space():
+            self.cbounds_invar = [
+                self.get_bounds_invar_space(i)
+                for i in range(self.ndim_invar_space)]
+        else:
+            self.cbounds = [
+                self.mecha.get_prop_bounds(i+len(self.dprops))
+                for i in range(len(self.cprops))]
+        # Update curve and PoIs.
+        self.crv = self.mecha.get_curve(self.nb_crv_pts)
         self._update_pois()
 
 
@@ -406,7 +526,7 @@ class View:
         self.ed_layer = []
         self.controls = None
         self.draw_editor_tab()
-        self.update_controls([], [], redraw=False)
+        self.update_controls([], redraw=False)
         self.update_invariants([], [], redraw=False)
         self.hide_layer(self.ed_layer)
 
@@ -907,15 +1027,14 @@ class View:
             self.hide_layer([wg.ax])
             wg.set_active(False)
 
-    def update_controls(self, data, bounds, redraw=True):
-        assert(len(data) == len(bounds))
+    def update_controls(self, data, redraw=True):
         self.nb_props = len(data)
         for i in range(self.max_nb_props):
             if i < self.nb_props:
                 _, args = data[i]
                 self.controls.set_valminmax(i, args['valmin'],
                                             args['valmax'])
-                self.controls.set_bounds(i, bounds[i])
+                self.controls.set_bounds(i, args['bounds'])
                 self.controls.set_val(i, args['val'], incognito=True)
 
                 self.awaken_widget('ed_prop_{}'.format(i))
@@ -925,13 +1044,14 @@ class View:
         if redraw:
             self.fig.canvas.draw()
 
-    def update_editor_plot(self, curve):
+    def update_editor_plot(self, curve, rescale=False):
         if not len(self.ed_canvas.lines):
             self.ed_canvas.plot(*curve, lw=2, c='b', alpha=.8)
         else:
             self.ed_canvas.lines[0].set_data(*curve)
-            self.ed_canvas.relim()
-            self.ed_canvas.autoscale()
+            if rescale:
+                self.ed_canvas.relim()
+                self.ed_canvas.autoscale()
 
     def update_pois(self, pois_xy, pois_keys):
         # /!\ Iterate over list view to remove elements!
@@ -1118,20 +1238,11 @@ class Controller:
         # Update model
         choice = self.model.search_res[id_]
         self.model.set_mecha(choice['type'](*choice['props']))
-
         # Update view
         self.view.clear_canvas(self.view.ed_canvas)
-        self.view.update_editor_plot(choice['curve'])
-        data = []
-        for i in range(self.model.nb_cp):
-            data.append(
-                (i, {'valmin': .5*self.model.cbounds[i][0],
-                     'valmax': 1.5*self.model.cbounds[i][1],
-                     'val': self.model.cprops[i],
-                     'label': ''
-                     })
-                )
-        self.view.update_controls(data, self.model.cbounds, redraw=False)
+        self.view.update_editor_plot(choice['curve'], rescale=True)
+        data = self.get_slider_data()
+        self.view.update_controls(data, redraw=False)
         self.view.hide_search_menu(redraw=False)
         self.view.switch_mode(self.mode, redraw=True)
 
@@ -1188,15 +1299,15 @@ class Controller:
 
     def update_mecha_prop(self, id_, value):
         # Update model
-        cprops = self.model.cprops
+        cprops = self.model.get_cont_prop()
         cprops[id_] = value
-        self.model.set_cont_prop(cprops)
+        self.model.set_cont_prop(id_, value)
         # Update controller
         self.remap_keys(self.model.key_mappings)
         # Update view
         self.view.update_editor_plot(self.model.crv)
         self.update_locked_pois()
-        for i, cbounds in enumerate(self.model.cbounds):
+        for i, cbounds in enumerate(self.model.get_cont_bounds()):
             self.view.controls.set_bounds(i, cbounds)
 
     def find_close_pois(self, position):
@@ -1279,10 +1390,47 @@ class Controller:
                 self.view.unlock_poi(self.view.selected_poi)
             self.model.set_poi_invariance(key, invar_dict)
             self.view.redraw_axes(self.view.ed_canvas)
+            if (not self.model.count_invariants()
+                and self.model.is_in_invar_space()):
+                print('!')
+                self.model.clear_invar_space()
+                data = self.get_slider_data()
+                self.view.update_controls(data)
         return toggle
 
+    def get_slider_data(self):
+        bounds = self.model.get_cont_bounds()
+        cprops = self.model.get_cont_prop()
+        is_approx = self.model.cbounds_invar is not None
+        data = [
+            (i, {'valmin': -1. if is_approx else .5*bounds[i][0],
+                 'valmax': 1. if is_approx else 1.5*bounds[i][1],
+                 'val': cprops[i],
+                 'label': '',
+                 'bounds': bounds[i]
+                 })
+            for i in range(len(cprops))]
+        return data
+
     def apply_invariants(self, event):
-        print("Apply the invariants.")
+        if not self.model.count_invariants():
+            print("There is no invariant to apply.")
+        else:
+            print("Apply the invariants.")
+            self.model.compute_invariance()
+            data = self.get_slider_data()
+            self.view.update_controls(data)
+
+    def project_on_invar_space(self):
+        # Update model
+        self.model.project_on_invar_space()
+        # Update controller
+        self.remap_keys(self.model.key_mappings)
+        # Update view
+        self.view.update_editor_plot(self.model.crv)
+        self.update_locked_pois()
+        data = self.get_slider_data()
+        self.view.update_controls(data)
 
     def on_move(self, event):
         if self.check_tb_inactive():
@@ -1350,6 +1498,8 @@ class Controller:
 
             elif event.inaxes in [s.ax for s in
                                   self.view.controls.sliders.values()]:
+#                if self.model.is_in_invar_space:
+#                    self.model.project_on_invar_space()
                 self.update_locked_pois(remove_if_lost=True)
 
 
