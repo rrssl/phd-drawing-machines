@@ -7,13 +7,14 @@ Simulation and control of the "Hoot-Nanny Magic Designer".
 """
 import math
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 
 from controlpane import ControlPane
 from mecha import HootNanny
 from mechaplot import mechaplot_factory
 
 
-class CDMPlot:
+class HootPlot:
     """Simulation of the Cycloid Drawing Machine with the 'simple setup'."""
 
     def __init__(self, init_data):
@@ -27,8 +28,14 @@ class CDMPlot:
 
     def init_draw(self):
         """Initialize the figure."""
-        self.fig, self.ax = plt.subplots()
+        self.fig = plt.figure(figsize=(16,8))
+        gs = GridSpec(1, 6)
+        self.ax = self.fig.add_subplot(gs[:3])
         self.ax.set_aspect('equal')
+        self.ax.get_xaxis().set_ticks([])
+        self.ax.get_yaxis().set_ticks([])
+        plt.subplots_adjust(left=.05, right=.9, bottom=.15, top=.85,
+                            wspace=0., hspace=1.)
 
         self.mecha_plot = mechaplot_factory(self.mecha, self.ax)
 
@@ -42,7 +49,7 @@ class CDMPlot:
                 # Account for slider imprecision wrt bounds.
                 bounds[-1] = bounds[-1][0] + 1e-3, bounds[-1][1] - 1e-3
         self.control_pane = ControlPane(self.fig, self.init_data, self.update,
-                                        bounds=bounds)
+                                        subplot_spec=gs[4:], bounds=bounds)
 
         self.redraw()
 
@@ -84,7 +91,7 @@ def main():
           'label': "Gear 1 radius"}),
         (2,                     # Radius of gear 2.
          {'valmin': 1,
-          'valmax': 20,
+          'valmax': 10,
           'valinit': 2,
           'label': "Gear 2 radius"}),
         (3,                     # Polar angle between gears.
@@ -114,7 +121,7 @@ def main():
           'label': "Arm 2 length"})
         )
 
-    CDMPlot(param_data)
+    HootPlot(param_data)
 
     plt.show()
 
