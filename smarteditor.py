@@ -191,7 +191,6 @@ class SmartEditor:
             ))
         scores = self.get_invar_scores(samples)
         # Filter out low scores and find linear map of invariant space.
-        # TODO use self.keep_ratio
         ids = get_highest_quantile(scores, q=1/self.keep_ratio)
         if len(ids) < self.ndim_invar_space + 1:
             print("Warning: too few samples for the PCA ({})".format(len(ids)))

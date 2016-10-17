@@ -84,7 +84,7 @@ class POITracker:
         self.prop_data = (self.pid, {'valmin': bounds[0],
                                      'valmax': bounds[1],
                                      'valinit': self.mecha.props[2],
-                                     'label': "Pole dist."
+                                     'label': "Parameter"
                                      }),
 
         self.curve = self.mecha.get_curve(self.nb)
