@@ -22,6 +22,10 @@ import curvedistances as cdist
 from smarteditor import SmartEditor
 from invariants import Invariants, get_feature
 
+DEBUG = True
+if DEBUG:
+    from curveplotlib import distshow
+
 
 Modes = Enum('Modes', 'sketcher editor')
 Actions = Enum('Actions',
@@ -378,7 +382,7 @@ class Model(SmartEditor):
     def get_global_sampling(self):
         """Sample feasible parameters across all mechanisms."""
         samples = {}
-        mechanisms_types = (EllipticSpirograph, )#SingleGearFixedFulcrumCDM)
+        mechanisms_types = (EllipticSpirograph, )#, SingleGearFixedFulcrumCDM)
         for type_ in mechanisms_types:
             size = (self.pts_per_dim,)*type_.ConstraintSolver.nb_cprops
             samples[type_] = np.array(list(
@@ -400,6 +404,18 @@ class Model(SmartEditor):
         if not len(self.strokes):
             return
         sketch = np.hstack([np.array(stroke).T for stroke in self.strokes])
+
+        if DEBUG:
+            fig = plt.figure(figsize=(6,12))
+            ax1 = fig.add_subplot(211)
+            ax1.set_aspect('equal')
+            for stroke in self.strokes:
+                ax1.plot(*np.array(stroke).T, c='b', lw=2)
+            ax2 = fig.add_subplot(212)
+            distshow(ax2, sketch)
+            fig.tight_layout()
+            fig.show()
+
         self.search_res.clear()
         ranges = [0]
         # Convert types and samples to lists to keep the order.
@@ -429,6 +445,14 @@ class Model(SmartEditor):
                 'props': mecha.props.copy(),
                 'curve': mecha.get_curve(self.nb_crv_pts)
                 })
+
+        if DEBUG:
+            fig = plt.figure(figsize=(12,6))
+            for i, sr in enumerate(self.search_res):
+                ax = fig.add_subplot(2, 3, i+1)
+                distshow(ax, sketch, sr['curve'])
+            fig.tight_layout()
+            fig.show()
 
     def set_mecha(self, mecha):
         nb_dp = mecha.ConstraintSolver.nb_dprops
@@ -844,7 +868,7 @@ class View:
 
     def draw_bottom_pane(self):
         width = (self.grid_size[1] - self.grid_size[0]) // 2
-        row_id = 16
+        row_id = self.grid_size[0] * 2 // 3
         self.draw_separator((row_id, self.grid_size[0]))
         row_id += 2
         self.draw_section_title((row_id, self.grid_size[0]+width//2),
