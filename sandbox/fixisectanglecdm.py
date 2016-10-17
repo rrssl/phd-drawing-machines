@@ -2,7 +2,7 @@
 """
 Finding the property subspace of a geometric invariant in curve space.
 
- -- The curve invariant is the position of the PoI.
+ -- The curve invariant is the intersection angle.
 
  -- Corresponding PoIs have the same curve parameter.
 This simplifies the correspondence tracking for this simple demonstration;
@@ -13,20 +13,21 @@ however there is no loss of generality.
 @author: Robin Roussel
 """
 import matplotlib.pyplot as plt
+import numpy as np
 
 import context
 from mecha import SingleGearFixedFulcrumCDM
 from smartedit_demos import ManyDimsDemo
-from poitrackers import get_corresp_krvmax
+from poitrackers import get_corresp_isect
 
 
-class FixPosCDM(ManyDimsDemo):
-    """Find the subspace where the PoIs coincide."""
+class FixIsectAngleCDM(ManyDimsDemo):
+    """Find the subspace where the intersection angle is constant."""
 
     def __init__(self):
         # Initial parameters.
-        self.disc_prop = (4, 3)
-        self.cont_prop = (5., 2.6, 5.9, 2.5)
+        self.disc_prop = (2, 2)
+        self.cont_prop = (3.5, 2.9, 3.8, 1.7)
         self.pts_per_dim = 5
         self.keep_ratio = .05
         self.nbhood_size = .1
@@ -37,11 +38,12 @@ class FixPosCDM(ManyDimsDemo):
         self.nb_crv_pts = 2**6
         # Reference curve and parameter(s).
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
-        self.ref_par = 0
-#        self.ref_par = (98, 183) # Intersection
+
+        self.ref_par = (44, 61)
         self.ref_poi, self.ref_par = self.get_corresp(
             self.ref_crv, self.ref_par, [self.ref_crv])
         self.ref_poi, self.ref_par = self.ref_poi[0], self.ref_par[0]
+        print(self.ref_par)
         # New curve and parameter(s).
         self.new_crv = None
         self.new_poi = None
@@ -63,10 +65,19 @@ class FixPosCDM(ManyDimsDemo):
     ### MODEL
 
     def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_krvmax(ref_crv, ref_par, curves)
+        return get_corresp_isect(ref_crv, ref_par, curves, loc_size=6)
 
     def get_features(self, curve, param, poi):
-        return poi
+        if poi is None or not poi.size:
+            feats= np.full(2, 1e6)
+        else:
+            curve = curve[:, :-1] # Remove last point
+            n = curve.shape[1]
+            param = np.asarray(param)
+            v = curve[:, (param+1)%n] - curve[:, param%n]
+            v /= np.linalg.norm(v, axis=0)
+            feats = v[:, 1] - v[:, 0]
+        return feats
 
     ### VIEW
 
@@ -74,7 +85,7 @@ class FixPosCDM(ManyDimsDemo):
         """Draw the curve."""
         super().draw_curve_space(frame)
         frame.set_title("Curve space (visible in the UI).\n"
-                        "The point of interest's position is fixed by the "
+                        "The angle at the intersection point is fixed by the"
                         "user.\n")
 
 
@@ -82,7 +93,7 @@ def main():
     """Entry point."""
     plt.ioff()
 
-    FixPosCDM()
+    FixIsectAngleCDM()
 
     plt.show()
 

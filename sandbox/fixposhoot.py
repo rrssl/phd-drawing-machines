@@ -17,16 +17,20 @@ import matplotlib.pyplot as plt
 import context
 from mecha import HootNanny
 from smartedit_demos import ManyDimsDemo
+from poitrackers import get_corresp_krvmax
 
 
-class FixPosCDM(ManyDimsDemo):
+class FixPosHoot(ManyDimsDemo):
     """Find the subspace where the PoIs coincide."""
 
     def __init__(self):
         # Initial parameters.
+#        self.disc_prop = (9, 5, 3)
+#        self.cont_prop = (.96, .75, 1.5, 9.9, 7.9)
         self.disc_prop = (10, 4, 2)
-        self.cont_prop = (1., 2.5, 1.5, 10., 8.)
+        self.cont_prop = (.69, 2.52, .86, 10.22, 9.56)
         self.pts_per_dim = 5
+        self.keep_ratio = .05
         self.nbhood_size = .1
         self.ndim_invar_space = 3
         self.mecha = HootNanny(*self.disc_prop+self.cont_prop)
@@ -35,8 +39,7 @@ class FixPosCDM(ManyDimsDemo):
         self.labels = [r"$ \theta_{12}$", "$d_1$", "$d_2$", "$l_1$", "$l_2$"]
         # Reference curve and parameter(s).
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
-        self.ref_par = 0
-#        self.ref_par = (98, 183) # Intersection
+        self.ref_par = 100
         self.ref_poi, self.ref_par = self.get_corresp(
             self.ref_crv, self.ref_par, [self.ref_crv])
         self.ref_poi, self.ref_par = self.ref_poi[0], self.ref_par[0]
@@ -58,23 +61,16 @@ class FixPosCDM(ManyDimsDemo):
         self.fig.canvas.mpl_connect('button_release_event',
                                     self.on_button_release)
 
-#==============================================================================
-# Model
-#==============================================================================
+    ### MODEL
 
     def get_corresp(self, ref_crv, ref_par, curves):
-        cor_poi = [crv[:, ref_par] for crv in curves]
-        cor_par = [ref_par] * len(curves)
-
-        return cor_poi, cor_par
+        return get_corresp_krvmax(ref_crv, ref_par, curves)
 
 
-    def get_features(self, curves, params, pois):
-        return pois
+    def get_features(self, curves, params, poi):
+        return poi
 
-#==============================================================================
-# View
-#==============================================================================
+    ### VIEW
 
     def draw_curve_space(self, frame):
         """Draw the curve."""
@@ -88,9 +84,8 @@ def main():
     """Entry point."""
     plt.ioff()
 
-    FixPosCDM()
+    FixPosHoot()
 
-#    plt.pause(1)
     plt.show()
 
 

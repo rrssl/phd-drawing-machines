@@ -32,7 +32,7 @@ class FixPosDemo(TwoDimsDemo):
 
     def __init__(self):
         # Initial parameters.
-        self.disc_prop = (5, 3)
+        self.disc_prop = (7, 3)
         self.cont_prop = (.2, 1.)
         self.pts_per_dim = 20
         self.keep_ratio = .05
@@ -40,7 +40,6 @@ class FixPosDemo(TwoDimsDemo):
         self.mecha = EllipticSpirograph(*self.disc_prop+self.cont_prop)
         self.labels = ["$e^2$", "$d$"]
         self.nb_crv_pts = 2**6
-#        self.nb = 2**5
         # Reference curve and parameter.
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
         self.ref_par = 0
@@ -63,6 +62,8 @@ class FixPosDemo(TwoDimsDemo):
 
         self.init_draw()
 
+    ### MODEL
+
     def get_corresp(self, ref_crv, ref_par, curves):
         cor_poi = [crv[:, ref_par] for crv in curves]
         cor_par = [ref_par] * len(curves)
@@ -72,12 +73,26 @@ class FixPosDemo(TwoDimsDemo):
     def get_features(self, curve, param, poi):
         return poi
 
+#    def get_optimal_path(self):
+#        """Return the invariant space computed optimally."""
+#        bnd_e2 = self.mecha.get_prop_bounds(2)
+#        e2 = np.linspace(bnd_e2[0], bnd_e2[1], self.num_e2_vals)
+#        # Sol: r - a(e2) + d = x_ref with 2aE(e2) = pi*req
+#        x_ref = self.ref_crv[0, self.ref_par]
+#        r, req = self.disc_prop
+#        a = math.pi * req / (2 * ellipe(e2))
+#        d = x_ref - r + a
+#
+#        return e2, d
+
+    ### VIEW
+
     def draw_curve_space(self, frame):
         """Draw the curve."""
         super().draw_curve_space(frame)
         frame.set_title("Curve space (visible in the UI).\n"
                         "The point of interest's position is fixed by the "
-                        "user.")
+                        "user.\n")
 
 
 def main():
