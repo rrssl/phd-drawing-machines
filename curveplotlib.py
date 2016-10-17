@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Library of urve plotting functions.
+Library of functions to plot curves and their derivatives.
 
 @author: Robin Roussel
 """
@@ -17,9 +17,10 @@ else:
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
-def plot(curve, *args, **kwargs):
-    """Plot the input curve."""
-    return plt.plot(curve[0], curve[1], *args, **kwargs)
+if CV2_IMPORTED:
+    from curvedistances import DistanceField
+    from curveimproc import fit_in_box
+
 
 class PixelFormatter:
     """Coordinate formatter to show pixel value with pyplot.imshow."""
@@ -33,22 +34,47 @@ class PixelFormatter:
             z = np.nan
         return 'x={:.01f}, y={:.01f}, z={:.01f}'.format(x, y, z)
 
-def imshow(img, curve=None, viewer='plt'):
+
+if CV2_IMPORTED:
+    def distshow(ax, crv, aux_crv=None):
+        """Show the distance field descriptor."""
+        # Show the candidate curve embedded in the distance field of the target
+        # curve.
+        df = DistanceField()
+        desc = df.get_desc(crv)
+        if aux_crv is None:
+            adapted_cand_curve = None
+        else:
+            shp = desc.shape
+            shp = (shp[0]-10, shp[1]-10)
+            adapted_cand_curve = fit_in_box(aux_crv, shp)
+            adapted_cand_curve += 5
+
+        imshow(ax, desc, adapted_cand_curve)
+
+        if aux_crv is not None:
+            ax.lines[0].set_linewidth(2)
+            ax.lines[0].set_color('1.')
+            ax.set_title('Distance value: {:.2f}\n'.format(
+                              df.get_dist(aux_crv, crv)),
+                          fontsize='xx-large')
+
+
+def imshow(frame, img, curve=None, viewer='plt'):
     """Show a raster image, optionnally along with a superimposed curve."""
     if viewer == 'plt':
         # Display using Pyplot.
         if curve is not None:
-            plot(curve)
+            frame.plot(*curve)
 
         shp = img.shape
         if len(shp) == 2:
-            pltim = plt.imshow(img, interpolation=None, cmap=plt.cm.gray)
+            pltim = frame.imshow(img, interpolation=None, cmap=plt.cm.gray)
         elif len(shp) == 3 and shp[2] == 3:
             # /!\ OpenCV uses BGR order, while Pyplot uses RGB!
             img2 = img[:,:,::-1]
-            pltim = plt.imshow(img2, interpolation='none')
+            pltim = frame.imshow(img2, interpolation='none')
 
-        frame = plt.gca()
         # Show pixel value when hovering over it.
         frame.format_coord = PixelFormatter(pltim)
         # Remove axis text.
@@ -67,6 +93,7 @@ def imshow(img, curve=None, viewer='plt'):
             cv2.destroyAllWindows()
         else:
             print("Qt viewer cannot be used: OpenCV module not found.")
+
 
 def cvtshow(curve, curvature):
     """Plot the curvature along the input curve."""

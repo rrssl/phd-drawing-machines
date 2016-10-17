@@ -13,7 +13,6 @@ import numpy as np
 
 from curvedistances import CurveDistance
 from curvegen import get_curve
-import curveplotlib as cplt
 
 
 def show_normalization(curve):
@@ -25,8 +24,8 @@ def show_normalization(curve):
     normalized = CurveDistance.normalize_pose(transformed)
 
     plt.figure()
-    cplt.plot(transformed, label='input')
-    cplt.plot(normalized, label='normalized')
+    plt.plot(*transformed, label='input')
+    plt.plot(*normalized, label='normalized')
     plt.gca().set_aspect('equal')
     plt.legend(loc='best')
     plt.grid()
