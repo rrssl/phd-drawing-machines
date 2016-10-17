@@ -20,6 +20,9 @@ from controlpane import ControlPane
 from mechaplot import mechaplot_factory
 
 
+SHOW_OPTIONS = True
+
+
 def get_dist(ref, cand):
     """Get the L2 distance from each cand point to ref point."""
     ref = np.asarray(ref)
@@ -80,6 +83,26 @@ class DemoOptions:
 
         self.ax.figure.canvas.draw()
 
+    def show_before_after(self, event):
+        if self.demo.new_crv is not None:
+            fig = plt.figure(2, figsize=(16,8))
+
+            ax1 = fig.add_subplot(121)
+            ax1.set_aspect('equal')
+            ax1.margins(.1)
+            ax1.plot(*self.demo.ref_crv, c='b', lw=2, alpha=.9)
+            ax1.scatter(*self.demo.ref_poi, s=100, c='b', alpha=.9, marker='o',
+                        edgecolor='w', zorder=3)
+
+            ax2 = fig.add_subplot(122)
+            ax2.set_aspect('equal')
+            ax2.margins(.1)
+            ax2.plot(*self.demo.new_crv, c='r', lw=2, alpha=.9)
+            ax2.scatter(*self.demo.new_poi, s=100, c='r', alpha=.9,
+                        marker='o', edgecolor='w', zorder=3)
+
+            plt.show()
+
 
 class InvarDemo:
     """Find the invariant subspace.
@@ -110,9 +133,7 @@ class InvarDemo:
     def __init__(self):
         pass
 
-#==============================================================================
-# Model
-#==============================================================================
+    ### MODEL
 
     def sample_props(self, nb=5, extent=.1):
         """Sample the space of continuous properties.
@@ -193,14 +214,12 @@ class InvarDemo:
         """
         raise NotImplementedError
 
-#==============================================================================
-# View
-#==============================================================================
+    ### VIEW
 
     def init_draw(self):
         """Initialize canvas."""
         self.fig = plt.figure(figsize=(16*1.1, 9*1.1))
-        gs = GridSpec(12, 2)
+        gs = GridSpec(14, 2)
         self.ax = [
             self.fig.add_subplot(gs[:-4, 0]),
             self.fig.add_subplot(gs[:-4, 1]),
@@ -216,7 +235,11 @@ class InvarDemo:
 
         self.control = self.create_controls(gs[-3:-1, 0])
         self.ref_control = self.create_ref_controls(gs[-3:-1, 1])
-        self.options, self.buttons = self.create_options(self.ax[0])
+        if SHOW_OPTIONS:
+            self.options, self.buttons = self.create_options(self.ax[0])
+
+        for slider in self.control.sliders.values():
+            slider.drawon = False
 
     def draw_curve_space(self, frame):
         """Draw the curve."""
@@ -226,17 +249,17 @@ class InvarDemo:
         frame.set_ylabel('$y$')
         frame.set_title("Curve space (visible in the UI).\n")
         # Draw the reference curve...
-        self.ref_crv_plt = frame.plot(*self.ref_crv, alpha=1.,
-                                      label="Reference curve")[0]
+        self.ref_crv_plt = frame.plot(*self.ref_crv, c='k', alpha=.5,
+                                      label="Ref. curve")[0]
         # ... and its point of interest.
-        self.ref_poi_plt = frame.scatter(*self.ref_poi, s=100, c='b',
+        self.ref_poi_plt = frame.scatter(*self.ref_poi, s=100, c='k', alpha=.5,
                                          marker='o', edgecolor='w', zorder=3,
                                          label="Ref. pt(s) of interest")
         # Draw the new curve (empty for now)...
-        self.new_crv_plt = frame.plot([], [], 'g-', alpha=1.,
+        self.new_crv_plt = frame.plot([], [], 'b-', alpha=.9, lw=2,
                                       label="New curve")[0]
         # ... and its point of interest.
-        self.new_poi_plt = frame.scatter([], [], s=100, c='g', marker='o',
+        self.new_poi_plt = frame.scatter([], [], s=100, c='b', marker='o',
                                          edgecolor='w', zorder=3,
                                          label="New pt(s) of interest")
         # Draw the legend.
@@ -263,7 +286,7 @@ class InvarDemo:
                 )
         cp = ControlPane(self.fig, data, None, subplot_spec, bounds=bounds,
                          show_value=False)
-        for _, s in cp.sliders.items():
+        for s in cp.sliders.values():
             s.active = False
             s.eventson = False
             s.drawon = False
@@ -277,27 +300,57 @@ class InvarDemo:
         b_hide_crv = Button(self.fig.add_axes([.15, .05, .1, .05]),
                             "Hide ref. plot")
         b_hide_crv.on_clicked(opt.hide_ref)
-        # Show mecha.
-        b_show_mecha = Button(self.fig.add_axes([.3, .05, .1, .05]),
-                              "Show mechanism")
-        b_show_mecha.on_clicked(opt.show_mecha)
+#        # Show mecha.
+#        b_show_mecha = Button(self.fig.add_axes([.3, .05, .1, .05]),
+#                              "Show mechanism")
+#        b_show_mecha.on_clicked(opt.show_mecha)
+        # Show before/after.
+        b_show_ba = Button(self.fig.add_axes([.3, .05, .1, .05]),
+                            "Show before/after")
+        b_show_ba.on_clicked(opt.show_before_after)
 
-        return opt,  (b_hide_crv, b_show_mecha)
+        return opt,  (b_hide_crv, b_show_ba)
 
     def redraw(self):
         """Redraw dynamic elements."""
         self.new_crv_plt.set_data(self.new_crv[0], self.new_crv[1])
-        self.new_poi_plt.set_offsets([self.new_poi])
-        if self.options.state['show_mecha']:
-            # TODO: Fix the TODO in HootNanny.redraw(), then remove next line.
-            self.mecha._simulator.simulate_cycle()
-            self.mecha_plt.redraw()
-        self.fig.canvas.draw()
+        if self.new_poi is not None:
+            self.new_poi_plt.set_offsets([self.new_poi.T])
+            self.new_poi_plt.set_visible(True)
+        else:
+            self.new_poi_plt.set_visible(False)
+#        if self.options.state['show_mecha']:
+#            # TODO: Fix the TODO in HootNanny.redraw(), then remove next line.
+#            self.mecha._simulator.simulate_cycle()
+#            self.mecha_plt.redraw()
 
+        # First solution: clean, simple, but slow.
+        self.fig.canvas.draw_idle()
 
-#==============================================================================
-# Controller
-#==============================================================================
+        # Second solution: faster, with small artifacts.
+        # Actually more artifacts are introduced than shown, but they are
+        # hidden because we blit in a limited region. However, unfocusing
+        # then refocusing the window will reveal them all. Resizing the window
+        # will remove them, though.
+#        self.ax[0].redraw_in_frame()
+#        self.fig.canvas.blit(self.ax[0].bbox.translated(1,0))
+#        self.ax[1].redraw_in_frame()
+#        self.fig.canvas.blit(self.ax[1].bbox.translated(1,0))
+#
+#        for slider in self.control.sliders.values():
+#            slider.ax.redraw_in_frame()
+#            self.fig.canvas.blit(
+#                slider.ax.bbox.translated(1,-.5).expanded(1,1.05))
+#        for slider in self.ref_control.sliders.values():
+#            slider.ax.redraw_in_frame()
+#            self.fig.canvas.blit(
+#                slider.ax.bbox.translated(1,-.5).expanded(1,1.05))
+
+        # Third solution is much more involved, but works perfectly. See
+        # http://matplotlib.org/examples/event_handling/path_editor.html
+        # for an example.
+
+    ### CONTROLLER
 
     def set_cont_prop(self, props):
         """Set the continuous property vector, update data."""
@@ -425,7 +478,7 @@ class TwoDimsDemo(InvarDemo):
         frame.set_xlabel(self.labels[0])
         frame.set_ylabel(self.labels[1])
         frame.set_title("Continuous property space (hidden).\n"
-                        "The invariant subspace is computed.")
+                        "The invariant subspace is computed.\n")
         samples = self.samples.T
         # Draw the boundary.
         frame.add_patch(self.get_bound_poly())
@@ -435,7 +488,7 @@ class TwoDimsDemo(InvarDemo):
         pcol = frame.pcolormesh(xi, yi, zi, cmap=self.cmap)
         # Draw the samples.
         frame.scatter(*samples, marker='.', c='k', linewidth=.1,
-                      label="Samples")
+                      label="Sample")
         # Draw the optimal solution.
         frame.plot(*self.opt_path, color='m', linestyle='dashed',
                    linewidth=4, label="Optimal sol.")
@@ -443,16 +496,19 @@ class TwoDimsDemo(InvarDemo):
         frame.plot(*self.get_approx_path(), color='c', linewidth=2,
                    label="Approximate sol.")
         # Draw the position of the reference curve.
-        frame.scatter(*self.cont_prop, s=300, c='lightyellow', marker='*',
-                      edgecolor='b', zorder=3, label="Reference curve")
+        frame.scatter(
+            *self.cont_prop, s=300, c='lightyellow', marker='*',
+            edgecolor=self.ref_crv_plt.get_color(), zorder=3,
+            label="Ref. curve")
         # Draw the position of the new curve.
-        self.new_crv_pos = frame.scatter([], [], s=300, c='g', marker='*',
-                                         edgecolor='none', zorder=3,
-                                         label="New curve")
+        self.new_crv_pos = frame.scatter(
+            [], [], s=300, c=self.new_crv_plt.get_color(), marker='*',
+            edgecolor='none', zorder=3,label="New curve")
         # Draw the legend.
         # Dummy plot to avoid the ugly patch symbol of the boundary.
         frame.plot([], [], c='r', linewidth=2, label="Boundary")
-        frame.legend(loc='upper left', scatterpoints=1, fontsize='medium')
+        frame.legend(loc='upper left', scatterpoints=1, ncol=2,
+                     fontsize='medium')
         # Draw the colorbar.
         bounds = (self.scores.min(), self.scores.max())
         cbar = self.fig.colorbar(pcol, ax=frame, ticks=bounds, format='%.2f')
@@ -482,7 +538,7 @@ class TwoDimsDemo(InvarDemo):
             self.mecha.update_prop(2, val)
             def obj_func(x):
                 self.mecha.update_prop(3, x[0])
-                crv = self.mecha.get_curve(self.nb_crv_pts)[:, :-1]
+                crv = self.mecha.get_curve(self.nb_crv_pts)#[:, :-1]
                 poi, par = self.get_corresp(self.ref_crv, self.ref_par, [crv])
                 ft = self.get_features(crv, par[0], poi[0])
                 diff = ref_ft - ft
@@ -545,6 +601,7 @@ class TwoDimsDemo(InvarDemo):
             phi = self.phi_opt
 
         cont_prop = (value, phi(value))
+        print("New continuous properties: {}".format(cont_prop))
         self.set_cont_prop(cont_prop)
 
         self.redraw()
@@ -623,9 +680,7 @@ class ManyDimsDemo(InvarDemo):
         Used to know if the slider is being used.
     """
 
-#==============================================================================
-# Model
-#==============================================================================
+    ### MODEL
 
     def sample_props(self, nb=5, extent=.1):
         ids = range(len(self.disc_prop),
@@ -650,8 +705,7 @@ class ManyDimsDemo(InvarDemo):
             ))
         scores = self.get_invar_scores(samples)
         # Filter out low scores and find linear map of invariant space.
-        # TODO use self.keep_ratio
-        ids = get_highest_quantile(scores, q=20)
+        ids = get_highest_quantile(scores, q=1/self.keep_ratio)
         if len(ids) < self.ndim_invar_space + 1:
             print("Warning: too few samples for the PCA ({})".format(len(ids)))
         self.phi, self.phi_inv, pca = fit_linear_map(samples[ids], scores[ids],
@@ -728,12 +782,26 @@ class ManyDimsDemo(InvarDemo):
 
         return min_, max_
 
-#==============================================================================
-# View
-#==============================================================================
+    ### VIEW
 
-#    def init_draw(self):
-#        super().init_draw()
+    def init_draw(self):
+        super().init_draw()
+
+        self.mecha_plt = None
+        self.draw_plt = None
+        self.draw_machine(self.ax[1])
+
+    def draw_machine(self, frame):
+        frame.margins(0.1)
+        frame.set_xticks([])
+        frame.set_yticks([])
+        frame.set_axis_bgcolor('.9')
+#        frame.margins(.1)
+        frame.set_aspect('equal')
+        frame.set_title("Drawing machine (hidden).\n")
+        self.draw_plt = frame.plot(*self.ref_crv, lw=2, alpha=.8)[0]
+        self.mecha_plt =  mechaplot_factory(self.mecha, frame)
+        self.mecha_plt.redraw()
 
     def create_controls(self, subplot_spec):
         """Create the controls to explore the invariant space."""
@@ -749,9 +817,15 @@ class ManyDimsDemo(InvarDemo):
         return ControlPane(self.fig, data, self.on_slider_update, subplot_spec,
                            bounds=self.bnds_invar_space, show_value=False)
 
-#==============================================================================
-#  Controller
-#==============================================================================
+
+    def redraw(self):
+        # TODO: Fix the TODO in HootNanny.redraw(), then remove next line.
+        self.draw_plt.set_data(*self.new_crv)
+        self.mecha._simulator.simulate_cycle()
+        self.mecha_plt.redraw()
+        super().redraw()
+
+    ### CONTROLLER
 
     def on_button_release(self, event):
         """Callback function for mouse button release."""
