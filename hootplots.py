@@ -39,9 +39,8 @@ class HootPlot:
 
         self.mecha_plot = mechaplot_factory(self.mecha, self.ax)
 
-        self.crv_plot = self.ax.plot([], [], alpha=.8)[0]
+        self.crv_plot = self.ax.plot([], [], lw=2, alpha=.8)[0]
 
-        bounds = None
         bounds = []
         for i in range(len(self.mecha.props)):
             bounds.append(self.mecha.get_prop_bounds(i))

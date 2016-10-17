@@ -189,7 +189,7 @@ class SingleGearFixedFulcrumCDM:
         # Penholder
         penholder_pos = C_f + rod_vect * d_p / rod_length
         self.shapes[7].center = penholder_pos
-        self.shapes[7].radius = R_t * 0.1
+        self.shapes[7].radius = R_t * 0.05
 
         self.bg_coll.set_paths(self.shapes[:-2])
         self.fg_coll.set_paths(self.shapes[-2:])
