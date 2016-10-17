@@ -4,7 +4,7 @@ Parametrized cyclic mechanisms
 
 @author: Robin Roussel
 """
-
+from itertools import product
 from fractions import gcd
 import math
 import numpy as np
@@ -512,27 +512,40 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             more complex).
             """
             n = grid_resol[-4:]
-            p = [0, 0] +  4*[0.]
-            for R_t, R_g in skipends(farey(cls.max_nb_turns)):
-
-                p[:2] = R_t, R_g
-                for d_f in np.linspace(p[0]+cls.eps, 2*cls.max_nb_turns, n[0]):
-
-                    p[2] = d_f
-                    for theta_g in np.linspace(0., np.pi, n[1]):
-
-                        p[3] = theta_g
-                        for d_p in np.linspace(
-                            cls.eps, cls._get_FG(*p[:4]), n[2]):
-
-                            p[4] = d_p
-                            for d_s in np.linspace(
-                                *cls.get_bounds(p, 5), num=n[3]):
-                                p[5] = d_s
-                                yield p.copy()
+#            p = [0, 0] +  4*[0.]
+#            for R_t, R_g in skipends(farey(cls.max_nb_turns)):
+#
+#                p[:2] = R_t, R_g
+#                for d_f in np.linspace(p[0]+cls.eps, 2*cls.max_nb_turns, n[0]):
+#
+#                    p[2] = d_f
+#                    for theta_g in np.linspace(0., np.pi, n[1]):
+#
+#                        p[3] = theta_g
+#                        for d_p in np.linspace(
+#                            cls.eps, cls._get_FG(*p[:4]), n[2]):
+#
+#                            p[4] = d_p
+#                            for d_s in np.linspace(
+#                                *cls.get_bounds(p, 5), num=n[3]):
+#                                p[5] = d_s
+#                                yield p.copy()
 
 #            for R_g, R_t in skipends(farey(cls.max_nb_turns)):
 #                pass # Copy sub-loops
+
+            coarse_cbounds = [
+                (0., 30.),
+                (0., math.pi),
+                (0., 20.),
+                (0., 20.)
+                ]
+            coords = [np.linspace(a, b, n[0]) for a, b in coarse_cbounds]
+            for R_t, R_g in skipends(farey(cls.max_nb_turns)):
+                condition = lambda p: cls.check_constraints([R_t, R_g]+list(p))
+                samples = filter(condition, product(*coords))
+                for s in samples:
+                    yield [R_t, R_g]+list(s)
 
         @staticmethod
         def _get_FG(R_t, R_g, d_f, theta_g):
@@ -656,7 +669,7 @@ class HootNanny(DrawingMechanism):
     class ConstraintSolver(Mechanism.ConstraintSolver):
         """Class for handling design constraints."""
         nb_dprops = 3
-        nb_cprops = 4
+        nb_cprops = 5
         max_nb_turns = 25 # Arbitrary value
 
         @classmethod
@@ -866,7 +879,8 @@ class HootNanny(DrawingMechanism):
             cos_ = np.cos(t_range)
             sin_ = np.sin(t_range)
             # /!\ Rotation of -theta
-            rot = np.array([[cos_, sin_], [-sin_, cos_]])
+            # FIXME: find out which one it is
+            rot = np.array([[cos_, -sin_], [sin_, cos_]])
             curve = np.einsum('ijk,jk->ik', rot, TM)
 
             # Assign trajectories.
