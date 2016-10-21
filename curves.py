@@ -391,12 +391,12 @@ class Roulette(Curve):
 
         # Get the parameter values for both curves.
         nb_cycles, rem = divmod(abs(end - start), per)
-        nb_rem_pts = rem / step + 1
+        nb_rem_pts = int(rem / step + 1)
 
         tr = np.linspace(start, per, per / step + 1)
         if ref_obj.has_even_arclength() and (per / 2) % step == 0:
             # Compute s(t) on [0, T/2].
-            svals = ref_obj.get_arclength(tr[:(len(tr) + 1) / 2])
+            svals = ref_obj.get_arclength(tr[:(len(tr) + 1) // 2])
             # Mirror the variation, integrate and shift.
             svals_diff= np.cumsum((svals[1:] - svals[:-1])[::-1]) + svals[-1]
             svals = np.concatenate([svals, svals_diff])
