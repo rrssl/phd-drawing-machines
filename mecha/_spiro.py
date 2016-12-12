@@ -77,20 +77,24 @@ class BaseSpirograph(DrawingMechanism):
             self.nb_samples = nb_samples
             self.per_turn = per_turn
 
-        def simulate_cycle(self):
-            """Simulate one cycle of the assembly's motion."""
+        def get_cycle_length(self):
+            """Compute and return the interval length of one full cycle."""
             if self.trocho.d:
                 gcd_ = gcd(self.trocho.R, self.trocho.r)
                 nb_turns = self.trocho.r / gcd_
             else:
                 # Degenerate case.
                 nb_turns = 1
+            return 2*math.pi*nb_turns
+
+        def simulate_cycle(self):
+            """Simulate one cycle of the assembly's motion."""
+            length = self.get_cycle_length()
             if self.per_turn:
-                nb_samples = nb_turns * self.nb_samples + 1
+                nb_samples = (length / (2*math.pi)) * self.nb_samples + 1
             else:
                 nb_samples = self.nb_samples
-            interval_length = nb_turns * 2 * math.pi
-            t_range = np.linspace(0., interval_length, nb_samples)
+            t_range = np.linspace(0., length, nb_samples)
 
             return self.trocho.get_point(t_range)
 

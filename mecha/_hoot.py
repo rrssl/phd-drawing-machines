@@ -184,8 +184,8 @@ class HootNanny(DrawingMechanism):
             self.nb_samples = nb_samples
             self.per_turn = per_turn
 
-        def simulate_cycle(self):
-            """Simulate one cycle of the assembly's motion."""
+        def get_cycle_length(self):
+            """Compute and return the interval length of one full cycle."""
             gcd_1 = gcd(self.r_T, self.r_G1)
             gcd_2 = gcd(self.r_T, self.r_G2)
             gcd_ = gcd(self.r_G1 / gcd_1, self.r_G2 / gcd_2)
@@ -196,13 +196,17 @@ class HootNanny(DrawingMechanism):
             if not self.d2:
                 # Degenerate case.
                 nb_turns /= self.r_G2 / (gcd_2*gcd_)
+            return 2*math.pi*nb_turns
+
+        def simulate_cycle(self):
+            """Simulate one cycle of the assembly's motion."""
+            length = self.get_cycle_length()
             if self.per_turn:
-                nb_samples = nb_turns * self.nb_samples + 1
+                nb_samples = (length / (2*math.pi)) * self.nb_samples + 1
             else:
                 nb_samples = self.nb_samples
-            interval_length = nb_turns * 2 * math.pi
             # Property range
-            t_range = np.linspace(0., interval_length, nb_samples)
+            t_range = np.linspace(0., length, nb_samples)
             # Pivots positions
             # 1
             theta1 = - (self.r_T / self.r_G1) * t_range

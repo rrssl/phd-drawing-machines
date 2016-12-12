@@ -165,20 +165,24 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             self.nb_samples = nb_samples
             self.per_turn = per_turn
 
-        def simulate_cycle(self):
-            """Simulate one cycle of the assembly's motion."""
+        def get_cycle_length(self):
+            """Compute and return the interval length of one full cycle."""
             gcd_ = gcd(self.R_t, self.R_g)
             nb_turns = self.R_t / gcd_
             if not self.d_s:
                 # Degenerate case.
                 nb_turns /= self.R_g / gcd_
+            return 2*math.pi*nb_turns
+
+        def simulate_cycle(self):
+            """Simulate one cycle of the assembly's motion."""
+            length = self.get_cycle_length()
             if self.per_turn:
-                nb_samples = nb_turns * self.nb_samples + 1
+                nb_samples = (length / (2*math.pi)) * self.nb_samples + 1
             else:
                 nb_samples = self.nb_samples
-            interval_length = nb_turns * 2 * math.pi
             # Property range
-            t_range = np.linspace(0., interval_length, nb_samples)
+            t_range = np.linspace(0., length, nb_samples)
             # Slider curve
             curve = (self.d_s * np.vstack([np.cos(t_range), np.sin(t_range)]) +
                      self.C_g.reshape((2, 1)))

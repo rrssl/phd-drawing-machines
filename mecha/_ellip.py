@@ -114,8 +114,8 @@ class EllipticSpirograph(DrawingMechanism):
             self.nb_samples = nb_samples
             self.per_turn = per_turn
 
-        def simulate_cycle(self, reuse=True):
-            """Simulate one cycle of the assembly's motion."""
+        def get_cycle_length(self):
+            """Compute and return the interval length of one full cycle."""
             gcd_ = gcd(self.roul.n_obj.r, self.roul.m_obj.req)
             nb_turns = self.roul.n_obj.r / gcd_
             if not self.roul.T[0]:
@@ -125,13 +125,16 @@ class EllipticSpirograph(DrawingMechanism):
                 elif not self.roul.m_obj.req % 2:
                     # Since (r,req) = 1, if req is even then r is odd.
                     nb_turns /= 2
+            return 2*math.pi*nb_turns
 
+        def simulate_cycle(self, reuse=True):
+            """Simulate one cycle of the assembly's motion."""
+            length = self.get_cycle_length()
             if self.per_turn:
-                nb_samples = nb_turns * self.nb_samples + 1
+                nb_samples = (length / (2*math.pi)) * self.nb_samples + 1
             else:
                 nb_samples = self.nb_samples
-            interval_length = nb_turns * 2 * math.pi
-            curve = self.roul.get_range(0., interval_length, nb_samples, reuse)
+            curve = self.roul.get_range(0., length, nb_samples, reuse)
 
             assert(not np.isnan(curve.min()))
             return curve

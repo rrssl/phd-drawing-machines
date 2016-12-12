@@ -65,6 +65,10 @@ class Mechanism:
             """Simulate one cycle of the assembly's motion."""
             raise NotImplementedError
 
+        def get_cycle_length(self):
+            """Compute and return the interval length of one full cycle."""
+            raise NotImplementedError
+
         def update_prop(self, pid, value):
             """Update the property referenced by the input index."""
             raise NotImplementedError
