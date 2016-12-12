@@ -9,6 +9,7 @@ import math
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 
+import context
 from controlpane import ControlPane
 from mecha import SingleGearFixedFulcrumCDM
 from mechaplot import mechaplot_factory
@@ -34,8 +35,9 @@ class CDMPlot:
         self.ax.set_aspect('equal')
         self.ax.get_xaxis().set_ticks([])
         self.ax.get_yaxis().set_ticks([])
-        plt.subplots_adjust(left=.05, right=.9, bottom=.15, top=.85,
-                            wspace=0., hspace=1.)
+#        plt.subplots_adjust(left=.05, right=.9, bottom=.15, top=.85,
+#                            wspace=0., hspace=1.)
+        plt.subplots_adjust(left=.05, wspace=0., hspace=1.)
 
         self.mecha_plot = mechaplot_factory(self.mecha, self.ax)
 
@@ -82,7 +84,7 @@ def main():
          {'valmin': 1,
           'valmax': 25,
           'valinit': 4,
-          'label': "Turntable radius"}),
+          'label': "Turntable\nradius"}),
         (1,                     # Radius of the gear.
          {'valmin': 1,
           'valmax': 20,
@@ -97,12 +99,12 @@ def main():
          {'valmin': 0.,
           'valmax': math.pi,
           'valinit': 2.8, #2 * math.pi / 3,
-          'label': "Fulcrum-gear angle"}),
+          'label': "Fulcrum-gear\nangle"}),
         (4,                     # Distance from fulcrum to penholder.
          {'valmin': 0.,
           'valmax': 20.,
           'valinit': 4.5,
-          'label': "Fulcrum-penholder dist"}),
+          'label': "Fulcrum-\npenholder\ndist"}),
         (5,                     # Distance from gear center to slider.
          {'valmin': 0.,
           'valmax': 15.,

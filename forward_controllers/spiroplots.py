@@ -7,6 +7,7 @@ Improved version of spiroplots.
 
 import matplotlib.pyplot as plt
 
+import context
 from controlpane import ControlPane
 from mecha import BaseSpirograph
 from mechaplot import mechaplot_factory

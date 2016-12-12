@@ -9,6 +9,7 @@ import math
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 
+import context
 from controlpane import ControlPane
 from mecha import HootNanny
 from mechaplot import mechaplot_factory
@@ -34,8 +35,7 @@ class HootPlot:
         self.ax.set_aspect('equal')
         self.ax.get_xaxis().set_ticks([])
         self.ax.get_yaxis().set_ticks([])
-        plt.subplots_adjust(left=.05, right=.9, bottom=.15, top=.85,
-                            wspace=0., hspace=1.)
+        plt.subplots_adjust(left=.05, wspace=0., hspace=1.)
 
         self.mecha_plot = mechaplot_factory(self.mecha, self.ax)
 

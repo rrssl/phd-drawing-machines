@@ -7,6 +7,7 @@ Simulation and control of the elliptic spirograph.
 
 import matplotlib.pyplot as plt
 
+import context
 from controlpane import ControlPane
 from mecha import EllipticSpirograph
 from mechaplot import mechaplot_factory
