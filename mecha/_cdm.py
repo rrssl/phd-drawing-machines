@@ -5,7 +5,6 @@ Cycloid Drawing Machine
 
 @author: Robin Roussel
 """
-from fractions import gcd
 from itertools import product
 import math
 import numpy as np
@@ -24,7 +23,7 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
         """Class for handling design constraints."""
         nb_dprops = 2
         nb_cprops = 4
-        max_nb_turns = 25 # Arbitrary value
+        max_nb_turns = 10 # Arbitrary value
 
         @classmethod
         def get_constraints(cls, cstr={}):
@@ -75,9 +74,13 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             cstrs = [adapt(cstrs[i]) for i in ids]
 
             min_ = opt.fmin_cobyla(
-                lambda x: x, prop[pid], cons=cstrs, disp=0) + 2*cls.eps
+                lambda x: x, prop[pid], cons=cstrs, disp=0, catol=cls.eps)
             max_ = opt.fmin_cobyla(
-                lambda x: -x, prop[pid], cons=cstrs, disp=0) - 2*cls.eps
+                lambda x: -x, prop[pid], cons=cstrs, disp=0, catol=cls.eps)
+
+#            if max_ - min_ > 4*cls.eps:
+#                min_ += 2*cls.eps
+#                max_ -= 2*cls.eps
 
             if pid == 0 or pid == 1:
                 min_ = math.ceil(min_)
@@ -86,62 +89,78 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             return min_, max_
 
         @classmethod
-        def sample_feasible_domain(cls, grid_resol=(10, 10, 10, 10)):
-            """Sample the feasible domain.
-            Works if the domain is convex (the necessary condition is a bit
-            more complex).
-            """
-            n = grid_resol[-4:]
-#            p = [0, 0] +  4*[0.]
-#            for R_t, R_g in skipends(farey(cls.max_nb_turns)):
-#
-#                p[:2] = R_t, R_g
-#                for d_f in np.linspace(p[0]+cls.eps, 2*cls.max_nb_turns, n[0]):
-#
-#                    p[2] = d_f
-#                    for theta_g in np.linspace(0., np.pi, n[1]):
-#
-#                        p[3] = theta_g
-#                        for d_p in np.linspace(
-#                            cls.eps, cls._get_FG(*p[:4]), n[2]):
-#
-#                            p[4] = d_p
-#                            for d_s in np.linspace(
-#                                *cls.get_bounds(p, 5), num=n[3]):
-#                                p[5] = d_s
-#                                yield p.copy()
-
-#            for R_g, R_t in skipends(farey(cls.max_nb_turns)):
-#                pass # Copy sub-loops
-
-            coarse_cbounds = [
-                (0., 30.),
-                (0., math.pi),
-                (0., 20.),
-                (0., 20.)
-                ]
-            coords = [np.linspace(a, b, n[0]) for a, b in coarse_cbounds]
+        def sample_feasible_domain(cls, grid_resol=(5, 5, 5, 5)):
+            """Sample the feasible domain."""
             for R_t, R_g in skipends(farey(cls.max_nb_turns)):
-                condition = lambda p: cls.check_constraints([R_t, R_g]+list(p))
-                samples = filter(condition, product(*coords))
-                for s in samples:
-                    yield [R_t, R_g]+list(s)
+                for p in cls.sample_feasible_continuous_domain(
+                    R_t, R_g, grid_resol):
+                    yield p
+                for p in cls.sample_feasible_continuous_domain(
+                    R_g, R_t, grid_resol):
+                    yield p
+            for p in cls.sample_feasible_continuous_domain(
+                1, 1, grid_resol):
+                yield p
+
+        @classmethod
+        def sample_feasible_continuous_domain(cls, R_t, R_g,
+                                              grid_resol=(5, 5, 5, 5)):
+            """Sample the feasible continuous domain."""
+            n = grid_resol[-4:]
+            eps = 2*cls.eps
+
+            for d_f in np.linspace(R_t+eps, 2*R_t, n[0]):
+
+                for theta_g in np.linspace(
+                    cls._get_theta_min(R_t, R_g, d_f)+eps, math.pi, n[1]):
+
+                    for d_p in np.linspace(eps,
+                        cls._get_FG(R_t, R_g, d_f, theta_g)-R_g-eps, n[2]):
+
+                        if cls.get_constraints()[-1](
+                            (R_t, R_g, d_f, theta_g, d_p, eps)) < 0:
+                            # This constraint is strictly decreasing wrt d_s:
+                            # If there's no solution for d_s = 0, there's
+                            # no solution at all.
+                            continue
+                        d_s_bnds = cls.get_bounds(
+                            (R_t, R_g, d_f, theta_g, d_p, 0.), 5)
+                        if d_s_bnds[0] == d_s_bnds[1]:
+                            # Only happens if min = max = 0, which produces
+                            # a circle.
+                            continue
+                        for d_s in np.linspace(
+                            d_s_bnds[0]+eps, d_s_bnds[1]-eps, n[3]):
+                            yield R_t, R_g, d_f, theta_g, d_p, d_s
 
         @staticmethod
         def _get_FG(R_t, R_g, d_f, theta_g):
             """Get the distance between the fulcrum and the gear center."""
             OG =  R_t + R_g
-            return math.sqrt(d_f**2 + OG**2 - 2*d_f*OG*math.cos(theta_g))
+            return np.sqrt(d_f**2 + OG**2 - 2*d_f*OG*np.cos(theta_g))
 
-        @classmethod
-        def _get_OP2_max(cls, R_t, R_g, d_f, theta_g, d_p, d_s):
+        @staticmethod
+        def _get_OP2_max(R_t, R_g, d_f, theta_g, d_p, d_s):
             """Get the maximum distance between the center and the penholder."""
-            OG =  R_t + R_g
-            FG = cls._get_FG(R_t, R_g, d_f, theta_g)
-            alpha = math.atan2(d_s, FG)
-            theta_fg = math.pi - math.atan2(OG*math.sin(theta_g),
-                                            d_f - OG*math.cos(theta_g))
-            return d_f**2 + d_p**2 + 2*d_f*d_p*math.cos(theta_fg-alpha)
+            OG = R_t + R_g
+            OGx = OG*np.cos(theta_g)
+            FG = np.sqrt(d_f**2 + OG**2 - 2*d_f*OGx)
+            alpha = np.arctan2(d_s, FG)
+            theta_fg = math.pi - np.arctan2(OG*np.sin(theta_g), d_f - OGx)
+            return d_f**2 + d_p**2 + 2*d_f*d_p*np.cos(theta_fg - alpha)
+
+        @staticmethod
+        def _get_theta_min(R_t, R_g, d_f):
+            """Get the minimum polar angle of the gear."""
+            # Angle s.t FG is tangent to the turntable. H is the point of
+            # tangency.
+            OG = R_t + R_g
+            OG2 = OG**2
+            d_f2 = d_f**2
+            R_t2 = R_t**2
+            FG = np.sqrt(d_f2 - R_t2) + np.sqrt(OG2 - R_t2) # = FH + HG
+            # Law of cosines
+            return np.arccos((OG2 + d_f2 - FG**2) / (2*d_f*OG))
 
 
     class Simulator(Mechanism.Simulator):
@@ -158,16 +177,13 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             self.theta_g = properties[3] # Gear polar angle
             self.d_p = properties[4] # Fulcrum-penholder distance
             self.d_s = properties[5] # Gear center - slider distance
-            # Gear center
-            self.C_g = (self.R_t + self.R_g) * np.array(
-                [math.cos(self.theta_g), math.sin(self.theta_g)])
 
             self.nb_samples = nb_samples
             self.per_turn = per_turn
 
         def get_cycle_length(self):
             """Compute and return the interval length of one full cycle."""
-            gcd_ = gcd(self.R_t, self.R_g)
+            gcd_ = math.gcd(int(self.R_t), int(self.R_g))
             nb_turns = self.R_t / gcd_
             if not self.d_s:
                 # Degenerate case.
@@ -184,8 +200,10 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             # Property range
             t_range = np.linspace(0., length, nb_samples)
             # Slider curve
+            C_g = (self.R_t + self.R_g) * np.array(
+                [[math.cos(self.theta_g)], [math.sin(self.theta_g)]])
             curve = (self.d_s * np.vstack([np.cos(t_range), np.sin(t_range)]) +
-                     self.C_g.reshape((2, 1)))
+                     C_g)
             # Connecting rod vector
             curve -= self.C_f.reshape((2, 1))
             # Penholder curve

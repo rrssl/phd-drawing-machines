@@ -23,7 +23,7 @@ class Mechanism:
         purpose (e.g. by filtering out redundant constraints, or avoiding
         costly bound computations).
         """
-        eps = 1e-6
+        eps = 1e-4 # Absolute tolerance for constraint violation.
         nb_dprops = 0
         nb_cprops = 0
 
