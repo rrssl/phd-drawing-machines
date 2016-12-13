@@ -5,7 +5,6 @@ Elliptic Spirograph
 
 @author: Robin Roussel
 """
-from fractions import gcd
 import math
 import numpy as np
 import scipy.optimize as opt
@@ -116,7 +115,7 @@ class EllipticSpirograph(DrawingMechanism):
 
         def get_cycle_length(self):
             """Compute and return the interval length of one full cycle."""
-            gcd_ = gcd(self.roul.n_obj.r, self.roul.m_obj.req)
+            gcd_ = math.gcd(int(self.roul.n_obj.r), int(self.roul.m_obj.req))
             nb_turns = self.roul.n_obj.r / gcd_
             if not self.roul.T[0]:
                 # Degenerate cases.

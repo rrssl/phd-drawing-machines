@@ -112,7 +112,7 @@ class Circle(Curve):
 
     def get_arclength_der(self, t):
         """Get the derivative(s) of the arc length s'(t)."""
-        return np.full(t.shape, self.r)
+        return np.full(t.shape, float(self.r))
 
     def get_arclength_inv(self, s):
         """Get the parameter t given s(t)."""
@@ -391,6 +391,7 @@ class Roulette(Curve):
 
         # Get the parameter values for both curves.
         nb_cycles, rem = divmod(abs(end - start), per)
+        nb_cycles = int(nb_cycles)
         nb_rem_pts = int(rem / step + 1)
 
         tr = np.linspace(start, per, per / step + 1)
