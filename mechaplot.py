@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Simple rendering of mechanisms.
+Rendering and animation of mechanisms.
 
 @author: Robin Roussel
 """
 import math
+import matplotlib.animation as manim
 import matplotlib.patches as pat
 from matplotlib.collections import PatchCollection
 from matplotlib.transforms import Affine2D
 import numpy as np
+#import shapely.geometry as geom
+#import descartes
 
 import mecha
 
@@ -24,7 +27,41 @@ def mechaplot_factory(mechanism, ax):
         return HootNanny(mechanism, ax)
 
 
-class BaseSpirograph:
+class AniMecha:
+    """Base class for mechanism animation."""
+    def __init__(self, mechanism, ax):
+        self.mecha = mechanism
+        self.play = False
+        self.anim = manim.FuncAnimation(
+            ax.figure, self.animate, frames=self.get_anim_time,
+            interval=30, blit=True)
+        ax.figure.canvas.mpl_connect('key_press_event', self.on_key_press)
+
+    def get_anim_time(self):
+        t_max = self.mecha._simulator.get_cycle_length()
+        dt = 1. / (2*math.pi)
+        t = 0.
+        while t < t_max:
+            if self.play:
+                t += dt
+            yield t
+
+#    def init_anim(self):
+#        raise NotImplementedError
+
+    def animate(self, t):
+        """Compute new shape positions and orientations at time t.
+        Returns an iterable of Artists to update.
+        """
+        raise NotImplementedError
+
+    def on_key_press(self, event):
+        """Manage key press events."""
+        if event.key == ' ':
+            self.play = not self.play
+
+
+class BaseSpirograph(AniMecha):
 
     def __init__(self, mechanism, ax):
         self.mecha = mechanism
@@ -46,30 +83,43 @@ class BaseSpirograph:
         self.fg_coll = self.ax.add_collection(
             PatchCollection(self.shapes[-2:], match_original=True))
 
+        super().__init__(mechanism, ax)
+
     def redraw(self):
         R, r, d = self.mecha.props
 
-        # Static ring
+        # Create new static ring
         self.shapes[0].xy = np.array([-1.1 * R, -1.1 * R])
         self.shapes[0].set_width(R * 2.2)
         self.shapes[0].set_height(R * 2.2)
         self.shapes[1].radius = R
-        # Rolling gear.
-        self.shapes[2].center = np.array([R - r, 0.])
+        # Create new rolling gear.
+        self.shapes[2].center = self.mecha.assembly['rolling_gear']['pos']
         self.shapes[2].radius = r
-        self.shapes[3].center = np.array([R - r + d, 0.])
+        self.shapes[3].center = self.mecha.assembly['penhole']['pos']
         self.shapes[3].radius = r * 0.1
-
+        # Update patches.
         self.bg_coll.set_paths(self.shapes[:-2])
         self.fg_coll.set_paths(self.shapes[-2:])
         self.fg_coll.set_zorder(1)
-
+        # Compute new limits.
         self.ax.set_xlim(-1.1*R, 1.1*R)
         self.ax.set_ylim(-1.1*R, 1.1*R)
+        # Use a dirty hack to reset the blit cache of the animation.
+        self.anim._handle_resize()
+        # Reset the timer as well.
+        self.anim.frame_seq = self.anim.new_frame_seq()
 
     def set_visible(self, b):
         self.bg_coll.set_visible(b)
         self.fg_coll.set_visible(b)
+
+    def animate(self, t):
+        self.mecha.set_state(t)
+        self.shapes[2].center = self.mecha.assembly['rolling_gear']['pos']
+        self.shapes[3].center = self.mecha.assembly['penhole']['pos']
+        self.fg_coll.set_paths(self.shapes[-2:])
+        return self.fg_coll,
 
 
 class EllipticSpirograph:
@@ -289,11 +339,11 @@ class HootNanny:
         # Penholder
         self.shapes[10].center = C_PH
         self.shapes[10].radius = r_T * 0.05
-#
+
         self.bg_coll.set_paths(self.shapes[:6])
         self.fg_coll.set_paths(self.shapes[6:])
         self.fg_coll.set_zorder(3)
-#
+
         self.ax.set_xlim(1.1*min(C_G2[0] - r_G2, -r_T),
                          1.1*max(C_G1[0] + r_G1, r_T))
         self.ax.set_ylim(-1.1*r_T, 1.1*max(C_G2[1] + r_G2, r_T))
