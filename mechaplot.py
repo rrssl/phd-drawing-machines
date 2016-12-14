@@ -38,6 +38,7 @@ class AniMecha:
         ax.figure.canvas.mpl_connect('key_press_event', self.on_key_press)
 
     def get_anim_time(self):
+        """Generator for the animation time."""
         t_max = self.mecha._simulator.get_cycle_length()
         dt = 1. / (2*math.pi)
         t = 0.
@@ -45,6 +46,13 @@ class AniMecha:
             if self.play:
                 t += dt
             yield t
+
+    def reset_anim(self):
+        """Reset the animation. Will be visible after Axes redraw."""
+        # Use a dirty hack to reset the blit cache of the animation.
+        self.anim._handle_resize()
+        # Reset the timer.
+        self.anim.frame_seq = self.anim.new_frame_seq()
 
 #    def init_anim(self):
 #        raise NotImplementedError
@@ -56,7 +64,7 @@ class AniMecha:
         raise NotImplementedError
 
     def on_key_press(self, event):
-        """Manage key press events."""
+        """Manage play/pause with the spacebar."""
         if event.key == ' ':
             self.play = not self.play
 
@@ -105,10 +113,8 @@ class BaseSpirograph(AniMecha):
         # Compute new limits.
         self.ax.set_xlim(-1.1*R, 1.1*R)
         self.ax.set_ylim(-1.1*R, 1.1*R)
-        # Use a dirty hack to reset the blit cache of the animation.
-        self.anim._handle_resize()
-        # Reset the timer as well.
-        self.anim.frame_seq = self.anim.new_frame_seq()
+        # Reset animation.
+        self.reset_anim()
 
     def set_visible(self, b):
         self.bg_coll.set_visible(b)
