@@ -61,6 +61,10 @@ class Mechanism:
             """Reset the class fields."""
             raise NotImplementedError
 
+        def compute_state(self, asb, t):
+            """Compute the state of the assembly a time t."""
+            raise NotImplementedError
+
         def simulate_cycle(self):
             """Simulate one cycle of the assembly's motion."""
             raise NotImplementedError
@@ -77,7 +81,7 @@ class Mechanism:
     def __init__(self, *props, verbose=False):
         self.constraint_solver = type(self).ConstraintSolver
         self._simulator = None
-        self.structure_graph = None
+        self.assembly = self._create_assembly()
         self.verbose = verbose
 
         self.reset(*props)
@@ -86,10 +90,11 @@ class Mechanism:
         """Reset all properties at once, if they meet the constraints."""
         if self.constraint_solver.check_constraints(props):
             self.props = list(props)
-            if self._simulator:
+            try:
                 self._simulator.reset(props)
-            else:
+            except AttributeError:
                 self._simulator = type(self).Simulator(props)
+            self._simulator.compute_state(self.assembly, 0.)
         else:
             if self.verbose:
                 print("Error: invalid mechanism properties.", props)
@@ -110,6 +115,7 @@ class Mechanism:
         if (not check
             or self.constraint_solver.check_constraints(self.props)):
             self._simulator.update_prop(pid, value)
+            self._simulator.compute_state(self.assembly, 0.)
             return True
         else:
             if self.verbose:
@@ -123,6 +129,14 @@ class Mechanism:
     def get_prop_bounds(self, pid):
         """Get the bounds of the property referenced by the input index."""
         return self.constraint_solver.get_bounds(self.props, pid)
+
+    def set_state(self, t):
+        """Set value of the time parameter."""
+        self._simulator.compute_state(self.assembly, t)
+
+    @staticmethod
+    def _create_assembly():
+        raise NotImplementedError
 
 
 

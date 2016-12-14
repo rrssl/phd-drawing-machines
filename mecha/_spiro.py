@@ -5,7 +5,6 @@ Basic Spirograph
 
 @author: Robin Roussel
 """
-from fractions import gcd
 import math
 import numpy as np
 
@@ -70,9 +69,9 @@ class BaseSpirograph(DrawingMechanism):
 
         def reset(self, properties, nb_samples=2**6, per_turn=True):
             """Reset the class fields."""
-            if self.trocho:
+            try:
                 self.trocho.reset(properties)
-            else:
+            except AttributeError:
                 self.trocho = Hypotrochoid(*properties)
             self.nb_samples = nb_samples
             self.per_turn = per_turn
@@ -80,7 +79,7 @@ class BaseSpirograph(DrawingMechanism):
         def get_cycle_length(self):
             """Compute and return the interval length of one full cycle."""
             if self.trocho.d:
-                gcd_ = gcd(self.trocho.R, self.trocho.r)
+                gcd_ = math.gcd(int(self.trocho.R), int(self.trocho.r))
                 nb_turns = self.trocho.r / gcd_
             else:
                 # Degenerate case.
@@ -97,6 +96,13 @@ class BaseSpirograph(DrawingMechanism):
             t_range = np.linspace(0., length, nb_samples)
 
             return self.trocho.get_point(t_range)
+
+        def compute_state(self, asb, t):
+            """Compute the state of the assembly a time t."""
+            R, r = self.trocho.R, self.trocho.r
+            asb['rolling_gear']['pos'] = (R - r) * np.vstack(
+                [np.cos(t), np.sin(t)])
+            asb['penhole']['pos'] = self.trocho.get_point(t)
 
         def update_prop(self, pid, value):
             """Update the property referenced by the input index."""
@@ -133,3 +139,10 @@ class BaseSpirograph(DrawingMechanism):
         necessarily evenly spaced.
         """
         raise NotImplementedError
+
+    @staticmethod
+    def _create_assembly():
+        return {
+            'rolling_gear': {'pos': None},
+            'penhole': {'pos': None}
+            }

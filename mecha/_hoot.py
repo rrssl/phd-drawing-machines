@@ -21,7 +21,7 @@ class HootNanny(DrawingMechanism):
         """Class for handling design constraints."""
         nb_dprops = 3
         nb_cprops = 5
-        max_nb_turns = 25 # Arbitrary value
+        max_nb_turns = 10 # Arbitrary value
 
         @classmethod
         def get_constraints(cls, cstr={}):
@@ -244,6 +244,10 @@ class HootNanny(DrawingMechanism):
             self.assembly['pen'] = TM
 
             return curve
+
+        def compute_state(self, asb, t):
+            """Compute the state of the assembly a time t."""
+            pass
 
         def update_prop(self, pid, value):
             """Update the property referenced by the input index."""

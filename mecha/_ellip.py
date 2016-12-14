@@ -138,6 +138,10 @@ class EllipticSpirograph(DrawingMechanism):
             assert(not np.isnan(curve.min()))
             return curve
 
+        def compute_state(self, asb, t):
+            """Compute the state of the assembly a time t."""
+            pass
+
         def update_prop(self, pid, value):
             """Update the property referenced by the input index."""
             assert (0 <= pid < 4)
