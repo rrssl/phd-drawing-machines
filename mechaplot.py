@@ -4,6 +4,7 @@ Rendering and animation of mechanisms.
 
 @author: Robin Roussel
 """
+from odictliteral import odict
 import math
 import matplotlib.animation as manim
 import matplotlib.patches as pat
@@ -13,18 +14,27 @@ import numpy as np
 #import shapely.geometry as geom
 #import descartes
 
-import mecha
+import sys
 
 
 def mechaplot_factory(mechanism, ax):
-    if type(mechanism) is mecha.BaseSpirograph:
-        return BaseSpirograph(mechanism, ax)
-    elif type(mechanism) is mecha.EllipticSpirograph:
-        return EllipticSpirograph(mechanism, ax)
-    elif type(mechanism) is mecha.SingleGearFixedFulcrumCDM:
-        return SingleGearFixedFulcrumCDM(mechanism, ax)
-    elif type(mechanism) is mecha.HootNanny:
-        return HootNanny(mechanism, ax)
+    """Create and return an instance of the corresponding graphical class."""
+    # Hurray for introspection
+    assert(mechanism.__module__.startswith('mecha'))
+    cls = getattr(sys.modules[__name__], type(mechanism).__name__)
+    return cls(mechanism, ax)
+    # But seriously if this feels too hackish, this is +/- equivalent to:
+#    import mecha
+#    if type(mechanism) is mecha.BaseSpirograph:
+#        return BaseSpirograph(mechanism, ax)
+#    elif type(mechanism) is mecha.EllipticSpirograph:
+#        return EllipticSpirograph(mechanism, ax)
+#    elif type(mechanism) is mecha.SingleGearFixedFulcrumCDM:
+#        return SingleGearFixedFulcrumCDM(mechanism, ax)
+#    elif type(mechanism) is mecha.HootNanny:
+#        return HootNanny(mechanism, ax)
+#    elif type(mechanism) is mecha.Kicker:
+#        return Kicker(mechanism, ax)
 
 
 class AniMecha:
@@ -357,3 +367,126 @@ class HootNanny:
     def set_visible(self, b):
         self.bg_coll.set_visible(b)
         self.fg_coll.set_visible(b)
+
+
+class Kicker(AniMecha):
+
+    def __init__(self, mechanism, ax):
+        self.mecha = mechanism
+        self.ax = ax
+
+        self.shapes = odict[
+            'gear_1': [
+                pat.Circle((0., 0.), 1., color='grey', alpha=.7),
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7)
+                ],
+            'gear_2': [
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7),
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7)
+                ],
+            'arm_1': [
+                pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
+                              color='grey', alpha=1.)
+                ],
+            'arm_2': [
+                pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
+                              color='grey', alpha=1.)
+                ],
+            'pivot_1': [
+                pat.Circle((0., 0.), 0., color='pink', alpha=1.)
+                ],
+            'pivot_2': [
+                pat.Circle((0., 0.), 0., color='pink', alpha=1.)
+                ],
+            'pivot_12': [
+                pat.Circle((0., 0.), 0., color='pink', alpha=1.)
+                ],
+            'end_effector': [
+                pat.Circle((0., 0.), 0., color='lightblue', alpha=1.)
+                ]
+            ]
+
+        self.bg_coll = self.ax.add_collection(
+            PatchCollection(
+                [patch for shape in self.shapes.values() for patch in shape],
+                match_original=True))
+#        self.fg_coll = self.ax.add_collection(
+#            PatchCollection(self.shapes[6:], match_original=True))
+
+        super().__init__(mechanism, ax)
+
+    def redraw(self):
+        r1, r2, x2, y2, l1, l2, d = self.mecha.props
+        asb = self.mecha.assembly
+        OG1 = asb['gear_1']['pos']
+        OG2 = asb['gear_2']['pos']
+        # Static properties
+        pivot_size = (r1+r2) * .05
+        self.shapes['gear_1'][0].center = OG1
+        self.shapes['gear_1'][0].radius = r1 * 1.2
+        self.shapes['gear_1'][1].center = OG1
+        self.shapes['gear_1'][1].radius = pivot_size
+        self.shapes['gear_2'][0].center = OG2
+        self.shapes['gear_2'][0].radius = r2 * 1.2
+        self.shapes['gear_2'][1].center = OG2
+        self.shapes['gear_2'][1].radius = pivot_size
+        self.shapes['pivot_1'][0].radius = pivot_size
+        self.shapes['pivot_2'][0].radius = pivot_size
+        self.shapes['pivot_12'][0].radius = pivot_size
+        self.shapes['end_effector'][0].radius = pivot_size
+        # Moving parts
+        self._redraw_moving_parts()
+
+        self.bg_coll.set_paths(
+            [patch for shape in self.shapes.values() for patch in shape])
+#        self.fg_coll.set_paths(self.shapes[6:])
+#        self.fg_coll.set_zorder(3)
+
+        self.ax.set_xlim(1.1*(OG1[0] - r1), OG2[0] + r2 + l2 + d)
+        self.ax.set_ylim(1.1*(OG1[1] - r1), OG1[1] + r1 + l1 + d)
+
+        # Reset animation.
+        self.reset_anim()
+
+    def _redraw_moving_parts(self):
+        r1, r2, x2, y2, l1, l2, d = self.mecha.props
+        asb = self.mecha.assembly
+        OP1 = asb['pivot_1']['pos']
+        OP2 = asb['pivot_2']['pos']
+        OP12 = asb['pivot_12']['pos']
+        OE = asb['end_effector']['pos']
+
+        self.shapes['pivot_1'][0].center = OP1
+        self.shapes['pivot_2'][0].center = OP2
+        self.shapes['pivot_12'][0].center = OP12
+        self.shapes['end_effector'][0].center = OE
+        # Linkages
+        rod_thickness = .2
+        rectangle_offset = np.array([[0.], [-rod_thickness/2]])
+        # 1
+        vec = OP12 - OP1
+        self.shapes['arm_1'][0].xy = OP1 + rectangle_offset
+        self.shapes['arm_1'][0].set_width(l1+d)
+        self.shapes['arm_1'][0].set_height(rod_thickness)
+        rot = Affine2D().rotate_around(
+            *OP1, theta=math.atan2(vec[1], vec[0]))
+        self.shapes['arm_1'][0].set_transform(rot)
+        # 1
+        vec = OP12 - OP2
+        self.shapes['arm_2'][0].xy = OP2 + rectangle_offset
+        self.shapes['arm_2'][0].set_width(l2)
+        self.shapes['arm_2'][0].set_height(rod_thickness)
+        rot = Affine2D().rotate_around(
+            *OP2, theta=math.atan2(vec[1], vec[0]))
+        self.shapes['arm_2'][0].set_transform(rot)
+
+    def set_visible(self, b):
+        self.bg_coll.set_visible(b)
+#        self.fg_coll.set_visible(b)
+
+    def animate(self, t):
+        self.mecha.set_state(t)
+        self._redraw_moving_parts()
+        self.bg_coll.set_paths(
+            [patch for shape in self.shapes.values() for patch in shape])
+        return self.bg_coll,
