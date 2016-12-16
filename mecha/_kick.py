@@ -9,7 +9,6 @@ import math
 import numpy as np
 from tinyik import Actuator, ConjugateGradientOptimizer
 
-import context
 from ._mecha import Mechanism, DrawingMechanism
 #from utils import skipends, farey
 

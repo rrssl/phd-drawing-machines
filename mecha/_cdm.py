@@ -5,13 +5,12 @@ Cycloid Drawing Machine
 
 @author: Robin Roussel
 """
-from itertools import product
+#from itertools import product
 import math
 import numpy as np
 import scipy.optimize as opt
 
-import mecha.context
-from mecha._mecha import Mechanism, DrawingMechanism
+from ._mecha import Mechanism, DrawingMechanism
 from utils import skipends, farey
 
 
@@ -197,7 +196,7 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
                 nb_samples = (length / (2*math.pi)) * self.nb_samples + 1
             else:
                 nb_samples = self.nb_samples
-            # Property range
+            # Time range
             t_range = np.linspace(0., length, nb_samples)
             # Slider curve
             C_g = (self.R_t + self.R_g) * np.array(
@@ -237,9 +236,7 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
                 self.d_p = value
             else:
                 self.d_s = value
-            if pid == 0 or pid == 1 or pid == 3:
-                self.C_g = (self.R_t + self.R_g) * np.array(
-                    [math.cos(self.theta_g), math.sin(self.theta_g)])
+
 
     def get_curve(self, nb=2**6, per_turn=True):
         """Return an array of points sampled on the full curve.

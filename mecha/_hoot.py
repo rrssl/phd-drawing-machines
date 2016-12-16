@@ -10,7 +10,8 @@ from fractions import gcd
 import math
 import numpy as np
 import scipy.optimize as opt
-from mecha._mecha import Mechanism, DrawingMechanism #, skipends, farey
+
+from ._mecha import Mechanism, DrawingMechanism #, skipends, farey
 
 
 class HootNanny(DrawingMechanism):

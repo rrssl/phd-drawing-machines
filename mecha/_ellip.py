@@ -10,8 +10,7 @@ import numpy as np
 import scipy.optimize as opt
 import scipy.special as spec
 
-import mecha.context
-from mecha._mecha import Mechanism, DrawingMechanism
+from ._mecha import Mechanism, DrawingMechanism
 from utils import skipends, farey
 import curves as cu
 

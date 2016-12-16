@@ -8,8 +8,7 @@ Basic Spirograph
 import math
 import numpy as np
 
-import mecha.context
-from mecha._mecha import Mechanism, DrawingMechanism
+from ._mecha import Mechanism, DrawingMechanism
 from utils import skipends, farey
 from curves import Hypotrochoid
 
