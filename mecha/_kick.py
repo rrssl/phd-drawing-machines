@@ -7,9 +7,10 @@ Ball-kicking leg
 """
 import math
 import numpy as np
+from tinyik import Actuator, ConjugateGradientOptimizer
 
-import mecha.context
-from mecha._mecha import Mechanism, DrawingMechanism
+import context
+from ._mecha import Mechanism, DrawingMechanism
 #from utils import skipends, farey
 
 
@@ -54,8 +55,42 @@ class Kicker(DrawingMechanism):
         def reset(self, properties, nb_samples=2**6, per_turn=True):
             """Reset the class fields."""
             self.props = list(properties)
+            self._reset_linkage()
+
             self.nb_samples = nb_samples
             self.per_turn = per_turn
+
+        def _reset_linkage(self):
+            r1, r2, x2, y2, l1, l2, d = self.props
+
+            halflen = (l1 + d)
+            thigh = [-halflen, 0., 0.]
+            calf = [0., -halflen, 0.]
+            foot = [-.2*halflen,  0., 0.]
+            # Quick experiments suggest that the CG optimizer is best here.
+            self.leg = Actuator(['z', thigh, 'z', calf, 'z', foot],
+                                optimizer=ConjugateGradientOptimizer())
+            # TODO: let origin be movable by the user.
+            self.leg._origin = (
+                np.array([[x2*1.5], [y2]])
+                + np.array([[-y2], [x2]])
+                * 2*halflen / math.sqrt(x2**2 + y2**2)
+                )
+            # The angles output by tinyik are relative from one link to the
+            # next, and for two consecutive links, relative to the original
+            # angle between them; therefore we need to keep track of the
+            # original link-to-link angles.
+            abs_angles = np.array(
+                [0.] + [math.atan2(v[1], v[0]) for v in (thigh, calf, foot)]
+                )
+            self.leg._init_angles = abs_angles[1:] - abs_angles[:-1]
+            self.leg._halflen = halflen
+
+        def update_prop(self, pid, value):
+            """Update the property referenced by the input index."""
+            assert(0 <= pid < 7)
+            self.props[pid] = value
+            self._reset_linkage()
 
         def get_cycle_length(self):
             """Compute and return the interval length of one full cycle."""
@@ -85,6 +120,21 @@ class Kicker(DrawingMechanism):
             asb['pivot_2']['pos'] = OP2
             asb['pivot_12']['pos'] = OP1 + (OE-OP1) * l1 / (l1 + d)
             asb['end_effector']['pos'] = OE
+            self._compute_IK(asb, OE)
+
+        def _compute_IK(self, asb, ee_pos):
+            try:
+                self.leg.ee = np.append(
+                    (ee_pos - self.leg._origin).ravel(), 0.)
+            except np.linalg.LinAlgError:
+                print("IK Error: Singular matrix")
+            a1 = self.leg.angles[0] + self.leg._init_angles[0]
+            a2 = a1 + self.leg.angles[1] + self.leg._init_angles[1]
+            asb['hip']['pos'] = self.leg._origin
+            asb['knee']['pos'] = self.leg._halflen * np.array([
+                [math.cos(a1)], [math.sin(a1)]]) + asb['hip']['pos']
+            asb['ankle']['pos'] = self.leg._halflen * np.array([
+                [math.cos(a2)], [math.sin(a2)]]) + asb['knee']['pos']
 
         def _compute_vectors(self, t):
             t = np.atleast_1d(t)
@@ -104,11 +154,6 @@ class Kicker(DrawingMechanism):
             rot_a = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
             OE = OP1 + (d+l1) * np.einsum('ijk,jk->ik', rot_a, P1P2 / d12)
             return OG1, OG2, OP1, OP2, OE
-
-        def update_prop(self, pid, value):
-            """Update the property referenced by the input index."""
-            assert(0 <= pid < 7)
-            self.props[pid] = value
 
 
     def get_curve(self, nb=2**6, per_turn=True):
@@ -144,5 +189,8 @@ class Kicker(DrawingMechanism):
             'pivot_1': {'pos': None},
             'pivot_2': {'pos': None},
             'pivot_12': {'pos': None},
-            'end_effector': {'pos': None}
+            'end_effector': {'pos': None},
+            'hip': {'pos': None},
+            'knee': {'pos': None},
+            'ankle': {'pos': None}
             }

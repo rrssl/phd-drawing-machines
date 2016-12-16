@@ -44,7 +44,7 @@ class AniMecha:
         self.play = False
         self.anim = manim.FuncAnimation(
             ax.figure, self.animate, frames=self.get_anim_time,
-            interval=30, blit=True)
+            interval=40, blit=True)
         ax.figure.canvas.mpl_connect('key_press_event', self.on_key_press)
 
     def get_anim_time(self):
@@ -84,7 +84,7 @@ class BaseSpirograph(AniMecha):
     def __init__(self, mechanism, ax):
         self.mecha = mechanism
         self.ax = ax
-
+        # TODO use odict
         self.shapes = [
             # Outer shape of the static ring
             pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
@@ -131,10 +131,12 @@ class BaseSpirograph(AniMecha):
         self.fg_coll.set_visible(b)
 
     def animate(self, t):
-        self.mecha.set_state(t)
-        self.shapes[2].center = self.mecha.assembly['rolling_gear']['pos']
-        self.shapes[3].center = self.mecha.assembly['penhole']['pos']
-        self.fg_coll.set_paths(self.shapes[-2:])
+        if self.play:
+            self.mecha.set_state(t)
+            # TODO put this in _redraw_moving_parts
+            self.shapes[2].center = self.mecha.assembly['rolling_gear']['pos']
+            self.shapes[3].center = self.mecha.assembly['penhole']['pos']
+            self.fg_coll.set_paths(self.shapes[-2:])
         return self.fg_coll,
 
 
@@ -143,7 +145,7 @@ class EllipticSpirograph:
     def __init__(self, mechanism, ax):
         self.mecha = mechanism
         self.ax = ax
-
+        # TODO use odict
         self.shapes = [
             # Outer shape of the static ring
             pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
@@ -188,12 +190,19 @@ class EllipticSpirograph:
         self.fg_coll.set_visible(b)
 
 
+def _align_linkage_to_joints(p1, p2, linkage, offset):
+    vec = p2 - p1
+    linkage.xy = p1 + offset
+    rot = Affine2D().rotate_around(*p1, theta=math.atan2(vec[1], vec[0]))
+    linkage.set_transform(rot)
+
+
 class SingleGearFixedFulcrumCDM:
 
     def __init__(self, mechanism, ax):
         self.mecha = mechanism
         self.ax = ax
-
+        # TODO use odict
         self.shapes = [
             # Turntable
             pat.Circle((0., 0.), 0., color='grey', alpha=.7),
@@ -240,6 +249,7 @@ class SingleGearFixedFulcrumCDM:
         self.shapes[5].center = slider_pos
         self.shapes[5].radius = R_t * 0.1
         # Connecting rod
+        # TODO use _align_linkage_to_joints
         rod_vect = slider_pos - C_f
         rod_length = np.linalg.norm(rod_vect)
         rod_angle = math.atan2(rod_vect[1], rod_vect[0])
@@ -274,7 +284,7 @@ class HootNanny:
     def __init__(self, mechanism, ax):
         self.mecha = mechanism
         self.ax = ax
-
+        # TODO use odict
         self.shapes = [
             # Turntable
             pat.Circle((0., 0.), 0., color='grey', alpha=.7),
@@ -334,6 +344,7 @@ class HootNanny:
         self.shapes[7].center = C_P2
         self.shapes[7].radius = r_G2 * 0.1
         # Linkages
+        # TODO use _align_linkage_to_joints
         rod_thickness = r_T * .02
         rectangle_offset = np.array([0., -rod_thickness / 2])
         # 1
@@ -370,6 +381,7 @@ class HootNanny:
 
 
 class Kicker(AniMecha):
+    rod_thickness = .2
 
     def __init__(self, mechanism, ax):
         self.mecha = mechanism
@@ -385,12 +397,24 @@ class Kicker(AniMecha):
                 pat.Circle((0., 0.), 0., color='grey', alpha=.7)
                 ],
             'arm_1': [
-                pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
-                              color='grey', alpha=1.)
+                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                              angle=0., color='grey', alpha=1.)
                 ],
             'arm_2': [
-                pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
-                              color='grey', alpha=1.)
+                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                              angle=0., color='grey', alpha=1.)
+                ],
+            'thigh': [
+                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                              angle=0., color='m', alpha=1.)
+                ],
+            'calf': [
+                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                              angle=0., color='m', alpha=1.)
+                ],
+            'foot': [
+                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                              angle=0., color='m', alpha=1.)
                 ],
             'pivot_1': [
                 pat.Circle((0., 0.), 0., color='pink', alpha=1.)
@@ -400,6 +424,15 @@ class Kicker(AniMecha):
                 ],
             'pivot_12': [
                 pat.Circle((0., 0.), 0., color='pink', alpha=1.)
+                ],
+            'pivot_hip': [
+                pat.Circle((0., 0.), 0., color='lightgreen', alpha=1.)
+                ],
+            'pivot_knee': [
+                pat.Circle((0., 0.), 0., color='lightgreen', alpha=1.)
+                ],
+            'pivot_ankle': [
+                pat.Circle((0., 0.), 0., color='lightgreen', alpha=1.)
                 ],
             'end_effector': [
                 pat.Circle((0., 0.), 0., color='lightblue', alpha=1.)
@@ -420,6 +453,7 @@ class Kicker(AniMecha):
         asb = self.mecha.assembly
         OG1 = asb['gear_1']['pos']
         OG2 = asb['gear_2']['pos']
+        OH = asb['hip']['pos']
         # Static properties
         pivot_size = (r1+r2) * .05
         self.shapes['gear_1'][0].center = OG1
@@ -433,6 +467,15 @@ class Kicker(AniMecha):
         self.shapes['pivot_1'][0].radius = pivot_size
         self.shapes['pivot_2'][0].radius = pivot_size
         self.shapes['pivot_12'][0].radius = pivot_size
+        self.shapes['pivot_hip'][0].center = OH
+        self.shapes['pivot_hip'][0].radius = pivot_size
+        self.shapes['pivot_knee'][0].radius = pivot_size
+        self.shapes['pivot_ankle'][0].radius = pivot_size
+        self.shapes['arm_1'][0].set_width(l1+d)
+        self.shapes['arm_2'][0].set_width(l2)
+        self.shapes['thigh'][0].set_width(l1+d)
+        self.shapes['calf'][0].set_width(l1+d)
+        self.shapes['foot'][0].set_width((l1+d)/5)
         self.shapes['end_effector'][0].radius = pivot_size
         # Moving parts
         self._redraw_moving_parts()
@@ -442,8 +485,8 @@ class Kicker(AniMecha):
 #        self.fg_coll.set_paths(self.shapes[6:])
 #        self.fg_coll.set_zorder(3)
 
-        self.ax.set_xlim(1.1*(OG1[0] - r1), OG2[0] + r2 + l2 + d)
-        self.ax.set_ylim(1.1*(OG1[1] - r1), OG1[1] + r1 + l1 + d)
+        self.ax.set_xlim(OG1[0] - r1 - l1, OG2[0] + r2 + l2 + d)
+        self.ax.set_ylim(1.2*(OG1[1] - r1), 1.1*OH[1])
 
         # Reset animation.
         self.reset_anim()
@@ -454,39 +497,38 @@ class Kicker(AniMecha):
         OP1 = asb['pivot_1']['pos']
         OP2 = asb['pivot_2']['pos']
         OP12 = asb['pivot_12']['pos']
+        OH = asb['hip']['pos']
+        OK = asb['knee']['pos']
+        OA = asb['ankle']['pos']
         OE = asb['end_effector']['pos']
-
+        # Pivots
         self.shapes['pivot_1'][0].center = OP1
         self.shapes['pivot_2'][0].center = OP2
         self.shapes['pivot_12'][0].center = OP12
+        self.shapes['pivot_knee'][0].center = OK
+        self.shapes['pivot_ankle'][0].center = OA
         self.shapes['end_effector'][0].center = OE
         # Linkages
-        rod_thickness = .2
-        rectangle_offset = np.array([[0.], [-rod_thickness/2]])
-        # 1
-        vec = OP12 - OP1
-        self.shapes['arm_1'][0].xy = OP1 + rectangle_offset
-        self.shapes['arm_1'][0].set_width(l1+d)
-        self.shapes['arm_1'][0].set_height(rod_thickness)
-        rot = Affine2D().rotate_around(
-            *OP1, theta=math.atan2(vec[1], vec[0]))
-        self.shapes['arm_1'][0].set_transform(rot)
-        # 1
-        vec = OP12 - OP2
-        self.shapes['arm_2'][0].xy = OP2 + rectangle_offset
-        self.shapes['arm_2'][0].set_width(l2)
-        self.shapes['arm_2'][0].set_height(rod_thickness)
-        rot = Affine2D().rotate_around(
-            *OP2, theta=math.atan2(vec[1], vec[0]))
-        self.shapes['arm_2'][0].set_transform(rot)
+        rectangle_offset = np.array([[0.], [-self.rod_thickness/2]])
+        _align_linkage_to_joints(OP1, OP12, self.shapes['arm_1'][0],
+                                 rectangle_offset)
+        _align_linkage_to_joints(OP2, OP12, self.shapes['arm_2'][0],
+                                 rectangle_offset)
+        _align_linkage_to_joints(OH, OK, self.shapes['thigh'][0],
+                                 rectangle_offset)
+        _align_linkage_to_joints(OK, OA, self.shapes['calf'][0],
+                                 rectangle_offset)
+        _align_linkage_to_joints(OA, OE, self.shapes['foot'][0],
+                                 rectangle_offset)
 
     def set_visible(self, b):
         self.bg_coll.set_visible(b)
 #        self.fg_coll.set_visible(b)
 
     def animate(self, t):
-        self.mecha.set_state(t)
-        self._redraw_moving_parts()
-        self.bg_coll.set_paths(
-            [patch for shape in self.shapes.values() for patch in shape])
+        if self.play:
+            self.mecha.set_state(-t)
+            self._redraw_moving_parts()
+            self.bg_coll.set_paths(
+                [patch for shape in self.shapes.values() for patch in shape])
         return self.bg_coll,
