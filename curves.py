@@ -282,7 +282,7 @@ class Roulette(Curve):
 
         self.T = np.array([[pole_dist], [0.]])
         self.par = parametrization
-        self._old = ()
+        self._old_rng = ()
 
     def check_curvature_constraint(self):
         """Check that the minimum curvature of the moving curve is strictly
@@ -316,25 +316,9 @@ class Roulette(Curve):
         No assumptions are made on the order of the points, the periodicity
         and/or symmetry of the curve.
         """
-        # Get the parameter values for both curves.
-        if self.par == 'moving':
-            tm = t
-            svals = self.m_obj.get_arclength(tm)
-            tn = self.n_obj.get_arclength_inv(svals)
-        else:
-            tn = t
-            svals = self.n_obj.get_arclength(tn)
-            tm = self.m_obj.get_arclength_inv(svals)
-        # Get the points' coordinates from the parameter values.
-        self.n_pts = self.n_obj.get_point(tn)
-        self.m_pts = self.m_obj.get_point(tm)
-        # Compute pairs of jacobians.
-        n_jacs = self.n_obj.get_jac(tn) / self.n_obj.get_arclength_der(tn)
-        m_jacs = self.m_obj.get_jac(tm) / self.m_obj.get_arclength_der(tm)
-        # Compute the rotations between each pair of jacobians.
-        self.rot = _get_rotation(m_jacs, n_jacs)
-
-        return self._get_curve_from_data()
+        t = np.atleast_1d(t)
+        self._old_rng = (t[0], t[-1], t.shape[0])
+        return self._get_curve_unoptimized(t)
 
     def get_range(self, start, end, nb_pts, reuse=True):
         """Get [x(t), y(t)] with the t values evenly sampled in [start, end].
@@ -351,19 +335,19 @@ class Roulette(Curve):
             self._compute_range_data(start, end, nb_pts)
         return self._get_curve_from_data()
 
-    def _check_stale_data(self, new=()):
+    def _check_stale_data(self, new_rng=()):
         """Returns True if the intermediary data should be updated.
 
         Used for partial memoization.
         """
-        new += (tuple(vars(self.m_obj).values())
-                + tuple(vars(self.n_obj).values())
-                + (self.par,))
-        if self._old:
-            stale = new != self._old
+        new_rng += (tuple(vars(self.m_obj).values())
+                    + tuple(vars(self.n_obj).values())
+                    + (self.par,))
+        if self._old_rng:
+            stale = new_rng != self._old_rng
         else:
             stale = True
-        self._old = new
+        self._old_rng = new_rng
         return stale
 
     def _compute_range_data(self, start, end, nb_pts):
@@ -387,7 +371,7 @@ class Roulette(Curve):
         step = abs(end - start) / (nb_pts - 1)
         per = ref_obj.get_period()
         if per is None or per >= end or per % step != 0:
-            return self.get_point(np.linspace(start, end, nb_pts))
+            return self._get_curve_unoptimized(np.linspace(start, end, nb_pts))
 
         # Get the parameter values for both curves.
         nb_cycles, rem = divmod(abs(end - start), per)
@@ -429,6 +413,27 @@ class Roulette(Curve):
             self.m_pts = aux_pts
             self.n_pts = ref_pts
             self.rot = _get_rotation(aux_jacs, ref_jacs)
+
+    def _get_curve_unoptimized(self, t):
+        # Get the parameter values for both curves.
+        if self.par == 'moving':
+            tm = t
+            svals = self.m_obj.get_arclength(tm)
+            tn = self.n_obj.get_arclength_inv(svals)
+        else:
+            tn = t
+            svals = self.n_obj.get_arclength(tn)
+            tm = self.m_obj.get_arclength_inv(svals)
+        # Get the points' coordinates from the parameter values.
+        self.n_pts = self.n_obj.get_point(tn)
+        self.m_pts = self.m_obj.get_point(tm)
+        # Compute pairs of jacobians.
+        n_jacs = self.n_obj.get_jac(tn) / self.n_obj.get_arclength_der(tn)
+        m_jacs = self.m_obj.get_jac(tm) / self.m_obj.get_arclength_der(tm)
+        # Compute the rotations between each pair of jacobians.
+        self.rot = _get_rotation(m_jacs, n_jacs)
+
+        return self._get_curve_from_data()
 
     def _get_curve_from_data(self):
         # Apply the general roulette formula:

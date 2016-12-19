@@ -51,6 +51,8 @@ class EllipticSpiroPlot:
         if success:
             for i in range(len(self.mecha.props)):
                 bounds = self.mecha.get_prop_bounds(i)
+                # FIXME: sometimes radii bounds are off by 1 -- probably a
+                # rounding error.
 #                if i > 1:
 #                    # Account for slider imprecision wrt bounds.
 #                    bounds = bounds[0] + 1e-3, bounds[1] - 1e-3

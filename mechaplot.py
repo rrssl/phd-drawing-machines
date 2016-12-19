@@ -140,7 +140,7 @@ class BaseSpirograph(AniMecha):
         return self.fg_coll,
 
 
-class EllipticSpirograph:
+class EllipticSpirograph(AniMecha):
 
     def __init__(self, mechanism, ax):
         self.mecha = mechanism
@@ -162,32 +162,48 @@ class EllipticSpirograph:
         self.fg_coll = self.ax.add_collection(
             PatchCollection(self.shapes[-2:], match_original=True))
 
+        super().__init__(mechanism, ax)
+
     def redraw(self):
         R, req, e2, d = self.mecha.props
         a = self.mecha._simulator.roul.m_obj.a
-
         # Static ring
         self.shapes[0].xy = np.array([-1.1 * R, -1.1 * R])
         self.shapes[0].set_width(R * 2.2)
         self.shapes[0].set_height(R * 2.2)
         self.shapes[1].radius = R
         # Rolling gear.
-        self.shapes[2].center = np.array([R - a, 0.])
         self.shapes[2].width = 2 * a
         self.shapes[2].height = 2 * a * math.sqrt(1 - e2)
-        self.shapes[3].center = np.array([R - a + d, 0.])
         self.shapes[3].radius = req * 0.1
-
+        # Moving parts
+        self._redraw_moving_parts()
+        # Update patches.
         self.bg_coll.set_paths(self.shapes[:-2])
         self.fg_coll.set_paths(self.shapes[-2:])
         self.fg_coll.set_zorder(1)
-
+        # Compute new limits.
         self.ax.set_xlim(-1.1*R, 1.1*R)
         self.ax.set_ylim(-1.1*R, 1.1*R)
+        # Reset animation.
+        self.reset_anim()
+
+    def _redraw_moving_parts(self):
+        asb = self.mecha.assembly
+        self.shapes[2].center = asb['rolling_gear']['pos']
+        self.shapes[2].angle = asb['rolling_gear']['or'] * 180. / math.pi
+        self.shapes[3].center = asb['penhole']['pos']
 
     def set_visible(self, b):
         self.bg_coll.set_visible(b)
         self.fg_coll.set_visible(b)
+
+    def animate(self, t):
+        if self.play:
+            self.mecha.set_state(t)
+            self._redraw_moving_parts()
+            self.fg_coll.set_paths(self.shapes[-2:])
+        return self.fg_coll,
 
 
 def _align_linkage_to_joints(p1, p2, linkage, offset):

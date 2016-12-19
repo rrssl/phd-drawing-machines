@@ -139,7 +139,12 @@ class EllipticSpirograph(DrawingMechanism):
 
         def compute_state(self, asb, t):
             """Compute the state of the assembly a time t."""
-            pass
+            d = float(self.roul.T[0])
+            asb['penhole']['pos'] = self.roul.get_point(t)
+            asb['rolling_gear']['pos'] = self.roul.update_pole(0.)
+            asb['rolling_gear']['or'] = np.arctan2(
+                self.roul.rot[1, 0], self.roul.rot[0, 0])
+            self.roul.T[0] = d
 
         def update_prop(self, pid, value):
             """Update the property referenced by the input index."""
@@ -178,4 +183,11 @@ class EllipticSpirograph(DrawingMechanism):
         necessarily evenly spaced.
         """
         raise NotImplementedError
+
+    @staticmethod
+    def _create_assembly():
+        return {
+            'rolling_gear': {'pos': None, 'or': None},
+            'penhole': {'pos': None}
+            }
 
