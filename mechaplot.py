@@ -53,7 +53,7 @@ class AniMecha:
     def get_anim_time(self):
         """Generator for the animation time."""
         t_max = self.mecha._simulator.get_cycle_length()
-        dt = 1. / (2*math.pi)
+        dt = 1. / (4.*math.pi)
         t = 0.
         while t < t_max:
             if self.play:
@@ -299,11 +299,9 @@ class SingleGearFixedFulcrumCDM(AniMecha):
         self.shapes[-1].center = asb['pen-holder']['pos']
         # Link
         rectangle_offset = np.array([[0.], [-self.rod_thickness/2]])
-        _align_linkage_to_joints(OF, OS, self.shapes[-2],
-                                 rectangle_offset)
+        _align_linkage_to_joints(OF, OS, self.shapes[-2], rectangle_offset)
 
     def _rotate_plot(self):
-        R_t, R_g = self.mecha.props[:2]
         theta = self.mecha.assembly['turntable']['or']
         cos = np.cos(theta)
         sin = np.sin(theta)
@@ -324,9 +322,10 @@ class SingleGearFixedFulcrumCDM(AniMecha):
             self.fg_coll.set_paths(self.shapes[-3:])
         return self.fg_coll, self.anim_plt
 
-class HootNanny:
+class HootNanny(AniMecha):
+    rod_thickness = .2
 
-    def __init__(self, mechanism, ax):
+    def __init__(self, mechanism, ax, anim_plt=None):
         self.mecha = mechanism
         self.ax = ax
         # TODO use odict
@@ -344,10 +343,10 @@ class HootNanny:
             pat.Circle((0., 0.), 0., color='pink', alpha=1.),
             pat.Circle((0., 0.), 0., color='pink', alpha=1.),
             # Linkages
-            pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
-                          color='grey', alpha=1.),
-            pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
-                          color='grey', alpha=1.),
+            pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                          angle=0., color='grey', alpha=1.),
+            pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                          angle=0., color='grey', alpha=1.),
             # Penholder
             pat.Circle((0., 0.), 0., color='lightblue', alpha=1.)
             ]
@@ -356,19 +355,15 @@ class HootNanny:
         self.fg_coll = self.ax.add_collection(
             PatchCollection(self.shapes[6:], match_original=True))
 
+        super().__init__(mechanism, ax, anim_plt)
+
     def redraw(self):
         r_T, r_G1, r_G2, theta_12, d1, d2, l1, l2 = self.mecha.props
         C_G1 = np.array([r_T + r_G1, 0.])
         C_G2 = (r_T + r_G2) * np.array([math.cos(theta_12),
                                         math.sin(theta_12)])
-        # TODO: stop accessing _simulator here, for we don't know if the data
-        # matches the current property values. Instead, move 'assembly' to
-        # the Mechanism instance, and whenever 'update_prop' or 'reset' is
-        # called, update the assembly data as well. We don't need to simulate
-        # a full cycle, only to simulate t=0.
-        C_P1 = self.mecha._simulator.assembly['pivot_1'][:, 0]
-        C_P2 = self.mecha._simulator.assembly['pivot_2'][:, 0]
-        C_PH = self.mecha._simulator.assembly['pen'][:, 0]
+
+        # Static properties
 
         # Turntable
         self.shapes[0].radius = r_T
@@ -376,53 +371,71 @@ class HootNanny:
         self.shapes[1].center = C_G1
         self.shapes[1].radius = r_G1
         self.shapes[2].center = C_G1
-        self.shapes[2].radius = r_G1 * 0.1
+        self.shapes[2].radius = r_G1 * .1
         self.shapes[3].center = C_G2
         self.shapes[3].radius = r_G2
         self.shapes[4].center = C_G2
-        self.shapes[4].radius = r_G2 * 0.1
+        self.shapes[4].radius = r_G2 * .1
         # Canvas
-        self.shapes[5].radius = r_T * 0.95
+        self.shapes[5].radius = r_T * .95
         # Pivots
-        self.shapes[6].center = C_P1
-        self.shapes[6].radius = r_G1 * 0.1
-        self.shapes[7].center = C_P2
-        self.shapes[7].radius = r_G2 * 0.1
-        # Linkages
-        # TODO use _align_linkage_to_joints
-        rod_thickness = r_T * .02
-        rectangle_offset = np.array([0., -rod_thickness / 2])
-        # 1
-        P1PH = C_PH - C_P1
-        self.shapes[8].xy = C_P1 + rectangle_offset
+        self.shapes[6].radius = r_G1 * .1
+        self.shapes[7].radius = r_G1 * .1
+        # Linkage
         self.shapes[8].set_width(l1)
-        self.shapes[8].set_height(rod_thickness)
-        rot = Affine2D().rotate_around(
-            *C_P1, theta=math.atan2(P1PH[1], P1PH[0]))
-        self.shapes[8].set_transform(rot)
-        # 2
-        P2PH = C_PH - C_P2
-        self.shapes[9].xy = C_P2 + rectangle_offset
         self.shapes[9].set_width(l2)
-        self.shapes[9].set_height(rod_thickness)
-        rot = Affine2D().rotate_around(
-            *C_P2, theta=math.atan2(P2PH[1], P2PH[0]))
-        self.shapes[9].set_transform(rot)
-        # Penholder
-        self.shapes[10].center = C_PH
-        self.shapes[10].radius = r_T * 0.05
+        # Pen-holder
+        self.shapes[10].radius = r_T * .05
 
+        # Moving parts
+        self._redraw_moving_parts()
+
+        # Update patches
         self.bg_coll.set_paths(self.shapes[:6])
         self.fg_coll.set_paths(self.shapes[6:])
         self.fg_coll.set_zorder(3)
-
+        # Compute new limits.
         self.ax.set_xlim(1.1*min(C_G2[0] - r_G2, -r_T),
                          1.1*max(C_G1[0] + r_G1, r_T))
         self.ax.set_ylim(-1.1*r_T, 1.1*max(C_G2[1] + r_G2, r_T))
+        # Reset animation.
+        self.reset_anim()
+
+    def _redraw_moving_parts(self):
+        asb = self.mecha.assembly
+        OP1 = asb['pivot_1']['pos']
+        OP2 = asb['pivot_2']['pos']
+        OH = asb['pen-holder']['pos']
+        # Pivots
+        self.shapes[6].center = OP1
+        self.shapes[7].center = OP2
+        # Pen-holder
+        self.shapes[10].center = OH
+        # Linkage
+        rectangle_offset = np.array([[0.], [-self.rod_thickness/2.]])
+        _align_linkage_to_joints(OP1, OH, self.shapes[8], rectangle_offset)
+        _align_linkage_to_joints(OP2, OH, self.shapes[9], rectangle_offset)
+
+    def _rotate_plot(self):
+        theta = self.mecha.assembly['turntable']['or']
+        cos = np.cos(theta)
+        sin = np.sin(theta)
+        rot = np.array([[cos, -sin], [sin, cos]])
+        points = rot.dot(self.anim_plt_init)
+
+        self.anim_plt.set_data(*points)
 
     def set_visible(self, b):
         self.bg_coll.set_visible(b)
         self.fg_coll.set_visible(b)
+
+    def animate(self, t):
+        if self.play:
+            self.mecha.set_state(t)
+            self._redraw_moving_parts()
+            self._rotate_plot()
+            self.fg_coll.set_paths(self.shapes[6:])
+        return self.fg_coll, self.anim_plt
 
 
 class Kicker(AniMecha):
@@ -553,8 +566,8 @@ class Kicker(AniMecha):
         self.shapes['pivot_knee'][0].center = OK
         self.shapes['pivot_ankle'][0].center = OA
         self.shapes['end_effector'][0].center = OE
-        # Linkages
-        rectangle_offset = np.array([[0.], [-self.rod_thickness/2]])
+        # Linkage
+        rectangle_offset = np.array([[0.], [-self.rod_thickness/2.]])
         _align_linkage_to_joints(OP1, OP12, self.shapes['arm_1'][0],
                                  rectangle_offset)
         _align_linkage_to_joints(OP2, OP12, self.shapes['arm_2'][0],

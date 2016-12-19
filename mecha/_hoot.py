@@ -5,7 +5,6 @@ Hoot-Nanny
 
 @author: Robin Roussel
 """
-from fractions import gcd
 #from itertools import product
 import math
 import numpy as np
@@ -55,7 +54,7 @@ class HootNanny(DrawingMechanism):
                     lambda p: p[6] + p[7] - cls._get_G1G2(*p[:4]) - p[4] - p[5],
                                                     # 17: l1+l2 >= G1G2+d1+d2
                     # Drawing-inside condition.
-                    lambda p: p[0] - cls._get_TM_max(*p)    # 18: TM_max <= r_T
+                    lambda p: p[0] - cls._get_OH_max(*p)    # 18: OH_max <= r_T
                     )
                 return cstr[cls]
 
@@ -87,9 +86,9 @@ class HootNanny(DrawingMechanism):
             cstrs = [adapt(cstrs[i]) for i in ids]
 
             min_ = opt.fmin_cobyla(
-                lambda x: x, prop[pid], cons=cstrs, disp=0) + 2*cls.eps
+                lambda x: x, prop[pid], cons=cstrs, disp=0, catol=cls.eps)
             max_ = opt.fmin_cobyla(
-                lambda x: -x, prop[pid], cons=cstrs, disp=0) - 2*cls.eps
+                lambda x: -x, prop[pid], cons=cstrs, disp=0, catol=cls.eps)
 
             if pid in (0, 1, 2):
                 min_ = math.ceil(min_)
@@ -129,24 +128,24 @@ class HootNanny(DrawingMechanism):
         @staticmethod
         def _get_G1G2(r_T, r_G1, r_G2, theta_12):
             """Get the distance between the gear centers."""
-            d_TG1 = r_T + r_G1
-            d_TG2 = r_T + r_G2
+            d_OG1 = r_T + r_G1
+            d_OG2 = r_T + r_G2
             return math.sqrt(
-                d_TG1**2 + d_TG2**2 - 2*d_TG1*d_TG2*math.cos(theta_12))
+                d_OG1**2 + d_OG2**2 - 2*d_OG1*d_OG2*math.cos(theta_12))
 
         @classmethod
-        def _get_TM_max(cls, r_T, r_G1, r_G2, theta_12, d1, d2, l1, l2):
+        def _get_OH_max(cls, r_T, r_G1, r_G2, theta_12, d1, d2, l1, l2):
             """Get the maximum distance between the center and the pen."""
             # Compute the 4 candidate points for the extremum.
-            TG2 = (r_T + r_G2) * np.vstack(
+            OG2 = (r_T + r_G2) * np.vstack(
                 [math.cos(theta_12), math.sin(theta_12)])
-            G2G1 = np.vstack([r_T + r_G1, 0.]) - TG2
+            G2G1 = np.vstack([r_T + r_G1, 0.]) - OG2
             d_G2G1_sq = G2G1[0]**2 + G2G1[1]**2
             d_G2G1 = math.sqrt(d_G2G1_sq)
-            d_G1M = np.r_[l1 - d1, l1 + d1, l1 - d1, l1 + d1]
-            d_G2M = np.r_[l2 - d2, l2 - d2, l2 + d2, l2 + d2]
+            d_G1H = np.r_[l1 - d1, l1 + d1, l1 - d1, l1 + d1]
+            d_G2H = np.r_[l2 - d2, l2 - d2, l2 + d2, l2 + d2]
             sgn = -1.
-            cos_a = (d_G2G1_sq + d_G2M**2 - d_G1M**2) / (2 * d_G2G1 * d_G2M)
+            cos_a = (d_G2G1_sq + d_G2H**2 - d_G1H**2) / (2 * d_G2G1 * d_G2H)
             if (np.abs(cos_a) > 1.).any():
                 # I.e. triangle is impossible; happens when constraint 17 is
                 # violated.
@@ -154,9 +153,9 @@ class HootNanny(DrawingMechanism):
                 return 2*r_T
             sin_a = sgn * np.sqrt(1 - cos_a**2)
             rot_a = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
-            TM = TG2 + d_G2M * np.einsum('ijk,jk->ik', rot_a, G2G1 / d_G2G1)
+            OH = OG2 + d_G2H * np.einsum('ijk,jk->ik', rot_a, G2G1 / d_G2G1)
             # Return the maximum distance.
-            return np.sqrt(TM[0]**2 + TM[1]**2).max()
+            return np.sqrt(OH[0]**2 + OH[1]**2).max()
 
 
     class Simulator(Mechanism.Simulator):
@@ -172,31 +171,42 @@ class HootNanny(DrawingMechanism):
             }
 
         def reset(self, properties, nb_samples=2**6, per_turn=True):
-            """Reset the properties."""
-            self.r_T = properties[0] # Turntable radius
-            self.r_G1 = properties[1] # Gear 1 radius
-            self.r_G2 = properties[2] # Gear 2 radius
-            self.theta_12 = properties[3] # Polar angle between gears
-            self.d1 = properties[4] # Pivot-gear center distance for gear 1
-            self.d2 = properties[5] # Pivot-gear center distance for gear 2
-            self.l1 = properties[6] # Length of arm 1
-            self.l2 = properties[7] # Length of arm 2
+            """Reset the properties.
+
+            properties = r_T, r_G1, r_G2, theta_12, d1, d2, l1, l2
+            with:
+                r_T: Turntable radius
+                r_G1: Gear 1 radius
+                r_G2: Gear 2 radius
+                theta_12: Polar angle between gears
+                d1: Pivot-gear center distance for gear 1
+                d2: Pivot-gear center distance for gear 2
+                l1: Length of arm 1
+                l2: Length of arm 2
+            """
+            self.props = list(properties)
 
             self.nb_samples = nb_samples
             self.per_turn = per_turn
 
+        def update_prop(self, pid, value):
+            """Update the property referenced by the input index."""
+            assert (0 <= pid < 8)
+            self.props[pid] = value
+
         def get_cycle_length(self):
             """Compute and return the interval length of one full cycle."""
-            gcd_1 = gcd(self.r_T, self.r_G1)
-            gcd_2 = gcd(self.r_T, self.r_G2)
-            gcd_ = gcd(self.r_G1 / gcd_1, self.r_G2 / gcd_2)
-            nb_turns = (self.r_G1 / gcd_1) * (self.r_G2 / gcd_2) / gcd_
-            if not self.d1:
+            r_T, r_G1, r_G2, _, d1, d2, _, _ = self.props
+            gcd_1 = math.gcd(int(r_T), int(r_G1))
+            gcd_2 = math.gcd(int(r_T), int(r_G2))
+            gcd_ = math.gcd(int(r_G1) // gcd_1, int(r_G2) // gcd_2)
+            nb_turns = (r_G1 / gcd_1) * (r_G2 / gcd_2) / gcd_
+            if not d1:
                 # Degenerate case.
-                nb_turns /= self.r_G1 / (gcd_1*gcd_)
-            if not self.d2:
+                nb_turns /= r_G1 / (gcd_1*gcd_)
+            if not d2:
                 # Degenerate case.
-                nb_turns /= self.r_G2 / (gcd_2*gcd_)
+                nb_turns /= r_G2 / (gcd_2*gcd_)
             return 2*math.pi*nb_turns
 
         def simulate_cycle(self):
@@ -206,69 +216,47 @@ class HootNanny(DrawingMechanism):
                 nb_samples = (length / (2*math.pi)) * self.nb_samples + 1
             else:
                 nb_samples = self.nb_samples
-            # Property range
             t_range = np.linspace(0., length, nb_samples)
-            # Pivots positions
-            # 1
-            theta1 = - (self.r_T / self.r_G1) * t_range
-            TG1 = np.vstack([self.r_T + self.r_G1, 0.])
-            G1P1 = self.d1 * np.vstack([np.cos(theta1), np.sin(theta1)])
-            TP1 = TG1 + G1P1
-            # 2
-            theta2 = - (self.r_T / self.r_G2) * t_range
-            TG2 = (self.r_T + self.r_G2) * np.vstack(
-                [math.cos(self.theta_12), math.sin(self.theta_12)])
-            G2P2 = self.d2 * np.vstack([np.cos(theta2), np.sin(theta2)])
-            TP2 = TG2 + G2P2
-            # Vector between pivots
-            P2P1 = TP1 - TP2
-            d21_sq = P2P1[0]**2 + P2P1[1]**2
-            d21 = np.sqrt(d21_sq)
-            # Angle between arm 2 and P2P1 (law of cosines)
-            sgn = -1.
-            cos_a = (d21_sq + self.l2**2 - self.l1**2)  / (2 * d21 * self.l2)
-            sin_a = sgn * np.sqrt(1 - cos_a**2)
-            # Tracer in referential R_0
-            rot_a = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
-            TM = TP2 + self.l2 * np.einsum('ijk,jk->ik', rot_a, P2P1 / d21)
-            # Tracer in referential R_T
-            cos_ = np.cos(t_range)
-            sin_ = np.sin(t_range)
-            # /!\ Rotation of -theta
-            # FIXME: find out which one it is
-            rot = np.array([[cos_, -sin_], [sin_, cos_]])
-            curve = np.einsum('ijk,jk->ik', rot, TM)
-
-            # Assign trajectories.
-            self.assembly['pivot_1'] = TP1
-            self.assembly['pivot_2'] = TP2
-            self.assembly['pen'] = TM
-
-            return curve
+            return self._compute_vectors(t_range)[-1]
 
         def compute_state(self, asb, t):
             """Compute the state of the assembly a time t."""
-            pass
+            OP1, OP2, OH, _ = self._compute_vectors(t)
+            asb['turntable']['or'] = t
+            asb['pivot_1']['pos'] = OP1
+            asb['pivot_2']['pos'] = OP2
+            asb['pen-holder']['pos'] = OH
 
-        def update_prop(self, pid, value):
-            """Update the property referenced by the input index."""
-            assert (0 <= pid < 8)
-            if pid == 0:
-                self.r_T = value
-            elif pid == 1:
-                self.r_G1 = value
-            elif pid == 2:
-                self.r_G2 = value
-            elif pid == 3:
-                self.theta_12 = value
-            elif pid == 4:
-                self.d1 = value
-            elif pid == 5:
-                self.d2 = value
-            elif pid == 6:
-                self.l1 = value
-            else:
-                self.l2 = value
+        def _compute_vectors(self, t):
+            t = np.atleast_1d(t)
+            r_T, r_G1, r_G2, theta_12, d1, d2, l1, l2 = self.props
+            # Pivots positions
+            # 1
+            theta1 = -r_T * t / r_G1
+            OG1 = np.array([[r_T + r_G1], [0.]])
+            OP1 = OG1 + d1 * np.vstack([np.cos(theta1), np.sin(theta1)])
+            # 2
+            theta2 = -r_T * t / r_G2
+            OG2 = (r_T + r_G2) * np.array(
+                [[math.cos(theta_12)], [math.sin(theta_12)]])
+            OP2 = OG2 + d2 * np.vstack([np.cos(theta2), np.sin(theta2)])
+            # Vector between pivots
+            P2P1 = OP1 - OP2
+            d21_sq = P2P1[0]**2 + P2P1[1]**2
+            d21 = np.sqrt(d21_sq)
+            # Angle between arm 2 and P2P1 (law of cosines)
+            cos_a = (d21_sq + l2**2 - l1**2)  / (2 * d21 * l2)
+            sin_a = -np.sqrt(1 - cos_a**2) # sin < 0. for all t by convention
+            # Pen-holder in referential R_0
+            rot_a = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
+            OH = OP2 + l2 * np.einsum('ijk,jk->ik', rot_a, P2P1 / d21)
+            # Frame change (Turntable rotation) -- Angle is theta = -t
+            cos_ = np.cos(t)
+            sin_ = np.sin(-t)
+            rot = np.array([[cos_, -sin_], [sin_, cos_]])
+            OH_rot = np.einsum('ijk,jk->ik', rot, OH)
+
+            return OP1, OP2, OH, OH_rot
 
 
     def get_curve(self, nb=2**6, per_turn=True):
@@ -295,3 +283,12 @@ class HootNanny(DrawingMechanism):
         necessarily evenly spaced.
         """
         raise NotImplementedError
+
+    @staticmethod
+    def _create_assembly():
+        return {
+            'turntable': {'or': None},
+            'pivot_1': {'pos': None},
+            'pivot_2': {'pos': None},
+            'pen-holder': {'pos': None}
+            }

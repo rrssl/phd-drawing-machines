@@ -212,7 +212,7 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
 
         def compute_state(self, asb, t):
             """Compute the state of the assembly at time t."""
-            OS, OP, curve = self._compute_vectors(t)
+            OS, OP, _ = self._compute_vectors(t)
             asb['turntable']['or'] = t
             asb['slider']['pos'] = OS
             asb['pen-holder']['pos'] = OP
