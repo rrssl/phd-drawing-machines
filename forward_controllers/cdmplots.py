@@ -39,9 +39,9 @@ class CDMPlot:
 #                            wspace=0., hspace=1.)
         plt.subplots_adjust(left=.05, wspace=0., hspace=1.)
 
-        self.mecha_plot = mechaplot_factory(self.mecha, self.ax)
-
         self.crv_plot = self.ax.plot([], [], lw=2, alpha=.8)[0]
+        # Since the paper is rotating with the turntable, we pass the plot.
+        self.mecha_plot = mechaplot_factory(self.mecha, self.ax, self.crv_plot)
 
         bounds = []
         for i in range(len(self.mecha.props)):

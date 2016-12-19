@@ -169,24 +169,35 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             self.reset(properties, nb_samples, per_turn)
 
         def reset(self, properties, nb_samples=2**6, per_turn=True):
-            """Reset the properties."""
-            self.R_t = properties[0] # Turntable radius
-            self.R_g = properties[1] # Gear radius
-            self.C_f = np.array([properties[2], 0.]) # Fulcrum center
-            self.theta_g = properties[3] # Gear polar angle
-            self.d_p = properties[4] # Fulcrum-penholder distance
-            self.d_s = properties[5] # Gear center - slider distance
+            """Reset the properties.
+
+            properties = R_t, R_g, d_f, theta_g, d_p, d_s
+            with:
+                R_t: Turntable gear radius
+                R_g: External gear radius
+                d_f: Distance from turntable center to fulcrum center
+                theta_g: Polar angle of the external gear
+                d_p: Fulcrum-penholder distance
+                d_s: Distance from external gear center to slider
+            """
+            self.props = list(properties)
 
             self.nb_samples = nb_samples
             self.per_turn = per_turn
 
+        def update_prop(self, pid, value):
+            """Update the property referenced by the input index."""
+            assert (0 <= pid < 6)
+            self.props[pid] = value
+
         def get_cycle_length(self):
             """Compute and return the interval length of one full cycle."""
-            gcd_ = math.gcd(int(self.R_t), int(self.R_g))
-            nb_turns = self.R_t / gcd_
-            if not self.d_s:
+            R_t, R_g, _, _, _, d_s = self.props
+            gcd_ = math.gcd(int(R_t), int(R_g))
+            nb_turns = R_g / gcd_
+            if not d_s:
                 # Degenerate case.
-                nb_turns /= self.R_g / gcd_
+                nb_turns /= R_t / gcd_
             return 2*math.pi*nb_turns
 
         def simulate_cycle(self):
@@ -196,46 +207,36 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
                 nb_samples = (length / (2*math.pi)) * self.nb_samples + 1
             else:
                 nb_samples = self.nb_samples
-            # Time range
             t_range = np.linspace(0., length, nb_samples)
-            # Slider curve
-            C_g = (self.R_t + self.R_g) * np.array(
-                [[math.cos(self.theta_g)], [math.sin(self.theta_g)]])
-            curve = (self.d_s * np.vstack([np.cos(t_range), np.sin(t_range)]) +
-                     C_g)
-            # Connecting rod vector
-            curve -= self.C_f.reshape((2, 1))
-            # Penholder curve
-            curve *= self.d_p / np.linalg.norm(curve, axis=0)
-            curve += self.C_f.reshape((2, 1))
-            # Space rotation
-            ratio = self.R_g / self.R_t
-            cos = np.cos(t_range * ratio)
-            sin = np.sin(t_range * ratio)
-            rot = np.array([[cos, -sin], [sin, cos]])
-            curve = np.einsum('ijk,jk->ik', rot, curve)
-
-            return curve
+            return self._compute_vectors(t_range)[-1]
 
         def compute_state(self, asb, t):
-            """Compute the state of the assembly a time t."""
-            pass
+            """Compute the state of the assembly at time t."""
+            OS, OP, curve = self._compute_vectors(t)
+            asb['turntable']['or'] = t
+            asb['slider']['pos'] = OS
+            asb['pen-holder']['pos'] = OP
 
-        def update_prop(self, pid, value):
-            """Update the property referenced by the input index."""
-            assert (0 <= pid < 6)
-            if pid == 0:
-                self.R_t = value
-            elif pid == 1:
-                self.R_g = value
-            elif pid == 2:
-                self.C_f[0] = value
-            elif pid == 3:
-                self.theta_g = value
-            elif pid == 4:
-                self.d_p = value
-            else:
-                self.d_s = value
+        def _compute_vectors(self, t):
+            t = np.atleast_1d(t)
+            R_t, R_g, d_f, theta_g, d_p, d_s = self.props
+            C_f = np.array([[d_f], [0.]])
+            # Slider curve
+            C_g = (R_t + R_g) * np.array([[math.cos(theta_g)],
+                                          [math.sin(theta_g)]])
+            theta = - R_t * t / R_g
+            OS = d_s * np.vstack([np.cos(theta), np.sin(theta)]) + C_g
+            # Connecting rod vector
+            FS = OS - C_f
+            # Penholder curve
+            OP = C_f + FS * d_p / np.sqrt(FS[0]**2 + FS[1]**2)
+            # Frame change (Turntable rotation) -- Angle is theta = -t
+            cos = np.cos(t)
+            sin = np.sin(-t)
+            rot = np.array([[cos, -sin], [sin, cos]])
+            OP_rot = np.einsum('ijk,jk->ik', rot, OP)
+
+            return OS, OP, OP_rot
 
 
     def get_curve(self, nb=2**6, per_turn=True):
@@ -263,3 +264,10 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
         """
         raise NotImplementedError
 
+    @staticmethod
+    def _create_assembly():
+        return {
+            'turntable': {'or': None},
+            'slider': {'pos': None},
+            'pen-holder': {'pos': None}
+            }

@@ -17,12 +17,12 @@ import numpy as np
 import sys
 
 
-def mechaplot_factory(mechanism, ax):
+def mechaplot_factory(mechanism, *args, **kwargs):
     """Create and return an instance of the corresponding graphical class."""
     # Hurray for introspection
     assert(mechanism.__module__.startswith('mecha'))
     cls = getattr(sys.modules[__name__], type(mechanism).__name__)
-    return cls(mechanism, ax)
+    return cls(mechanism, *args, **kwargs)
     # But seriously if this feels too hackish, this is +/- equivalent to:
 #    import mecha
 #    if type(mechanism) is mecha.BaseSpirograph:
@@ -39,12 +39,15 @@ def mechaplot_factory(mechanism, ax):
 
 class AniMecha:
     """Base class for mechanism animation."""
-    def __init__(self, mechanism, ax):
+    def __init__(self, mechanism, ax, anim_plt=None):
         self.mecha = mechanism
         self.play = False
         self.anim = manim.FuncAnimation(
             ax.figure, self.animate, frames=self.get_anim_time,
             interval=40, blit=True)
+        self.anim_plt = anim_plt
+        if self.anim_plt is not None:
+            self.anim_plt_init = self.anim_plt.get_data()
         ax.figure.canvas.mpl_connect('key_press_event', self.on_key_press)
 
     def get_anim_time(self):
@@ -63,6 +66,8 @@ class AniMecha:
         self.anim._handle_resize()
         # Reset the timer.
         self.anim.frame_seq = self.anim.new_frame_seq()
+        if self.anim_plt is not None:
+            self.anim_plt_init = self.anim_plt.get_data()
 
 #    def init_anim(self):
 #        raise NotImplementedError
@@ -213,9 +218,10 @@ def _align_linkage_to_joints(p1, p2, linkage, offset):
     linkage.set_transform(rot)
 
 
-class SingleGearFixedFulcrumCDM:
+class SingleGearFixedFulcrumCDM(AniMecha):
+    rod_thickness = .2
 
-    def __init__(self, mechanism, ax):
+    def __init__(self, mechanism, ax, anim_plt=None):
         self.mecha = mechanism
         self.ax = ax
         # TODO use odict
@@ -231,22 +237,26 @@ class SingleGearFixedFulcrumCDM:
             pat.Circle((0., 0.), 0., color='pink', alpha=1.),
             # Slider
             pat.Circle((0., 0.), 0., color='lightgreen', alpha=1.),
-            # Connecting rod
-            pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
-                          color='grey', alpha=1.),
+            # Link
+            pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                          angle=0., color='grey', alpha=1.),
             # Penholder
             pat.Circle((0., 0.), 0., color='lightblue', alpha=1.)
             ]
         self.bg_coll = self.ax.add_collection(
-            PatchCollection(self.shapes[:-2], match_original=True))
+            PatchCollection(self.shapes[:-3], match_original=True))
         self.fg_coll = self.ax.add_collection(
-            PatchCollection(self.shapes[-2:], match_original=True))
+            PatchCollection(self.shapes[-3:], match_original=True))
+
+        super().__init__(mechanism, ax, anim_plt)
 
     def redraw(self):
         R_t, R_g, d_f, theta_g, d_p, d_s = self.mecha.props
         C_g = (R_t + R_g) * np.array([math.cos(theta_g),
                                       math.sin(theta_g)])
         C_f = np.array([d_f, 0.])
+
+        # Static properties
 
         # Turntable
         self.shapes[0].radius = R_t
@@ -261,39 +271,58 @@ class SingleGearFixedFulcrumCDM:
         self.shapes[4].center = C_f
         self.shapes[4].radius = R_t * 0.1
         # Slider
-        slider_pos = C_g + (d_s, 0.)
-        self.shapes[5].center = slider_pos
         self.shapes[5].radius = R_t * 0.1
-        # Connecting rod
-        # TODO use _align_linkage_to_joints
-        rod_vect = slider_pos - C_f
-        rod_length = np.linalg.norm(rod_vect)
-        rod_angle = math.atan2(rod_vect[1], rod_vect[0])
-        rod_thickness = R_t * .03
-        rectangle_offset = np.array([0., -rod_thickness / 2])
-        self.shapes[6].xy = C_f + rectangle_offset
-        self.shapes[6].set_width(rod_length*1.5)
-        self.shapes[6].set_height(rod_thickness)
-        rot = Affine2D().rotate_around(*C_f, theta=rod_angle)
-#        self.shapes[6].get_transform().get_affine().rotate_around(
-#            C_f[0], C_f[1], rod_angle)
-        self.shapes[6].set_transform(rot)
+        # Arm
+        self.shapes[6].set_width(R_t + 2*R_g + d_f)
         # Penholder
-        penholder_pos = C_f + rod_vect * d_p / rod_length
-        self.shapes[7].center = penholder_pos
         self.shapes[7].radius = R_t * 0.05
 
-        self.bg_coll.set_paths(self.shapes[:-2])
-        self.fg_coll.set_paths(self.shapes[-2:])
-        self.fg_coll.set_zorder(3)
+        # Moving parts
+        self._redraw_moving_parts()
 
+        # Update patches.
+        self.bg_coll.set_paths(self.shapes[:-3])
+        self.fg_coll.set_paths(self.shapes[-3:])
+        self.fg_coll.set_zorder(3)
+        # Compute new limits.
         self.ax.set_xlim(1.1*min(C_g[0] - R_g, -R_t), 1.1*max(d_f, R_t))
         self.ax.set_ylim(-1.1*R_t, 1.1*max(C_g[1] + R_g, R_t))
+        # Reset animation.
+        self.reset_anim()
+
+    def _redraw_moving_parts(self):
+        asb = self.mecha.assembly
+        OF = np.array([[self.mecha.props[2]],[0.]])
+        OS = asb['slider']['pos']
+        # Pivots
+        self.shapes[-3].center = OS
+        self.shapes[-1].center = asb['pen-holder']['pos']
+        # Link
+        rectangle_offset = np.array([[0.], [-self.rod_thickness/2]])
+        _align_linkage_to_joints(OF, OS, self.shapes[-2],
+                                 rectangle_offset)
+
+    def _rotate_plot(self):
+        R_t, R_g = self.mecha.props[:2]
+        theta = self.mecha.assembly['turntable']['or']
+        cos = np.cos(theta)
+        sin = np.sin(theta)
+        rot = np.array([[cos, -sin], [sin, cos]])
+        points = rot.dot(self.anim_plt_init)
+
+        self.anim_plt.set_data(*points)
 
     def set_visible(self, b):
         self.bg_coll.set_visible(b)
         self.fg_coll.set_visible(b)
 
+    def animate(self, t):
+        if self.play:
+            self.mecha.set_state(t)
+            self._redraw_moving_parts()
+            self._rotate_plot()
+            self.fg_coll.set_paths(self.shapes[-3:])
+        return self.fg_coll, self.anim_plt
 
 class HootNanny:
 
