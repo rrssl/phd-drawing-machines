@@ -5,12 +5,13 @@ Hoot-Nanny
 
 @author: Robin Roussel
 """
-#from itertools import product
+from itertools import product
 import math
 import numpy as np
 import scipy.optimize as opt
 
-from ._mecha import Mechanism, DrawingMechanism #, skipends, farey
+from ._mecha import Mechanism, DrawingMechanism
+from utils import skipends, farey
 
 
 class HootNanny(DrawingMechanism):
@@ -21,7 +22,17 @@ class HootNanny(DrawingMechanism):
         """Class for handling design constraints."""
         nb_dprops = 3
         nb_cprops = 5
-        max_nb_turns = 10 # Arbitrary value
+        max_nb_turns = 11 # Arbitrary value
+        _prop_constraint_map = {
+            0: (0, 1, 13, 15, 16, 17, 18),
+            1: (2, 3, 9, 12, 13, 16, 17, 18),
+            2: (4, 5, 11, 14, 15, 16, 17, 18),
+            3: (6, 7, 16, 17, 18),
+            4: (8, 9, 12, 13, 17, 18),
+            5: (10, 11, 14, 15, 17, 18),
+            6: (12, 13, 17, 18),
+            7: (14, 15, 17, 18)
+            }
 
         @classmethod
         def get_constraints(cls, cstr={}):
@@ -30,11 +41,11 @@ class HootNanny(DrawingMechanism):
                 return cstr[cls]
             except KeyError:
                 cstr[cls] = (
-                    lambda p: p[0] - 1,                     # 00: r_T > 0
+                    lambda p: p[0] - cls.eps,               # 00: r_T > 0
                     lambda p: cls.max_nb_turns - p[0],      # 01: r_T <= B
-                    lambda p: p[1] - 1,                     # 02 r_G1 > 0
+                    lambda p: p[1] - cls.eps,               # 02 r_G1 > 0
                     lambda p: cls.max_nb_turns - p[1],      # 03: r_G1 <= B
-                    lambda p: p[2] - 1,                     # 04 r_G2 > 0
+                    lambda p: p[2] - cls.eps,               # 04 r_G2 > 0
                     lambda p: cls.max_nb_turns - p[2],      # 05: r_G2 <= B
                     lambda p: p[3],                         # 06: theta12 >= 0
                     lambda p: math.pi - p[3],               # 07: theta12 <= pi
@@ -48,13 +59,14 @@ class HootNanny(DrawingMechanism):
                     lambda p: p[7] - p[2] - p[5],           # 14: l2 >= r_G2+d2
                     lambda p: 2*p[0] + p[2] - p[5] - p[7],
                                                     # 15: l2 <= 2r_T+r_G2-d2
-                    lambda p: cls._get_G1G2(*p[:4]) - p[1] - p[2],
+                    lambda p: cls._get_G1G2_sq(*p[:4]) - (p[1]+p[2])**2,
                                                     # 16: G1G2 >= r_G1+r_G2
                     # Sufficient non-singularity condition.
-                    lambda p: p[6] + p[7] - cls._get_G1G2(*p[:4]) - p[4] - p[5],
+                    lambda p: (p[6]+p[7]-p[4]-p[5])**2 - cls._get_G1G2_sq(*p[:4]),
                                                     # 17: l1+l2 >= G1G2+d1+d2
                     # Drawing-inside condition.
-                    lambda p: p[0] - cls._get_OH_max(*p)    # 18: OH_max <= r_T
+                    lambda p: p[0]**2 - cls._get_OH_sq_max(*p)
+                                                    # 18: OH_max <= r_T
                     )
                 return cstr[cls]
 
@@ -62,33 +74,20 @@ class HootNanny(DrawingMechanism):
         def get_bounds(cls, prop, pid):
             """Get the bounds of the property prop[pid]."""
             assert(0 <= pid < len(prop))
-            prop = list(prop)
-            def adapt(cstr):
-                return lambda x: cstr(prop[:pid] + [x] + prop[pid+1:])
+            prop = np.column_stack((prop, prop))
+            cs = cls.get_constraints()
+            cs = [cs[i] for i in cls._prop_constraint_map[pid]]
+            def get_cons_vec(x):
+                prop[pid] = x
+                return np.hstack([c(prop) for c in cs])
 
-            cstrs = cls.get_constraints()
-            if pid == 0:
-                ids = [0, 1, 13, 15, 16, 17, 18]
-            elif pid == 1:
-                ids = [2, 3, 9, 12, 13, 16, 17, 18]
-            elif pid == 2:
-                ids = [4, 5, 11, 14, 15, 16, 17, 18]
-            elif pid == 3:
-                ids = [6, 7, 16, 17, 18]
-            elif pid == 4:
-                ids = [8, 9, 12, 13, 17, 18]
-            elif pid == 5:
-                ids = [10, 11, 14, 15, 17, 18]
-            elif pid == 6:
-                ids = [12, 13, 17, 18]
-            else:
-                ids = [14, 15, 17, 18]
-            cstrs = [adapt(cstrs[i]) for i in ids]
-
-            min_ = opt.fmin_cobyla(
-                lambda x: x, prop[pid], cons=cstrs, disp=0, catol=cls.eps)
-            max_ = opt.fmin_cobyla(
-                lambda x: -x, prop[pid], cons=cstrs, disp=0, catol=cls.eps)
+#            min_ = opt.fmin_cobyla(
+#                lambda x: x, prop[pid], cons=cstrs, disp=0, catol=cls.eps)
+#            max_ = opt.fmin_cobyla(
+#                lambda x: -x, prop[pid], cons=cstrs, disp=0, catol=cls.eps)
+            min_, max_ = opt.fmin_cobyla(
+                lambda x: x[0]-x[1], prop[pid], cons=get_cons_vec,
+                disp=0, catol=cls.eps)
 
             if pid in (0, 1, 2):
                 min_ = math.ceil(min_)
@@ -96,66 +95,98 @@ class HootNanny(DrawingMechanism):
 
             return min_, max_
 
-#        @classmethod
-#        def sample_feasible_domain(cls, grid_resol=(10, 10, 10, 10)):
-#            """Sample the feasible domain.
-#            Works if the domain is convex (the necessary condition is a bit
-#            more complex).
-#            """
-#            n = grid_resol[-4:]
-#            p = [0, 0] +  4*[0.]
-#            for R_t, R_g in skipends(farey(cls.max_nb_turns)):
-#
-#                p[:2] = R_t, R_g
-#                for d_f in np.linspace(p[0]+cls.eps, 2*cls.max_nb_turns, n[0]):
-#
-#                    p[2] = d_f
-#                    for theta_g in np.linspace(0., np.pi, n[1]):
-#
-#                        p[3] = theta_g
-#                        for d_p in np.linspace(
-#                            cls.eps, cls._get_FG(*p[:4]), n[2]):
-#
-#                            p[4] = d_p
-#                            for d_s in np.linspace(
-#                                *cls.get_bounds(p, 5), num=n[3]):
-#                                p[5] = d_s
-#                                yield p.copy()
-#
-#            for R_g, R_t in skipends(farey(cls.max_nb_turns)):
-#                pass # Copy sub-loops
-
-        @staticmethod
-        def _get_G1G2(r_T, r_G1, r_G2, theta_12):
-            """Get the distance between the gear centers."""
-            d_OG1 = r_T + r_G1
-            d_OG2 = r_T + r_G2
-            return math.sqrt(
-                d_OG1**2 + d_OG2**2 - 2*d_OG1*d_OG2*math.cos(theta_12))
 
         @classmethod
-        def _get_OH_max(cls, r_T, r_G1, r_G2, theta_12, d1, d2, l1, l2):
+        def sample_feasible_domain(cls, grid_resol=(4, 4, 4, 4, 4)):
+            """Sample the feasible domain."""
+            n = grid_resol[-5:]
+            eps = 2*cls.eps
+
+            def get_cons_func(p):
+                def assign_and_eval_constraints(x):
+                    p[3] = x
+                    G1G2_sq = cls._get_G1G2_sq(*p[:4])
+                    nonsing_cons = (p[6]+p[7]-p[4]-p[5])**2 - G1G2_sq
+                    return np.hstack((
+                        x[1] - x[0] - eps,
+                        p[3],
+                        3.1415 - p[3],
+                        G1G2_sq - (p[1]+p[2])**2,
+                        nonsing_cons,
+                        (p[0]**2 - cls._get_OH_sq_max(*p)
+                         if (nonsing_cons >= 0.).all()
+                         else (-1.,-1.))
+                        ))
+                return assign_and_eval_constraints
+
+            def sample_cont(r_T, r_G1, r_G2):
+                rng_d1 = np.linspace(0., min(r_T, r_G1), n[1], endpoint=False)
+                rng_d2 = np.linspace(0., r_G2, n[2], endpoint=False)
+
+                for d1, d2 in product(rng_d1, rng_d2):
+                    rng_l1 = np.linspace(r_G1+d1+eps, 2*r_T+r_G1-d1, n[3],
+                                         endpoint=False)
+                    rng_l2 = np.linspace(r_G2+d2+eps, 2*r_T+r_G2-d2, n[4],
+                                         endpoint=False)
+
+                    for l1, l2 in product(rng_l1, rng_l2):
+                        prop = [r_T, r_G1, r_G2, 0., d1, d2, l1, l2]
+                        prop = np.column_stack((prop, prop))
+                        b_theta_12 = opt.fmin_cobyla(
+                            lambda x: x[0]-x[1], [1.5708, 1.5708],
+                            cons=get_cons_func(prop), disp=0, catol=eps)
+                        if (get_cons_func(prop)(b_theta_12) < 0.).any():
+                            continue
+
+                        for theta_12 in np.linspace(
+                            b_theta_12[0], b_theta_12[1], n[0]):
+                            yield r_T, r_G1, r_G2, theta_12, d1, d2, l1, l2
+
+            def sample_gear2_and_cont(r_T, r_G1):
+                for r_G2, r_T_ in skipends(farey(cls.max_nb_turns)):
+                    yield from sample_cont(r_T, r_G1, r_G2*r_T/r_T_)
+
+            for r_G1, r_T in skipends(farey(cls.max_nb_turns)):
+                yield from sample_gear2_and_cont(r_T, r_G1)
+                r_T, r_G1 = r_G1, r_T
+                yield from sample_gear2_and_cont(r_T, r_G1)
+            yield from sample_cont(1, 1, 1)
+
+        @staticmethod
+        def _get_G1G2_sq(r_T, r_G1, r_G2, theta_12):
+            """Get the squared distance between the gear centers."""
+            d_OG1 = r_T + r_G1
+            d_OG2 = r_T + r_G2
+            return d_OG1**2 + d_OG2**2 - 2.*d_OG1*d_OG2*np.cos(theta_12)
+
+        @classmethod
+        def _get_OH_sq_max(cls, r_T, r_G1, r_G2, theta_12, d1, d2, l1, l2):
             """Get the maximum distance between the center and the pen."""
-            # Compute the 4 candidate points for the extremum.
-            OG2 = (r_T + r_G2) * np.vstack(
-                [math.cos(theta_12), math.sin(theta_12)])
-            G2G1 = np.vstack([r_T + r_G1, 0.]) - OG2
-            d_G2G1_sq = G2G1[0]**2 + G2G1[1]**2
-            d_G2G1 = math.sqrt(d_G2G1_sq)
-            d_G1H = np.r_[l1 - d1, l1 + d1, l1 - d1, l1 + d1]
-            d_G2H = np.r_[l2 - d2, l2 - d2, l2 + d2, l2 + d2]
-            sgn = -1.
-            cos_a = (d_G2G1_sq + d_G2H**2 - d_G1H**2) / (2 * d_G2G1 * d_G2H)
-            if (np.abs(cos_a) > 1.).any():
-                # I.e. triangle is impossible; happens when constraint 17 is
-                # violated.
-                # Return a value that will violate constraint 18 as well.
-                return 2*r_T
-            sin_a = sgn * np.sqrt(1 - cos_a**2)
-            rot_a = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
-            OH = OG2 + d_G2H * np.einsum('ijk,jk->ik', rot_a, G2G1 / d_G2G1)
-            # Return the maximum distance.
-            return np.sqrt(OH[0]**2 + OH[1]**2).max()
+            OG2 = (r_T + r_G2) * np.vstack((np.cos(theta_12),
+                                            np.sin(theta_12)))
+            G2G1 = -OG2 # shape = (2,n)
+            G2G1[0] += r_T + r_G1
+            d_G2G1_sq = G2G1[0]**2 + G2G1[1]**2 # shape = (n,)
+            d_G2G1 = np.sqrt(d_G2G1_sq) # shape = (n,)
+            # Compute the 4 candidate points for the max distance.
+            errval = np.max(r_T)**2 + 1.
+            d_G1H = np.array((l1-d1, l1-d1, l1+d1, l1+d1)) # shape = (4,n)
+            d_G2H = np.array((l2-d2, l2+d2, l2-d2, l2+d2)) # shape = (4,n)
+            # Find OH with the law of cosines
+            cos_a = (d_G2G1_sq + d_G2H**2 - d_G1H**2) / (2.*d_G2G1*d_G2H)
+            sin_a = np.empty_like(cos_a) # shape = (4,n)
+            valid = abs(cos_a) <= 1. # find valid triangles
+            sin_a[valid] = -np.sqrt(1. - cos_a[valid]**2) # we want sin < 0 for all t
+            rot_a = np.array(((cos_a, -sin_a),
+                              (sin_a,  cos_a))) # shape = (2,2,4,n)
+            rot_a = np.rollaxis(rot_a, 2).reshape(4, 2, 2, -1) # shape = (4,2,2,n)
+            d_G2H = d_G2H.reshape(4, 1, -1) # shape = (4,1,n)
+            OH = OG2 + np.einsum('ijkl,kl->ijl', rot_a, G2G1)*d_G2H/d_G2G1 # shape = (4,2,n)
+            # Compute squared distances.
+            d_OH_sq = OH[:, 0]**2 + OH[:, 1]**2 # shape = (4,n)
+            d_OH_sq[~valid] = errval
+            # Return the maximum squared distance among the 4 candidates.
+            return d_OH_sq.max(0) # shape = (n,)
 
 
     class Simulator(Mechanism.Simulator):
@@ -234,11 +265,11 @@ class HootNanny(DrawingMechanism):
             # 1
             theta1 = -r_T * t / r_G1
             OG1 = np.array([[r_T + r_G1], [0.]])
-            OP1 = OG1 + d1 * np.vstack([np.cos(theta1), np.sin(theta1)])
+            OP1 = OG1 + d1 * np.vstack((np.cos(theta1), np.sin(theta1)))
             # 2
             theta2 = -r_T * t / r_G2
-            OG2 = (r_T + r_G2) * np.array(
-                [[math.cos(theta_12)], [math.sin(theta_12)]])
+            OG2 = (r_T + r_G2) * np.array([[math.cos(theta_12)],
+                                           [math.sin(theta_12)]])
             OP2 = OG2 + d2 * np.vstack([np.cos(theta2), np.sin(theta2)])
             # Vector between pivots
             P2P1 = OP1 - OP2
@@ -246,14 +277,16 @@ class HootNanny(DrawingMechanism):
             d21 = np.sqrt(d21_sq)
             # Angle between arm 2 and P2P1 (law of cosines)
             cos_a = (d21_sq + l2**2 - l1**2)  / (2 * d21 * l2)
-            sin_a = -np.sqrt(1 - cos_a**2) # sin < 0. for all t by convention
+            sin_a = -np.sqrt(1. - cos_a**2) # sin < 0. for all t by convention
             # Pen-holder in referential R_0
-            rot_a = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
+            rot_a = np.array([[cos_a, -sin_a],
+                              [sin_a,  cos_a]])
             OH = OP2 + l2 * np.einsum('ijk,jk->ik', rot_a, P2P1 / d21)
             # Frame change (Turntable rotation) -- Angle is theta = -t
             cos_ = np.cos(t)
             sin_ = np.sin(-t)
-            rot = np.array([[cos_, -sin_], [sin_, cos_]])
+            rot = np.array([[cos_, -sin_],
+                            [sin_,  cos_]])
             OH_rot = np.einsum('ijk,jk->ik', rot, OH)
 
             return OP1, OP2, OH, OH_rot
