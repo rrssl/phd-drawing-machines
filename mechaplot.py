@@ -89,22 +89,22 @@ class BaseSpirograph(AniMecha):
     def __init__(self, mechanism, ax):
         self.mecha = mechanism
         self.ax = ax
-        # TODO use odict
-        self.shapes = [
-            # Outer shape of the static ring
-            pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
-                          color='grey', alpha=.8),
-            # Inner shape of the static ring.
-            pat.Circle((0., 0.), 0., color='white', alpha=1.),
-            # Shape of the rolling gear.
-            pat.Circle((0., 0.), 0., color='green', alpha=.6),
-            pat.Circle((0., 0.), 0., edgecolor='green', facecolor='w',
-                       alpha=1.)
+        self.shapes = odict[
+            'ring': [
+                pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
+                              color='grey', alpha=.8),
+                pat.Circle((0., 0.), 0., color='white', alpha=1.)
+                ],
+            'gear': [
+                pat.Circle((0., 0.), 0., color='green', alpha=.6),
+                pat.Circle((0., 0.), 0., edgecolor='green', facecolor='w',
+                           alpha=1.)
+                ]
             ]
         self.bg_coll = self.ax.add_collection(
-            PatchCollection(self.shapes[:-2], match_original=True))
+            PatchCollection(self.shapes['ring'], match_original=True))
         self.fg_coll = self.ax.add_collection(
-            PatchCollection(self.shapes[-2:], match_original=True))
+            PatchCollection(self.shapes['gear'], match_original=True))
 
         super().__init__(mechanism, ax)
 
@@ -112,80 +112,18 @@ class BaseSpirograph(AniMecha):
         R, r, d = self.mecha.props
 
         # Create new static ring
-        self.shapes[0].xy = np.array([-1.1 * R, -1.1 * R])
-        self.shapes[0].set_width(R * 2.2)
-        self.shapes[0].set_height(R * 2.2)
-        self.shapes[1].radius = R
+        self.shapes['ring'][0].xy = np.array([-1.1 * R, -1.1 * R])
+        self.shapes['ring'][0].set_width(R * 2.2)
+        self.shapes['ring'][0].set_height(R * 2.2)
+        self.shapes['ring'][1].radius = R
         # Create new rolling gear.
-        self.shapes[2].center = self.mecha.assembly['rolling_gear']['pos']
-        self.shapes[2].radius = r
-        self.shapes[3].center = self.mecha.assembly['penhole']['pos']
-        self.shapes[3].radius = r * 0.1
+        self.shapes['gear'][0].center = self.mecha.assembly['rolling_gear']['pos']
+        self.shapes['gear'][0].radius = r
+        self.shapes['gear'][1].center = self.mecha.assembly['penhole']['pos']
+        self.shapes['gear'][1].radius = r * 0.1
         # Update patches.
-        self.bg_coll.set_paths(self.shapes[:-2])
-        self.fg_coll.set_paths(self.shapes[-2:])
-        self.fg_coll.set_zorder(1)
-        # Compute new limits.
-        self.ax.set_xlim(-1.1*R, 1.1*R)
-        self.ax.set_ylim(-1.1*R, 1.1*R)
-        # Reset animation.
-        self.reset_anim()
-
-    def set_visible(self, b):
-        self.bg_coll.set_visible(b)
-        self.fg_coll.set_visible(b)
-
-    def animate(self, t):
-        if self.play:
-            self.mecha.set_state(t)
-            # TODO put this in _redraw_moving_parts
-            self.shapes[2].center = self.mecha.assembly['rolling_gear']['pos']
-            self.shapes[3].center = self.mecha.assembly['penhole']['pos']
-            self.fg_coll.set_paths(self.shapes[-2:])
-        return self.fg_coll,
-
-
-class EllipticSpirograph(AniMecha):
-
-    def __init__(self, mechanism, ax):
-        self.mecha = mechanism
-        self.ax = ax
-        # TODO use odict
-        self.shapes = [
-            # Outer shape of the static ring
-            pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
-                          color='grey', alpha=.8),
-            # Inner shape of the static ring.
-            pat.Circle((0., 0.), 0., color='white', alpha=1.),
-            # Shape of the rolling gear.
-            pat.Ellipse((0., 0.), 0., 0., color='green', alpha=.6),
-            pat.Circle((0., 0.), 0., edgecolor='green', facecolor='w',
-                       alpha=1.)
-            ]
-        self.bg_coll = self.ax.add_collection(
-            PatchCollection(self.shapes[:-2], match_original=True))
-        self.fg_coll = self.ax.add_collection(
-            PatchCollection(self.shapes[-2:], match_original=True))
-
-        super().__init__(mechanism, ax)
-
-    def redraw(self):
-        R, req, e2, d = self.mecha.props
-        a = self.mecha._simulator.roul.m_obj.a
-        # Static ring
-        self.shapes[0].xy = np.array([-1.1 * R, -1.1 * R])
-        self.shapes[0].set_width(R * 2.2)
-        self.shapes[0].set_height(R * 2.2)
-        self.shapes[1].radius = R
-        # Rolling gear.
-        self.shapes[2].width = 2 * a
-        self.shapes[2].height = 2 * a * math.sqrt(1 - e2)
-        self.shapes[3].radius = req * 0.1
-        # Moving parts
-        self._redraw_moving_parts()
-        # Update patches.
-        self.bg_coll.set_paths(self.shapes[:-2])
-        self.fg_coll.set_paths(self.shapes[-2:])
+        self.bg_coll.set_paths(self.shapes['ring'])
+        self.fg_coll.set_paths(self.shapes['gear'])
         self.fg_coll.set_zorder(1)
         # Compute new limits.
         self.ax.set_xlim(-1.1*R, 1.1*R)
@@ -195,9 +133,9 @@ class EllipticSpirograph(AniMecha):
 
     def _redraw_moving_parts(self):
         asb = self.mecha.assembly
-        self.shapes[2].center = asb['rolling_gear']['pos']
-        self.shapes[2].angle = asb['rolling_gear']['or'] * 180. / math.pi
-        self.shapes[3].center = asb['penhole']['pos']
+        self.shapes['gear'][0].center = asb['rolling_gear']['pos']
+        self.shapes['gear'][1].center = asb['penhole']['pos']
+
 
     def set_visible(self, b):
         self.bg_coll.set_visible(b)
@@ -207,7 +145,73 @@ class EllipticSpirograph(AniMecha):
         if self.play:
             self.mecha.set_state(t)
             self._redraw_moving_parts()
-            self.fg_coll.set_paths(self.shapes[-2:])
+            self.fg_coll.set_paths(self.shapes['gear'])
+        return self.fg_coll,
+
+
+class EllipticSpirograph(AniMecha):
+
+    def __init__(self, mechanism, ax):
+        self.mecha = mechanism
+        self.ax = ax
+        self.shapes = odict[
+            'ring': [
+                pat.Rectangle((0., 0.), width=0., height=0., angle=0.,
+                              color='grey', alpha=.8),
+                pat.Circle((0., 0.), 0., color='white', alpha=1.),
+                ],
+            'gear': [
+                pat.Ellipse((0., 0.), 0., 0., color='green', alpha=.6),
+                pat.Circle((0., 0.), 0., edgecolor='green', facecolor='w',
+                           alpha=1.)
+                ]
+            ]
+        self.bg_coll = self.ax.add_collection(
+            PatchCollection(self.shapes['ring'], match_original=True))
+        self.fg_coll = self.ax.add_collection(
+            PatchCollection(self.shapes['gear'], match_original=True))
+
+        super().__init__(mechanism, ax)
+
+    def redraw(self):
+        R, req, e2, d = self.mecha.props
+        a = self.mecha._simulator.roul.m_obj.a
+        # Static ring
+        self.shapes['ring'][0].xy = np.array([-1.1 * R, -1.1 * R])
+        self.shapes['ring'][0].set_width(R * 2.2)
+        self.shapes['ring'][0].set_height(R * 2.2)
+        self.shapes['ring'][1].radius = R
+        # Rolling gear.
+        self.shapes['gear'][0].width = 2 * a
+        self.shapes['gear'][0].height = 2 * a * math.sqrt(1 - e2)
+        self.shapes['gear'][1].radius = req * 0.1
+        # Moving parts
+        self._redraw_moving_parts()
+        # Update patches.
+        self.bg_coll.set_paths(self.shapes['ring'])
+        self.fg_coll.set_paths(self.shapes['gear'])
+        self.fg_coll.set_zorder(1)
+        # Compute new limits.
+        self.ax.set_xlim(-1.1*R, 1.1*R)
+        self.ax.set_ylim(-1.1*R, 1.1*R)
+        # Reset animation.
+        self.reset_anim()
+
+    def _redraw_moving_parts(self):
+        asb = self.mecha.assembly
+        self.shapes['gear'][0].center = asb['rolling_gear']['pos']
+        self.shapes['gear'][0].angle = asb['rolling_gear']['or'] * 180. / math.pi
+        self.shapes['gear'][1].center = asb['penhole']['pos']
+
+    def set_visible(self, b):
+        self.bg_coll.set_visible(b)
+        self.fg_coll.set_visible(b)
+
+    def animate(self, t):
+        if self.play:
+            self.mecha.set_state(t)
+            self._redraw_moving_parts()
+            self.fg_coll.set_paths(self.shapes['gear'])
         return self.fg_coll,
 
 
@@ -224,29 +228,39 @@ class SingleGearFixedFulcrumCDM(AniMecha):
     def __init__(self, mechanism, ax, anim_plt=None):
         self.mecha = mechanism
         self.ax = ax
-        # TODO use odict
-        self.shapes = [
-            # Turntable
-            pat.Circle((0., 0.), 0., color='grey', alpha=.7),
-            # Pinion
-            pat.Circle((0., 0.), 0., color='grey', alpha=.7),
-            pat.Circle((0., 0.), 0., color='grey', alpha=.7),
-            # Canvas
-            pat.Circle((0., 0.), 0., color='white', alpha=1.),
-            # Fulcrum
-            pat.Circle((0., 0.), 0., color='pink', alpha=1.),
-            # Slider
-            pat.Circle((0., 0.), 0., color='lightgreen', alpha=1.),
-            # Link
-            pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
-                          angle=0., color='grey', alpha=1.),
-            # Penholder
-            pat.Circle((0., 0.), 0., color='lightblue', alpha=1.)
+        self.shapes = odict[
+            'turntable': [
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7)
+                ],
+            'gear': [
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7),
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7)
+                ],
+            'canvas': [
+                pat.Circle((0., 0.), 0., color='white', alpha=1.)
+                ],
+            'fulcrum': [
+                pat.Circle((0., 0.), 0., color='pink', alpha=1.)
+                ],
+            'slider': [
+                pat.Circle((0., 0.), 0., color='lightgreen', alpha=1.)
+                ],
+            'link': [
+                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                              angle=0., color='grey', alpha=1.)
+                ],
+            'pen-holder': [
+                pat.Circle((0., 0.), 0., color='lightblue', alpha=1.)
+                ]
             ]
-        self.bg_coll = self.ax.add_collection(
-            PatchCollection(self.shapes[:-3], match_original=True))
-        self.fg_coll = self.ax.add_collection(
-            PatchCollection(self.shapes[-3:], match_original=True))
+        self.bg_coll = self.ax.add_collection(PatchCollection(
+            [patch for label in ['turntable', 'gear', 'canvas', 'fulcrum']
+             for patch in self.shapes[label]],
+            match_original=True))
+        self.fg_coll = self.ax.add_collection(PatchCollection(
+            [patch for label in ['slider', 'link', 'pen-holder']
+             for patch in self.shapes[label]],
+            match_original=True))
 
         super().__init__(mechanism, ax, anim_plt)
 
@@ -257,32 +271,26 @@ class SingleGearFixedFulcrumCDM(AniMecha):
         C_f = np.array([d_f, 0.])
 
         # Static properties
-
-        # Turntable
-        self.shapes[0].radius = R_t
-        # Pinion
-        self.shapes[1].center = C_g
-        self.shapes[1].radius = R_g
-        self.shapes[2].center = C_g
-        self.shapes[2].radius = R_g * 0.1
-        # Canvas
-        self.shapes[3].radius = R_t * 0.95
-        # Fulcrum
-        self.shapes[4].center = C_f
-        self.shapes[4].radius = R_t * 0.1
-        # Slider
-        self.shapes[5].radius = R_t * 0.1
-        # Arm
-        self.shapes[6].set_width(R_t + 2*R_g + d_f)
-        # Penholder
-        self.shapes[7].radius = R_t * 0.05
-
+        self.shapes['turntable'][0].radius = R_t
+        self.shapes['gear'][0].center = C_g
+        self.shapes['gear'][0].radius = R_g
+        self.shapes['gear'][1].center = C_g
+        self.shapes['gear'][1].radius = R_g * 0.1
+        self.shapes['canvas'][0].radius = R_t * 0.95
+        self.shapes['fulcrum'][0].center = C_f
+        self.shapes['fulcrum'][0].radius = R_t * 0.1
+        self.shapes['slider'][0].radius = R_t * 0.1
+        self.shapes['link'][0].set_width(R_t + 2*R_g + d_f)
+        self.shapes['pen-holder'][0].radius = R_t * 0.05
         # Moving parts
         self._redraw_moving_parts()
-
         # Update patches.
-        self.bg_coll.set_paths(self.shapes[:-3])
-        self.fg_coll.set_paths(self.shapes[-3:])
+        self.bg_coll.set_paths(
+            [patch for label in ['turntable', 'gear', 'canvas', 'fulcrum']
+             for patch in self.shapes[label]])
+        self.fg_coll.set_paths(
+            [patch for label in ['slider', 'link', 'pen-holder']
+             for patch in self.shapes[label]])
         self.fg_coll.set_zorder(3)
         # Compute new limits.
         self.ax.set_xlim(1.1*min(C_g[0] - R_g, -R_t), 1.1*max(d_f, R_t))
@@ -295,11 +303,12 @@ class SingleGearFixedFulcrumCDM(AniMecha):
         OF = np.array([[self.mecha.props[2]],[0.]])
         OS = asb['slider']['pos']
         # Pivots
-        self.shapes[-3].center = OS
-        self.shapes[-1].center = asb['pen-holder']['pos']
+        self.shapes['slider'][0].center = OS
+        self.shapes['pen-holder'][0].center = asb['pen-holder']['pos']
         # Link
         rectangle_offset = np.array([[0.], [-self.rod_thickness/2]])
-        _align_linkage_to_joints(OF, OS, self.shapes[-2], rectangle_offset)
+        _align_linkage_to_joints(OF, OS, self.shapes['link'][0],
+                                 rectangle_offset)
 
     def _rotate_plot(self):
         theta = self.mecha.assembly['turntable']['or']
@@ -319,7 +328,9 @@ class SingleGearFixedFulcrumCDM(AniMecha):
             self.mecha.set_state(t)
             self._redraw_moving_parts()
             self._rotate_plot()
-            self.fg_coll.set_paths(self.shapes[-3:])
+            self.fg_coll.set_paths(
+                [patch for label in ['slider', 'link', 'pen-holder']
+                 for patch in self.shapes[label]])
         return self.fg_coll, self.anim_plt
 
 class HootNanny(AniMecha):
@@ -328,32 +339,48 @@ class HootNanny(AniMecha):
     def __init__(self, mechanism, ax, anim_plt=None):
         self.mecha = mechanism
         self.ax = ax
-        # TODO use odict
-        self.shapes = [
-            # Turntable
-            pat.Circle((0., 0.), 0., color='grey', alpha=.7),
-            # Gears
-            pat.Circle((0., 0.), 0., color='grey', alpha=.7),
-            pat.Circle((0., 0.), 0., color='grey', alpha=.7),
-            pat.Circle((0., 0.), 0., color='grey', alpha=.7),
-            pat.Circle((0., 0.), 0., color='grey', alpha=.7),
-            # Canvas
-            pat.Circle((0., 0.), 0., color='white', alpha=1.),
-            # Pivots
-            pat.Circle((0., 0.), 0., color='pink', alpha=1.),
-            pat.Circle((0., 0.), 0., color='pink', alpha=1.),
-            # Linkages
-            pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
-                          angle=0., color='grey', alpha=1.),
-            pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
-                          angle=0., color='grey', alpha=1.),
-            # Penholder
-            pat.Circle((0., 0.), 0., color='lightblue', alpha=1.)
+        self.shapes = odict[
+            'turntable': [
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7)
+                ],
+            'gear_1': [
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7),
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7)
+                ],
+            'gear_2': [
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7),
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7)
+                ],
+            'canvas': [
+                pat.Circle((0., 0.), 0., color='white', alpha=1.)
+                ],
+            'pivot_1': [
+                pat.Circle((0., 0.), 0., color='pink', alpha=1.)
+                ],
+            'pivot_2': [
+                pat.Circle((0., 0.), 0., color='pink', alpha=1.)
+                ],
+            'link_1': [
+                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                              angle=0., color='grey', alpha=1.)
+                ],
+            'link_2': [
+                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                              angle=0., color='grey', alpha=1.)
+                ],
+            'pen-holder': [
+                pat.Circle((0., 0.), 0., color='lightblue', alpha=1.)
+                ]
             ]
-        self.bg_coll = self.ax.add_collection(
-            PatchCollection(self.shapes[:6], match_original=True))
-        self.fg_coll = self.ax.add_collection(
-            PatchCollection(self.shapes[6:], match_original=True))
+        self.bg_coll = self.ax.add_collection(PatchCollection(
+            [patch for label in ['turntable', 'gear_1', 'gear_2', 'canvas']
+             for patch in self.shapes[label]],
+            match_original=True))
+        self.fg_coll = self.ax.add_collection(PatchCollection(
+            [patch for label in ['pivot_1', 'pivot_2', 'link_1', 'link_2',
+                                 'pen-holder']
+             for patch in self.shapes[label]],
+            match_original=True))
 
         super().__init__(mechanism, ax, anim_plt)
 
@@ -362,37 +389,32 @@ class HootNanny(AniMecha):
         C_G1 = np.array([r_T + r_G1, 0.])
         C_G2 = (r_T + r_G2) * np.array([math.cos(theta_12),
                                         math.sin(theta_12)])
-
         # Static properties
-
-        # Turntable
-        self.shapes[0].radius = r_T
-        # Gears
-        self.shapes[1].center = C_G1
-        self.shapes[1].radius = r_G1
-        self.shapes[2].center = C_G1
-        self.shapes[2].radius = r_G1 * .1
-        self.shapes[3].center = C_G2
-        self.shapes[3].radius = r_G2
-        self.shapes[4].center = C_G2
-        self.shapes[4].radius = r_G2 * .1
-        # Canvas
-        self.shapes[5].radius = r_T * .95
-        # Pivots
-        self.shapes[6].radius = r_G1 * .1
-        self.shapes[7].radius = r_G1 * .1
-        # Linkage
-        self.shapes[8].set_width(l1)
-        self.shapes[9].set_width(l2)
-        # Pen-holder
-        self.shapes[10].radius = r_T * .05
-
+        self.shapes['turntable'][0].radius = r_T
+        self.shapes['gear_1'][0].center = C_G1
+        self.shapes['gear_1'][0].radius = r_G1
+        self.shapes['gear_1'][1].center = C_G1
+        self.shapes['gear_1'][1].radius = r_G1 * .1
+        self.shapes['gear_2'][0].center = C_G2
+        self.shapes['gear_2'][0].radius = r_G2
+        self.shapes['gear_2'][1].center = C_G2
+        self.shapes['gear_2'][1].radius = r_G2 * .1
+        self.shapes['canvas'][0].radius = r_T * .95
+        self.shapes['pivot_1'][0].radius = r_G1 * .1
+        self.shapes['pivot_2'][0].radius = r_G1 * .1
+        self.shapes['link_1'][0].set_width(l1)
+        self.shapes['link_2'][0].set_width(l2)
+        self.shapes['pen-holder'][0].radius = r_T * .05
         # Moving parts
         self._redraw_moving_parts()
-
         # Update patches
-        self.bg_coll.set_paths(self.shapes[:6])
-        self.fg_coll.set_paths(self.shapes[6:])
+        self.bg_coll.set_paths(
+            [patch for label in ['turntable', 'gear_1', 'gear_2', 'canvas']
+             for patch in self.shapes[label]])
+        self.fg_coll.set_paths(
+            [patch for label in ['pivot_1', 'pivot_2', 'link_1', 'link_2',
+                                 'pen-holder']
+             for patch in self.shapes[label]])
         self.fg_coll.set_zorder(3)
         # Compute new limits.
         self.ax.set_xlim(1.1*min(C_G2[0] - r_G2, -r_T),
@@ -406,15 +428,16 @@ class HootNanny(AniMecha):
         OP1 = asb['pivot_1']['pos']
         OP2 = asb['pivot_2']['pos']
         OH = asb['pen-holder']['pos']
-        # Pivots
-        self.shapes[6].center = OP1
-        self.shapes[7].center = OP2
-        # Pen-holder
-        self.shapes[10].center = OH
+
+        self.shapes['pivot_1'][0].center = OP1
+        self.shapes['pivot_2'][0].center = OP2
+        self.shapes['pen-holder'][0].center = OH
         # Linkage
         rectangle_offset = np.array([[0.], [-self.rod_thickness/2.]])
-        _align_linkage_to_joints(OP1, OH, self.shapes[8], rectangle_offset)
-        _align_linkage_to_joints(OP2, OH, self.shapes[9], rectangle_offset)
+        _align_linkage_to_joints(OP1, OH, self.shapes['link_1'][0],
+                                 rectangle_offset)
+        _align_linkage_to_joints(OP2, OH, self.shapes['link_2'][0],
+                                 rectangle_offset)
 
     def _rotate_plot(self):
         theta = self.mecha.assembly['turntable']['or']
@@ -434,7 +457,10 @@ class HootNanny(AniMecha):
             self.mecha.set_state(t)
             self._redraw_moving_parts()
             self._rotate_plot()
-            self.fg_coll.set_paths(self.shapes[6:])
+            self.fg_coll.set_paths(
+                [patch for label in ['pivot_1', 'pivot_2', 'link_1', 'link_2',
+                                     'pen-holder']
+                 for patch in self.shapes[label]])
         return self.fg_coll, self.anim_plt
 
 
