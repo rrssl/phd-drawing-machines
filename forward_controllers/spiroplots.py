@@ -71,7 +71,7 @@ class SpiroPlot:
 
 
 def main():
-    from _spiro_conf import data
+    from _config import spiro_data as data
     app = SpiroPlot(data)
     app.run()
 

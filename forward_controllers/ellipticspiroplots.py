@@ -74,7 +74,7 @@ class EllipticSpiroPlot:
 
 
 def main():
-    from _ellip_conf import data
+    from _config import ellip_data as data
     app = EllipticSpiroPlot(data)
     app.run()
 

@@ -79,7 +79,7 @@ class CDMPlot:
 
 
 def main():
-    from _cdm_conf import data
+    from _config import cdm_data as data
     app = CDMPlot(data)
     app.run()
 

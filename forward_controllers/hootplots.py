@@ -79,7 +79,7 @@ class HootPlot:
 
 
 def main():
-    from _hoot_conf import data
+    from _config import hoot_data as data
     app = HootPlot(data)
     app.run()
 

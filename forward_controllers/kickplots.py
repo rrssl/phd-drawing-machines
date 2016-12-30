@@ -79,7 +79,7 @@ class KickPlot:
 
 
 def main():
-    from _kick_conf import data
+    from _config import kick_data as data
     app = KickPlot(data)
     app.run()
 
