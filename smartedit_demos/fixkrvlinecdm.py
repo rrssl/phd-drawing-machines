@@ -25,6 +25,8 @@ from mecha import SingleGearFixedFulcrumCDM
 from smartedit_demos import ManyDimsDemo
 from poitrackers import get_corresp_krvmax
 
+SingleGearFixedFulcrumCDM.ConstraintSolver.max_nb_turns = 12
+
 
 class FixKrvLineCDM(ManyDimsDemo):
     """Find the subspace where the PoI has the same curvature and lies on the

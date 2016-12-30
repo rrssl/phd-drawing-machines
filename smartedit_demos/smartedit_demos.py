@@ -804,7 +804,7 @@ class ManyDimsDemo(InvarDemo):
         frame.set_aspect('equal')
         frame.set_title("Drawing machine (hidden).\n")
         self.draw_plt = frame.plot(*self.ref_crv, lw=2, alpha=.8)[0]
-        self.mecha_plt =  mechaplot_factory(self.mecha, frame)
+        self.mecha_plt = mechaplot_factory(self.mecha, frame, self.draw_plt)
         self.mecha_plt.redraw()
 
     def create_controls(self, subplot_spec):
