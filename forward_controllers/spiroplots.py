@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Improved version of spiroplots.
+Forward simulation of a Spirograph.
 
 @author: Robin Roussel
 """
-
 import matplotlib.pyplot as plt
 
 import context
@@ -66,10 +65,12 @@ class SpiroPlot:
         self.crv_plot.set_data(*self.crv)
         self.mecha_plot.redraw()
 
+    def run(self):
+        plt.ioff()
+        plt.show()
+
 
 def main():
-    plt.ioff()
-
     param_data = (
         (0,
          {'valmin': 1,
@@ -88,9 +89,8 @@ def main():
           'label': "Hole distance"})
         )
 
-    SpiroPlot(param_data)
-
-    plt.show()
+    app = SpiroPlot(param_data)
+    app.run()
 
 
 if __name__ == "__main__":

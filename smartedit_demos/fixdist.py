@@ -88,11 +88,9 @@ class FixDistDemo(TwoDimsDemo):
 
 def main():
     """Entry point."""
-    plt.ioff()
+    app = FixDistDemo()
+    app.run()
 
-    FixDistDemo()
-
-    plt.show()
 
 if __name__ == "__main__":
     main()

@@ -102,11 +102,9 @@ class FixKrvDemo(TwoDimsDemo):
 
 def main():
     """Entry point."""
-    plt.ioff()
+    app = FixKrvDemo()
+    app.run()
 
-    FixKrvDemo()
-
-    plt.show()
 
 if __name__ == "__main__":
     main()

@@ -82,12 +82,8 @@ class FixPosHoot(ManyDimsDemo):
 
 def main():
     """Entry point."""
-    plt.ioff()
-
-    FixPosHoot()
-
-    plt.show()
-
+    app = FixPosHoot()
+    app.run()
 
 if __name__ == "__main__":
     main()

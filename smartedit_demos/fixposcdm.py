@@ -80,12 +80,8 @@ class FixPosCDM(ManyDimsDemo):
 
 def main():
     """Entry point."""
-    plt.ioff()
-
-    FixPosCDM()
-
-    plt.show()
-
+    app = FixPosCDM()
+    app.run()
 
 if __name__ == "__main__":
     main()

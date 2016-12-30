@@ -35,12 +35,10 @@ class CDMPlot:
         self.ax.set_aspect('equal')
         self.ax.get_xaxis().set_ticks([])
         self.ax.get_yaxis().set_ticks([])
-#        plt.subplots_adjust(left=.05, right=.9, bottom=.15, top=.85,
-#                            wspace=0., hspace=1.)
         plt.subplots_adjust(left=.05, wspace=0., hspace=1.)
 
         self.crv_plot = self.ax.plot([], [], lw=2, alpha=.8)[0]
-        # Since the paper is rotating with the turntable, we pass the plot.
+        # Since the paper is rotating with the turntable, we pass the drawing.
         self.mecha_plot = mechaplot_factory(self.mecha, self.ax, self.crv_plot)
 
         bounds = []
@@ -59,12 +57,13 @@ class CDMPlot:
         success = self.mecha.update_prop(pid, val)
         if success:
             for i in range(len(self.mecha.props)):
-                bounds = self.mecha.get_prop_bounds(i)
-                if i > 1:
-                    # Account for slider imprecision wrt bounds.
-                    bounds = bounds[0] + 1e-3, bounds[1] - 1e-3
-                # Slider id is the same as parameter id.
-                self.control_pane.set_bounds(i, bounds)
+                if i != pid:
+                    bounds = self.mecha.get_prop_bounds(i)
+                    if i > 1:
+                        # Account for slider imprecision wrt bounds.
+                        bounds = bounds[0] + 1e-3, bounds[1] - 1e-3
+                    # Slider id is the same as parameter id.
+                    self.control_pane.set_bounds(i, bounds)
             self.crv = self.mecha.get_curve()
             self.redraw()
         else:
@@ -75,10 +74,12 @@ class CDMPlot:
         self.crv_plot.set_data(*self.crv)
         self.mecha_plot.redraw()
 
+    def run(self):
+        plt.ioff()
+        plt.show()
+
 
 def main():
-    plt.ioff()
-
     param_data = (
         (0,                     # Radius of the turntable.
          {'valmin': 1,
@@ -112,9 +113,8 @@ def main():
           'label': "Gear-slider dist"})
         )
 
-    CDMPlot(param_data)
-
-    plt.show()
+    app = CDMPlot(param_data)
+    app.run()
 
 
 if __name__ == "__main__":

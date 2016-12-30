@@ -57,12 +57,13 @@ class HootPlot:
         success = self.mecha.update_prop(pid, val)
         if success:
             for i in range(len(self.mecha.props)):
-                bounds = self.mecha.get_prop_bounds(i)
-                if i > 2:
-                    # Account for slider imprecision wrt bounds.
-                    bounds = bounds[0] + 1e-3, bounds[1] - 1e-3
-                # Slider id is the same as parameter id.
-                self.control_pane.set_bounds(i, bounds)
+                if i != pid:
+                    bounds = self.mecha.get_prop_bounds(i)
+                    if i > 2:
+                        # Account for slider imprecision wrt bounds.
+                        bounds = bounds[0] + 1e-3, bounds[1] - 1e-3
+                    # Slider id is the same as parameter id.
+                    self.control_pane.set_bounds(i, bounds)
             self.crv = self.mecha.get_curve(nb=2**10)
             self.redraw()
         else:
@@ -73,10 +74,12 @@ class HootPlot:
         self.crv_plot.set_data(*self.crv)
         self.mecha_plot.redraw()
 
+    def run(self):
+        plt.ioff()
+        plt.show()
+
 
 def main():
-    plt.ioff()
-
     param_data = (
         (0,                     # Radius of the turntable.
          {'valmin': 1,
@@ -120,9 +123,8 @@ def main():
           'label': "Arm 2 length"})
         )
 
-    HootPlot(param_data)
-
-    plt.show()
+    app = HootPlot(param_data)
+    app.run()
 
 
 if __name__ == "__main__":

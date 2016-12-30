@@ -96,11 +96,8 @@ class FixKrvLineCDM(ManyDimsDemo):
 
 def main():
     """Entry point."""
-    plt.ioff()
-
-    FixKrvLineCDM()
-
-    plt.show()
+    app = FixKrvLineCDM()
+    app.run()
 
 if __name__ == "__main__":
     main()

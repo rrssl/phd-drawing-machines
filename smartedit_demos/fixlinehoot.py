@@ -87,11 +87,8 @@ class FixLineHoot(ManyDimsDemo):
 
 def main():
     """Entry point."""
-    plt.ioff()
-
-    FixLineHoot()
-
-    plt.show()
+    app = FixLineHoot()
+    app.run()
 
 
 if __name__ == "__main__":

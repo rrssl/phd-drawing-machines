@@ -84,11 +84,9 @@ class FixIsectPosDemo(TwoDimsDemo):
 
 def main():
     """Entry point."""
-    plt.ioff()
+    app = FixIsectPosDemo()
+    app.run()
 
-    FixIsectPosDemo()
-
-    plt.show()
 
 if __name__ == "__main__":
     main()

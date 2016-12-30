@@ -90,11 +90,8 @@ class FixLineCDM(ManyDimsDemo):
 
 def main():
     """Entry point."""
-    plt.ioff()
-
-    FixLineCDM()
-
-    plt.show()
+    app = FixLineCDM()
+    app.run()
 
 if __name__ == "__main__":
     main()

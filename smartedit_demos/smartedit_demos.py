@@ -383,6 +383,10 @@ class InvarDemo:
         """Callback function for slider update."""
         raise NotImplementedError
 
+    def run(self):
+        plt.ioff()
+        plt.show()
+
 
 def interp2d(x, y, z, gridsize=(200, 200)):
     """Interpolate data points on a grid."""

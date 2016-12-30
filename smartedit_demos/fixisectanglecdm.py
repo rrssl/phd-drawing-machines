@@ -91,11 +91,8 @@ class FixIsectAngleCDM(ManyDimsDemo):
 
 def main():
     """Entry point."""
-    plt.ioff()
-
-    FixIsectAngleCDM()
-
-    plt.show()
+    app = FixIsectAngleCDM()
+    app.run()
 
 
 if __name__ == "__main__":

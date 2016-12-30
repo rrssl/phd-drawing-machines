@@ -113,11 +113,9 @@ class FixIsectAngle(TwoDimsDemo):
 
 def main():
     """Entry point."""
-    plt.ioff()
+    app = FixIsectAngle()
+    app.run()
 
-    FixIsectAngle()
-
-    plt.show()
 
 if __name__ == "__main__":
     main()
