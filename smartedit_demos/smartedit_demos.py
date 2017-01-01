@@ -75,8 +75,6 @@ class DemoOptions:
             self.demo.mecha_plt = mecha_plt
         mecha_plt.set_visible(self.state['show_mecha'])
         if self.state['show_mecha']:
-            # TODO: Fix the TODO in HootNanny.redraw(), then remove next line.
-            mecha_plt.mecha._simulator.simulate_cycle()
             mecha_plt.redraw()
         else:
             self.ax.autoscale()
@@ -320,8 +318,6 @@ class InvarDemo:
         else:
             self.new_poi_plt.set_visible(False)
 #        if self.options.state['show_mecha']:
-#            # TODO: Fix the TODO in HootNanny.redraw(), then remove next line.
-#            self.mecha._simulator.simulate_cycle()
 #            self.mecha_plt.redraw()
 
         # First solution: clean, simple, but slow.
@@ -823,9 +819,7 @@ class ManyDimsDemo(InvarDemo):
 
 
     def redraw(self):
-        # TODO: Fix the TODO in HootNanny.redraw(), then remove next line.
         self.draw_plt.set_data(*self.new_crv)
-        self.mecha._simulator.simulate_cycle()
         self.mecha_plt.redraw()
         super().redraw()
 
