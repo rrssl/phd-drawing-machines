@@ -15,7 +15,6 @@ Lastly we use index value as an approx. of parameter value (discretized curve).
 
 @author: Robin Roussel
 """
-import matplotlib.pyplot as plt
 import numpy as np
 
 import context
@@ -48,16 +47,17 @@ def get_features(curves, params, pois):
 class FixIsectAngle(TwoDimsDemo):
     """Find the subspace where the PoIs coincide."""
 
-    def __init__(self):
+    def __init__(self, disc_prop, cont_prop, pts_per_dim=20, keep_ratio=.05,
+                 deg_invar_poly=2, nb_crv_pts=2**6):
         # Initial parameters.
-        self.disc_prop = (5, 3)
-        self.cont_prop = (.31, .4755) # Quasi zero angle between segments
-        self.pts_per_dim = 10
-        self.keep_ratio = .05
-        self.deg_invar_poly = 2
+        self.disc_prop = disc_prop
+        self.cont_prop = cont_prop
+        self.pts_per_dim = pts_per_dim
+        self.keep_ratio = keep_ratio
+        self.deg_invar_poly = deg_invar_poly
         self.mecha = EllipticSpirograph(*self.disc_prop+self.cont_prop)
         self.labels = ["$e^2$", "$d$"]
-        self.nb_crv_pts = 2**6
+        self.nb_crv_pts = nb_crv_pts
         # Reference curve and parameter.
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
 #        self.ref_par = (11, 117)
@@ -113,7 +113,8 @@ class FixIsectAngle(TwoDimsDemo):
 
 def main():
     """Entry point."""
-    app = FixIsectAngle()
+    from _config import fixisectangle_data as data
+    app = FixIsectAngle(**data)
     app.run()
 
 

@@ -16,30 +16,28 @@ Lastly we use index value as an approx. of parameter value (discretized curve).
 
 @author: Robin Roussel
 """
-#import math
-from itertools import compress
-import matplotlib.pyplot as plt
 import numpy as np
 
 import context
 from mecha import EllipticSpirograph
-from smartedit_demos import TwoDimsDemo, get_dist
+from smartedit_demos import TwoDimsDemo
 from poitrackers import get_corresp_isect
 
 
 class FixIsectPosDemo(TwoDimsDemo):
     """Find the subspace where the PoIs coincide."""
 
-    def __init__(self):
+    def __init__(self, disc_prop, cont_prop, pts_per_dim=20, keep_ratio=.05,
+                 deg_invar_poly=2, nb_crv_pts=2**6):
         # Initial parameters.
-        self.disc_prop = (5, 3)
-        self.cont_prop = (.31, .48) # Quasi zero angle between segments
-        self.pts_per_dim = 17
-        self.keep_ratio = .05
-        self.deg_invar_poly = 3
+        self.disc_prop = disc_prop
+        self.cont_prop = cont_prop
+        self.pts_per_dim = pts_per_dim
+        self.keep_ratio = keep_ratio
+        self.deg_invar_poly = deg_invar_poly
         self.mecha = EllipticSpirograph(*self.disc_prop+self.cont_prop)
         self.labels = ["$e^2$", "$d$"]
-        self.nb_crv_pts = 2**6
+        self.nb_crv_pts = nb_crv_pts
         # Reference curve and parameter.
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
 #        self.ref_par = (11, 117)
@@ -84,7 +82,8 @@ class FixIsectPosDemo(TwoDimsDemo):
 
 def main():
     """Entry point."""
-    app = FixIsectPosDemo()
+    from _config import fixisectpos_data as data
+    app = FixIsectPosDemo(**data)
     app.run()
 
 

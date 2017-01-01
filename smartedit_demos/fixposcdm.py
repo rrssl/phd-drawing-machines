@@ -12,8 +12,6 @@ however there is no loss of generality.
 
 @author: Robin Roussel
 """
-import matplotlib.pyplot as plt
-
 import context
 from mecha import SingleGearFixedFulcrumCDM
 from smartedit_demos import ManyDimsDemo
@@ -23,18 +21,18 @@ from poitrackers import get_corresp_krvmax
 class FixPosCDM(ManyDimsDemo):
     """Find the subspace where the PoIs coincide."""
 
-    def __init__(self):
+    def __init__(self, disc_prop, cont_prop, pts_per_dim=5, keep_ratio=.05,
+                 nbhood_size=.1, ndim_invar_space=2, nb_crv_pts=2**6):
         # Initial parameters.
-        self.disc_prop = (4, 3)
-        self.cont_prop = (5., 2.6, 5.9, 2.5)
-        self.pts_per_dim = 5
-        self.keep_ratio = .05
-        self.nbhood_size = .1
-        self.ndim_invar_space = 2
+        self.disc_prop = disc_prop
+        self.cont_prop = cont_prop
+        self.pts_per_dim = pts_per_dim
+        self.keep_ratio = keep_ratio
+        self.nbhood_size = nbhood_size
+        self.ndim_invar_space = ndim_invar_space
         self.mecha = SingleGearFixedFulcrumCDM(*self.disc_prop+self.cont_prop)
-#        self.nb = 2**5
         self.labels = ["$d_f$", r"$ \theta_g$", "$d_p$", "$d_s$"]
-        self.nb_crv_pts = 2**6
+        self.nb_crv_pts = nb_crv_pts
         # Reference curve and parameter(s).
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
         self.ref_par = 0
@@ -80,7 +78,8 @@ class FixPosCDM(ManyDimsDemo):
 
 def main():
     """Entry point."""
-    app = FixPosCDM()
+    from _config import fixposcdm_data as data
+    app = FixPosCDM(**data)
     app.run()
 
 if __name__ == "__main__":

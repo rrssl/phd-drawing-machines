@@ -20,8 +20,6 @@ value.
 
 @author: Robin Roussel
 """
-import matplotlib.pyplot as plt
-
 import context
 from smartedit_demos import TwoDimsDemo
 from mecha import EllipticSpirograph
@@ -30,16 +28,17 @@ from mecha import EllipticSpirograph
 class FixPosDemo(TwoDimsDemo):
     """Find the position-invariant subspace."""
 
-    def __init__(self):
+    def __init__(self, disc_prop, cont_prop, pts_per_dim=20, keep_ratio=.05,
+                 deg_invar_poly=2, nb_crv_pts=2**6):
         # Initial parameters.
-        self.disc_prop = (7, 3)
-        self.cont_prop = (.2, 1.)
-        self.pts_per_dim = 20
-        self.keep_ratio = .05
-        self.deg_invar_poly = 2
+        self.disc_prop = disc_prop
+        self.cont_prop = cont_prop
+        self.pts_per_dim = pts_per_dim
+        self.keep_ratio = keep_ratio
+        self.deg_invar_poly = deg_invar_poly
         self.mecha = EllipticSpirograph(*self.disc_prop+self.cont_prop)
         self.labels = ["$e^2$", "$d$"]
-        self.nb_crv_pts = 2**6
+        self.nb_crv_pts = nb_crv_pts
         # Reference curve and parameter.
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
         self.ref_par = 0
@@ -97,7 +96,8 @@ class FixPosDemo(TwoDimsDemo):
 
 def main():
     """Entry point."""
-    app = FixPosDemo()
+    from _config import fixpos_data as data
+    app = FixPosDemo(**data)
     app.run()
 
 if __name__ == "__main__":

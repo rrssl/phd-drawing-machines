@@ -15,7 +15,6 @@ Lastly we use index value as an approx. of parameter value (discretized curve).
 
 @author: Robin Roussel
 """
-import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
 
@@ -32,20 +31,18 @@ class FixKrvLineCDM(ManyDimsDemo):
     """Find the subspace where the PoI has the same curvature and lies on the
     same radial line."""
 
-    def __init__(self):
+    def __init__(self, disc_prop, cont_prop, pts_per_dim=5, keep_ratio=.05,
+                 nbhood_size=.1, ndim_invar_space=2, nb_crv_pts=2**6):
         # Initial parameters.
-        self.disc_prop = (12, 4)
-        self.cont_prop = (13.9, 3., 17.5, 3.3)
-#        self.disc_prop = (12, 3)
-#        self.cont_prop = (13., 2.3, 14., 2.5)
-        self.pts_per_dim = 5
-        self.keep_ratio = .05
-        self.nbhood_size = .1
-        self.ndim_invar_space = 2
+        self.disc_prop = disc_prop
+        self.cont_prop = cont_prop
+        self.pts_per_dim = pts_per_dim
+        self.keep_ratio = keep_ratio
+        self.nbhood_size = nbhood_size
+        self.ndim_invar_space = ndim_invar_space
         self.mecha = SingleGearFixedFulcrumCDM(*self.disc_prop+self.cont_prop)
-#        self.nb = 2**5
         self.labels = ["$d_f$", r"$ \theta_g$", "$d_p$", "$d_s$"]
-        self.nb_crv_pts = 2**6
+        self.nb_crv_pts = nb_crv_pts
         # Reference curve and parameter(s).
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
         self.ref_par = 0
@@ -98,7 +95,8 @@ class FixKrvLineCDM(ManyDimsDemo):
 
 def main():
     """Entry point."""
-    app = FixKrvLineCDM()
+    from _config import fixkrvlinecdm_data as data
+    app = FixKrvLineCDM(**data)
     app.run()
 
 if __name__ == "__main__":

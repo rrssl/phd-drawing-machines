@@ -12,7 +12,6 @@ however there is no loss of generality.
 
 @author: Robin Roussel
 """
-import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
 
@@ -25,17 +24,17 @@ from poitrackers import get_corresp_krvmax
 class FixLineHoot(ManyDimsDemo):
     """Find the subspace where the PoI lies on the same line."""
 
-    def __init__(self):
+    def __init__(self, disc_prop, cont_prop, pts_per_dim=5, keep_ratio=.05,
+                 nbhood_size=.1, ndim_invar_space=2, nb_crv_pts=2**6):
         # Initial parameters.
-        self.disc_prop = (10, 4, 2)
-        self.cont_prop = (1., 2.5, 1.5, 10., 8.)
-        self.pts_per_dim = 5
-        self.keep_ratio = .05
-        self.nbhood_size = .1
-        self.ndim_invar_space = 3
+        self.disc_prop = disc_prop
+        self.cont_prop = cont_prop
+        self.pts_per_dim = pts_per_dim
+        self.keep_ratio = keep_ratio
+        self.nbhood_size = nbhood_size
+        self.ndim_invar_space = ndim_invar_space
         self.mecha = HootNanny(*self.disc_prop+self.cont_prop)
-        self.nb_crv_pts = 2**7
-#        self.nb = 2**5
+        self.nb_crv_pts = nb_crv_pts
         self.labels = [r"$ \theta_{12}$", "$d_1$", "$d_2$", "$l_1$", "$l_2$"]
         # Reference curve and parameter(s).
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
@@ -87,7 +86,8 @@ class FixLineHoot(ManyDimsDemo):
 
 def main():
     """Entry point."""
-    app = FixLineHoot()
+    from _config import fixlinehoot_data as data
+    app = FixLineHoot(**data)
     app.run()
 
 
