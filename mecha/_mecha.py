@@ -95,12 +95,14 @@ class Mechanism:
             except AttributeError:
                 self._simulator = type(self).Simulator(props)
             self._simulator.compute_state(self.assembly, 0.)
+            return True
         else:
             if self.verbose:
                 print("Error: invalid mechanism properties.", props)
                 print("Constraints: ",
                       [cons(props)
                        for cons in self.constraint_solver.get_constraints()])
+            return False
 
     def update_prop(self, pid, value, check=True):
         """Update the property referenced by the input index.

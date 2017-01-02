@@ -69,7 +69,7 @@ class BaseSpirograph(DrawingMechanism):
         def reset(self, properties, nb_samples=2**6, per_turn=True):
             """Reset the class fields."""
             try:
-                self.trocho.reset(properties)
+                self.trocho.reset(*properties)
             except AttributeError:
                 self.trocho = Hypotrochoid(*properties)
             self.nb_samples = nb_samples

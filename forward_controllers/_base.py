@@ -4,8 +4,10 @@ Base class for the forward controller.
 
 @author: Robin Roussel
 """
+import random
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+from matplotlib.widgets import Button
 
 import context
 from mechaplot import mechaplot_factory
@@ -25,8 +27,8 @@ class ForwardController:
 
     def _init_draw(self, param_data):
         self.fig = plt.figure(figsize=(16,8))
-        gs = GridSpec(1, 6)
-        self.ax = self.fig.add_subplot(gs[:3])
+        gs = GridSpec(9, 6)
+        self.ax = self.fig.add_subplot(gs[:, :3])
         self.ax.set_aspect('equal')
         self.ax.get_xaxis().set_ticks([])
         self.ax.get_yaxis().set_ticks([])
@@ -46,9 +48,46 @@ class ForwardController:
                 b -= margin
             bounds.append((a, b))
         self.control_pane = ControlPane(self.fig, param_data, self.update,
-                                        subplot_spec=gs[4:], bounds=bounds)
+                                        subplot_spec=gs[:-2, 4:], bounds=bounds)
+
+        btn_ax = self.fig.add_subplot(gs[-1, 4:])
+        self.gen_btn = Button(btn_ax, "Generate random combination")
+        self.gen_btn.on_clicked(self.generate_random_params)
 
         self.redraw()
+
+    def generate_random_params(self, event):
+        # Collect static bounds.
+        bounds = []
+        s = self.control_pane.sliders
+        for i in range(len(s)):
+            bounds.append((s[i].valmin, s[i].valmax))
+        # Find feasible parameters.
+        params = [0] * len(bounds)
+        feasible = False
+        while not feasible:
+            for i, (a, b) in enumerate(bounds):
+                if type(a) == int and type(b) == int:
+                    params[i] = random.randint(a, b)
+                else:
+                    params[i] = random.random() * (b-a) + a
+            feasible = self.mecha.reset(*params)
+        # Compute new dynamic bounds.
+        for i in range(len(bounds)):
+            a, b = self.mecha.get_prop_bounds(i)
+            if i > self.mecha.ConstraintSolver.nb_dprops:
+                # Account for slider imprecision wrt bounds.
+                margin = (b - a) / 100.
+                a += margin
+                b -= margin
+            # Slider id is the same as parameter id.
+            self.control_pane.set_bounds(i, (a, b))
+        # Update view.
+        for i, p in enumerate(params):
+            self.control_pane.set_val(i, p, incognito=True)
+        self.crv = self.mecha.get_curve(nb=self.pt_density)
+        self.redraw()
+        self.fig.canvas.draw_idle()
 
     def redraw(self):
         self.crv_plot.set_data(*self.crv)

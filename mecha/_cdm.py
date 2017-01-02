@@ -90,7 +90,7 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
         @classmethod
         def sample_feasible_domain(cls, grid_resol=(5, 5, 5, 5)):
             """Sample the feasible domain."""
-            for R_t, R_g in skipends(farey(cls.max_nb_turns)):
+            for R_g, R_t in skipends(farey(cls.max_nb_turns)):
                 for p in cls.sample_feasible_continuous_domain(
                     R_t, R_g, grid_resol):
                     yield p
