@@ -86,7 +86,7 @@ class AniMecha:
 
 class BaseSpirograph(AniMecha):
 
-    def __init__(self, mechanism, ax):
+    def __init__(self, mechanism, ax, anim_plt=None):
         self.mecha = mechanism
         self.ax = ax
         self.shapes = odict[
@@ -151,7 +151,7 @@ class BaseSpirograph(AniMecha):
 
 class EllipticSpirograph(AniMecha):
 
-    def __init__(self, mechanism, ax):
+    def __init__(self, mechanism, ax, anim_plt=None):
         self.mecha = mechanism
         self.ax = ax
         self.shapes = odict[
@@ -467,7 +467,7 @@ class HootNanny(AniMecha):
 class Kicker(AniMecha):
     rod_thickness = .2
 
-    def __init__(self, mechanism, ax):
+    def __init__(self, mechanism, ax, anim_plt=None):
         self.mecha = mechanism
         self.ax = ax
 
