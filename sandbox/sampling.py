@@ -15,7 +15,8 @@ if(0):
 else:
     from mecha import HootNanny as TYPE
     filename = "hoot_dom.npy"
-    # max_nb_turns = 3, grid_resol = 4; Elapsed time: 135s
+    TYPE.ConstraintSolver.max_nb_turns = 3
+    # max_nb_turns = 3, grid_resol = 4; Nb. samples = 3988; Elapsed time: 19s
 
 #import warnings
 #warnings.filterwarnings("error")

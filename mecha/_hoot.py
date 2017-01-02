@@ -143,14 +143,16 @@ class HootNanny(DrawingMechanism):
                             yield r_T, r_G1, r_G2, theta_12, d1, d2, l1, l2
 
             def sample_gear2_and_cont(r_T, r_G1):
-                for r_G2, r_T_ in skipends(farey(cls.max_nb_turns)):
+                itr = farey(cls.max_nb_turns)
+                next(itr) # Skip first element (0-radius)
+                for r_G2, r_T_ in itr:
                     yield from sample_cont(r_T, r_G1, r_G2*r_T/r_T_)
 
             for r_G1, r_T in skipends(farey(cls.max_nb_turns)):
                 yield from sample_gear2_and_cont(r_T, r_G1)
                 r_T, r_G1 = r_G1, r_T
                 yield from sample_gear2_and_cont(r_T, r_G1)
-            yield from sample_cont(1, 1, 1)
+            yield from sample_gear2_and_cont(1, 1)
 
         @staticmethod
         def _get_G1G2_sq(r_T, r_G1, r_G2, theta_12):
