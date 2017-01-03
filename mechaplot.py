@@ -533,7 +533,7 @@ class Kicker(AniMecha):
         super().__init__(mechanism, ax)
 
     def redraw(self):
-        r1, r2, x2, y2, l1, l2, d = self.mecha.props
+        r1, r2, _, l1, l2, d = self.mecha.props
         asb = self.mecha.assembly
         OG1 = asb['gear_1']['pos']
         OG2 = asb['gear_2']['pos']
@@ -569,14 +569,17 @@ class Kicker(AniMecha):
 #        self.fg_coll.set_paths(self.shapes[6:])
 #        self.fg_coll.set_zorder(3)
 
-        self.ax.set_xlim(OG1[0] - r1 - l1, OG2[0] + r2 + l2 + d)
-        self.ax.set_ylim(1.2*(OG1[1] - r1), 1.1*OH[1])
+        OH = asb['hip']['pos']
+        OE = asb['end_effector']['pos']
+        self.ax.set_xlim(1.1*min(OG1[0]-r1-l1, OG2[0]-r2-l2, OH[0], OE[0]),
+                         1.1*max(OG1[0]+r1+l1, OG2[0]+r2+l2, OH[0], OE[0]))
+        self.ax.set_ylim(1.1*min(OG1[1]-r1-l1, OG2[1]-r2-l2, OH[1], OE[1]),
+                         1.1*max(OG1[1]+r1+l1, OG2[1]+r2+l2, OH[1], OE[1]))
 
         # Reset animation.
         self.reset_anim()
 
     def _redraw_moving_parts(self):
-        r1, r2, x2, y2, l1, l2, d = self.mecha.props
         asb = self.mecha.assembly
         OP1 = asb['pivot_1']['pos']
         OP2 = asb['pivot_2']['pos']

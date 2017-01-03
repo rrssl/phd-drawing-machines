@@ -8,6 +8,7 @@ import random
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.widgets import Button
+import numpy as np
 
 import context
 from mechaplot import mechaplot_factory
@@ -38,15 +39,7 @@ class ForwardController:
         # Since the paper may rotate with the turntable, we pass the drawing.
         self.mecha_plot = mechaplot_factory(self.mecha, self.ax, self.crv_plot)
 
-        bounds = []
-        for i in range(len(self.mecha.props)):
-            a, b = self.mecha.get_prop_bounds(i)
-            if i >= self.mecha.ConstraintSolver.nb_dprops:
-                # Account for slider imprecision wrt bounds.
-                margin = (b - a) / 100.
-                a += margin
-                b -= margin
-            bounds.append((a, b))
+        bounds = [self.get_bounds(i) for i in range(len(self.mecha.props))]
         self.control_pane = ControlPane(self.fig, param_data, self.update,
                                         subplot_spec=gs[:-2, 4:], bounds=bounds)
 
@@ -74,20 +67,24 @@ class ForwardController:
             feasible = self.mecha.reset(*params)
         # Compute new dynamic bounds.
         for i in range(len(bounds)):
-            a, b = self.mecha.get_prop_bounds(i)
-            if i > self.mecha.ConstraintSolver.nb_dprops:
-                # Account for slider imprecision wrt bounds.
-                margin = (b - a) / 100.
-                a += margin
-                b -= margin
             # Slider id is the same as parameter id.
-            self.control_pane.set_bounds(i, (a, b))
+            self.control_pane.set_bounds(i, self.get_bounds(i))
         # Update view.
         for i, p in enumerate(params):
             self.control_pane.set_val(i, p, incognito=True)
         self.crv = self.mecha.get_curve(nb=self.pt_density)
         self.redraw()
         self.fig.canvas.draw_idle()
+
+    def get_bounds(self, i):
+        a, b = self.mecha.get_prop_bounds(i)
+        if (i >= self.mecha.ConstraintSolver.nb_dprops
+            and np.isfinite((a,b)).all()):
+            # Account for slider imprecision wrt bounds.
+            margin = (b - a) / 100.
+            a += margin
+            b -= margin
+        return a, b
 
     def redraw(self):
         self.crv_plot.set_data(*self.crv)
@@ -103,14 +100,8 @@ class ForwardController:
         if success:
             for i in range(len(self.mecha.props)):
                 if i != pid:
-                    a, b = self.mecha.get_prop_bounds(i)
-                    if i > self.mecha.ConstraintSolver.nb_dprops:
-                        # Account for slider imprecision wrt bounds.
-                        margin = (b - a) / 100.
-                        a += margin
-                        b -= margin
                     # Slider id is the same as parameter id.
-                    self.control_pane.set_bounds(i, (a, b))
+                    self.control_pane.set_bounds(i, self.get_bounds(i))
             self.crv = self.mecha.get_curve(nb=self.pt_density)
             self.redraw()
         else:

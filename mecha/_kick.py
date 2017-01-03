@@ -7,6 +7,7 @@ Ball-kicking leg
 """
 import math
 import numpy as np
+import scipy.optimize as opt
 from tinyik import Actuator, ConjugateGradientOptimizer
 
 from ._mecha import Mechanism, DrawingMechanism
@@ -20,8 +21,16 @@ class Kicker(DrawingMechanism):
     class ConstraintSolver(Mechanism.ConstraintSolver):
         """Class for handling design constraints."""
         nb_dprops = 0
-        nb_cprops = 7
+        nb_cprops = 6
         max_nb_turns = 1 # Arbitrary value
+        _prop_constraint_map = {
+            0: (0, 2, 4, 5),
+            1: (1, 2, 4, 5),
+            2: (2, 4, 5),
+            3: (4, 5),
+            4: (4, 5),
+            5: (3, )
+            }
 
         @classmethod
         def get_constraints(cls, cstr={}):
@@ -30,15 +39,56 @@ class Kicker(DrawingMechanism):
                 return cstr[cls]
             except KeyError:
                 cstr[cls] = (
-                    lambda p: 1,
+                    lambda p: p[0],            # 00: r1 >= 0
+                    lambda p: p[1],            # 01 r2 >= 0
+                    lambda p: p[2] - p[0] - p[1] - cls.eps,
+                                               # 02: d_G1G2 > r1+r2
+                    lambda p: p[5],            # 03: d >= 0
+                    # Sufficient non-singularity conditions.
+                    lambda p: p[3] + p[4] - p[0] - p[1] - p[2] - cls.eps,
+                                               # 04: l1+l2 > d_G1G2+r1+r2
+                    lambda p: p[2] - np.abs(p[0]-p[1]) - np.abs(p[3]-p[4]) - cls.eps
+                                               # 05: d_G1G2 - |r1-r2| > |l1-l2|
+                    # Warning: this last condition works because both gears
+                    # turn at the _same_speed_ with the same _phase_.
+                    # The left member is min(d_P1P2).
+                    # In the general case it could be d_G1G2 - (r1+r2), but
+                    # using this as an upper bound for |l1-l2| is quite
+                    # conservative.
                     )
                 return cstr[cls]
 
         @classmethod
         def get_bounds(cls, prop, pid):
-            """Return the bounds of the pid-th element of the input list."""
+            """Get the bounds of the property prop[pid]."""
             assert(0 <= pid < len(prop))
-            return 0., 10.
+
+            if pid == 5:
+                return 0., np.inf
+
+            prop = list(prop)
+            cs = cls.get_constraints()
+            cs = [cs[i] for i in cls._prop_constraint_map[pid]]
+            def get_cons_vec(x):
+                prop[pid] = x
+                return np.hstack([c(prop) for c in cs])
+
+            if pid == 0 or pid == 1:
+                max_ = opt.fmin_cobyla(
+                    lambda x: -x, prop[pid], cons=get_cons_vec,
+                    disp=0, catol=cls.eps)
+                return 0., max_
+            if pid == 3 or pid == 4:
+                min_ = opt.fmin_cobyla(
+                    lambda x: x, prop[pid], cons=get_cons_vec,
+                    disp=0, catol=cls.eps)
+                return min_, np.inf
+            else:
+                prop = np.column_stack((prop, prop))
+                min_, max_ = opt.fmin_cobyla(
+                    lambda x: x[0]-x[1], prop[pid], cons=get_cons_vec,
+                    disp=0, catol=cls.eps)
+                return min_, max_
 
         @classmethod
         def sample_feasible_domain(cls, grid_resol=(10,)):
@@ -60,7 +110,7 @@ class Kicker(DrawingMechanism):
             self.per_turn = per_turn
 
         def _reset_linkage(self):
-            r1, r2, x2, y2, l1, l2, d = self.props
+            r1, r2, d_G1G2, l1, l2, d = self.props
 
             halflen = (l1 + d)
             thigh = [-halflen, 0., 0.]
@@ -70,11 +120,7 @@ class Kicker(DrawingMechanism):
             self.leg = Actuator(['z', thigh, 'z', calf, 'z', foot],
                                 optimizer=ConjugateGradientOptimizer())
             # TODO: let origin be movable by the user.
-            self.leg._origin = (
-                np.array([[x2*1.5], [y2]])
-                + np.array([[-y2], [x2]])
-                * 2*halflen / math.sqrt(x2**2 + y2**2)
-                )
+            self.leg._origin = np.array([[d_G1G2*1.2], [2*halflen]])
             # The angles output by tinyik are relative from one link to the
             # next, and for two consecutive links, relative to the original
             # angle between them; therefore we need to keep track of the
@@ -99,7 +145,6 @@ class Kicker(DrawingMechanism):
 
         def simulate_cycle(self):
             """Simulate one cycle of the assembly's motion."""
-            r1, r2, x2, y2, l1, l2, d = self.props
             # Time range
             length = self.get_cycle_length()
             if self.per_turn:
@@ -111,7 +156,7 @@ class Kicker(DrawingMechanism):
 
         def compute_state(self, asb, t):
             """Compute the state of the assembly a time t."""
-            r1, r2, x2, y2, l1, l2, d = self.props
+            _, _, _, l1, _, d = self.props
             OG1, OG2, OP1, OP2, OE = self._compute_vectors(t)
             asb['gear_1']['pos'] = OG1
             asb['gear_2']['pos'] = OG2
@@ -137,10 +182,10 @@ class Kicker(DrawingMechanism):
 
         def _compute_vectors(self, t):
             t = np.atleast_1d(t)
-            r1, r2, x2, y2, l1, l2, d = self.props
+            r1, r2, d_G1G2, l1, l2, d = self.props
             # Fixed points
-            OG1 = np.tile([[0.],[0.]], t.shape)
-            OG2 = np.tile([[x2],[y2]], t.shape)
+            OG1 = np.array([[0.], [0.]])
+            OG2 = np.array([[d_G1G2],[0.]])
             # Equations
             OP1 = r1 * np.vstack([np.cos(t), np.sin(t)])
             OP2 = r2 * np.vstack([np.cos(-t), np.sin(-t)]) + OG2
