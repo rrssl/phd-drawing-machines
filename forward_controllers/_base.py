@@ -35,7 +35,7 @@ class ForwardController:
         self.ax.get_yaxis().set_ticks([])
         plt.subplots_adjust(left=.05, wspace=0., hspace=1.)
 
-        self.crv_plot = self.ax.plot([], [], lw=2, alpha=.8)[0]
+        self.crv_plot = self.ax.plot([], [], lw=1, alpha=.8)[0]
         # Since the paper may rotate with the turntable, we pass the drawing.
         self.mecha_plot = mechaplot_factory(self.mecha, self.ax, self.crv_plot)
 

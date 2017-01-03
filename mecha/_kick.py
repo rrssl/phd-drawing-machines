@@ -157,19 +157,19 @@ class Kicker(DrawingMechanism):
         def compute_state(self, asb, t):
             """Compute the state of the assembly a time t."""
             _, _, _, l1, _, d = self.props
-            OG1, OG2, OP1, OP2, OE = self._compute_vectors(t)
+            OG1, OG2, OP1, OP2, OC = self._compute_vectors(t)
             asb['gear_1']['pos'] = OG1
             asb['gear_2']['pos'] = OG2
             asb['pivot_1']['pos'] = OP1
             asb['pivot_2']['pos'] = OP2
-            asb['pivot_12']['pos'] = OP1 + (OE-OP1) * l1 / (l1 + d)
-            asb['end_effector']['pos'] = OE
-            self._compute_IK(asb, OE)
+            asb['pivot_12']['pos'] = OP1 + (OC-OP1) * l1 / (l1 + d)
+            asb['connector']['pos'] = OC
+            self._compute_IK(asb, OC)
 
-        def _compute_IK(self, asb, ee_pos):
+        def _compute_IK(self, asb, pos):
             try:
                 self.leg.ee = np.append(
-                    (ee_pos - self.leg._origin).ravel(), 0.)
+                    (pos - self.leg._origin).ravel(), 0.)
             except np.linalg.LinAlgError:
                 print("IK Error: Singular matrix")
             a1 = self.leg.angles[0] + self.leg._init_angles[0]
@@ -179,6 +179,8 @@ class Kicker(DrawingMechanism):
                 [math.cos(a1)], [math.sin(a1)]]) + asb['hip']['pos']
             asb['ankle']['pos'] = self.leg._halflen * np.array([
                 [math.cos(a2)], [math.sin(a2)]]) + asb['knee']['pos']
+            asb['end_effector']['pos'] = asb['ankle']['pos'] + (
+                (pos - asb['ankle']['pos'])*1.5)
 
         def _compute_vectors(self, t):
             t = np.atleast_1d(t)
@@ -196,8 +198,8 @@ class Kicker(DrawingMechanism):
             # Under the non-singularity constraint sin > 0 for all t
             sin_a = np.sqrt(1. - cos_a**2)
             rot_a = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
-            OE = OP1 + (d+l1) * np.einsum('ijk,jk->ik', rot_a, P1P2 / d12)
-            return OG1, OG2, OP1, OP2, OE
+            OC = OP1 + (d+l1) * np.einsum('ijk,jk->ik', rot_a, P1P2 / d12)
+            return OG1, OG2, OP1, OP2, OC
 
 
     def get_curve(self, nb=2**6, per_turn=True):
@@ -211,6 +213,12 @@ class Kicker(DrawingMechanism):
         """
         self._simulator.nb_samples = nb
         self._simulator.per_turn = per_turn
+#        OC = self._simulator.simulate_cycle()
+#        OE = []
+#        for pos in OC.T:
+#            self._simulator._compute_IK(self.assembly, pos.reshape(2, 1))
+#            OE.append(self.assembly['end_effector']['pos'])
+#        return np.hstack(OE)
         return self._simulator.simulate_cycle()
 
     def get_point(self, t):
@@ -233,8 +241,9 @@ class Kicker(DrawingMechanism):
             'pivot_1': {'pos': None},
             'pivot_2': {'pos': None},
             'pivot_12': {'pos': None},
-            'end_effector': {'pos': None},
+            'connector': {'pos': None},
             'hip': {'pos': None},
             'knee': {'pos': None},
-            'ankle': {'pos': None}
+            'ankle': {'pos': None},
+            'end_effector': {'pos': None}
             }

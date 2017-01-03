@@ -518,6 +518,9 @@ class Kicker(AniMecha):
             'pivot_ankle': [
                 pat.Circle((0., 0.), 0., color='lightgreen', alpha=1.)
                 ],
+            'connector': [
+                pat.Circle((0., 0.), 0., color='blue', alpha=1.)
+                ],
             'end_effector': [
                 pat.Circle((0., 0.), 0., color='lightblue', alpha=1.)
                 ]
@@ -559,7 +562,8 @@ class Kicker(AniMecha):
         self.shapes['arm_2'][0].set_width(l2)
         self.shapes['thigh'][0].set_width(l1+d)
         self.shapes['calf'][0].set_width(l1+d)
-        self.shapes['foot'][0].set_width((l1+d)/5)
+        self.shapes['foot'][0].set_width(1.5*(l1+d)/5)
+        self.shapes['connector'][0].radius = pivot_size
         self.shapes['end_effector'][0].radius = pivot_size
         # Moving parts
         self._redraw_moving_parts()
@@ -594,6 +598,7 @@ class Kicker(AniMecha):
         self.shapes['pivot_12'][0].center = OP12
         self.shapes['pivot_knee'][0].center = OK
         self.shapes['pivot_ankle'][0].center = OA
+        self.shapes['connector'][0].center = asb['connector']['pos']
         self.shapes['end_effector'][0].center = OE
         # Linkage
         rectangle_offset = np.array([[0.], [-self.rod_thickness/2.]])
