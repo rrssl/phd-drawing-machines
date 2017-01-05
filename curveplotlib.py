@@ -34,7 +34,6 @@ class PixelFormatter:
             z = np.nan
         return 'x={:.01f}, y={:.01f}, z={:.01f}'.format(x, y, z)
 
-
 if CV2_IMPORTED:
     def distshow(ax, crv, aux_crv=None):
         """Show the distance field descriptor."""
@@ -59,41 +58,24 @@ if CV2_IMPORTED:
                               df.get_dist(aux_crv, crv)),
                           fontsize='xx-large')
 
-
-def imshow(frame, img, curve=None, viewer='plt'):
+def imshow(frame, img, curve=None):
     """Show a raster image, optionnally along with a superimposed curve."""
-    if viewer == 'plt':
-        # Display using Pyplot.
-        if curve is not None:
-            frame.plot(*curve)
+    if curve is not None:
+        frame.plot(*curve)
 
-        shp = img.shape
-        if len(shp) == 2:
-            pltim = frame.imshow(img, interpolation=None, cmap=plt.cm.gray)
-        elif len(shp) == 3 and shp[2] == 3:
-            # /!\ OpenCV uses BGR order, while Pyplot uses RGB!
-            img2 = img[:,:,::-1]
-            pltim = frame.imshow(img2, interpolation='none')
+    shp = img.shape
+    if len(shp) == 2:
+        pltim = frame.imshow(img, interpolation=None, cmap=plt.cm.gray)
+    elif len(shp) == 3 and shp[2] == 3:
+        # /!\ OpenCV uses BGR order, while Pyplot uses RGB!
+        img2 = img[:,:,::-1]
+        pltim = frame.imshow(img2, interpolation='none')
 
-        # Show pixel value when hovering over it.
-        frame.format_coord = PixelFormatter(pltim)
-        # Remove axis text.
-        frame.axes.get_xaxis().set_ticks([])
-        frame.axes.get_yaxis().set_ticks([])
-
-    elif viewer == 'qt':
-        if CV2_IMPORTED:
-            # Display using OpenCV's Qt viewer.
-            cv2.namedWindow('Viewer',  cv2.WINDOW_NORMAL)
-#            img2 = cv2.normalize(img, 0, 255, norm_type=cv2.NORM_MINMAX,
-#                                 dtype=cv2.CV_8UC1)
-            img2 = cv2.normalize(img, 0, 1, norm_type=cv2.NORM_MINMAX)
-            cv2.imshow('Viewer', img2)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-        else:
-            print("Qt viewer cannot be used: OpenCV module not found.")
-
+    # Show pixel value when hovering over it.
+    frame.format_coord = PixelFormatter(pltim)
+    # Remove axis text.
+    frame.axes.get_xaxis().set_ticks([])
+    frame.axes.get_yaxis().set_ticks([])
 
 def cvtshow(curve, curvature):
     """Plot the curvature along the input curve."""
