@@ -104,13 +104,13 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             n = grid_resol[-4:]
             eps = 2*cls.eps
 
-            for d_f in np.linspace(R_t+eps, 2*R_t, n[0]):
+            for d_f in np.linspace(R_t+eps, 2*R_t, n[0], endpoint=False):
 
                 for theta_g in np.linspace(
-                    cls._get_theta_min(R_t, R_g, d_f)+eps, math.pi, n[1]):
+                    cls._get_theta_min(R_t, R_g, d_f)+eps, 3.1415, n[1]):
 
                     for d_p in np.linspace(eps,
-                        cls._get_FG(R_t, R_g, d_f, theta_g)-R_g-eps, n[2]):
+                        cls._get_FG(R_t, R_g, d_f, theta_g)-R_g-eps, n[2], endpoint=False):
 
                         if cls.get_constraints()[-1](
                             (R_t, R_g, d_f, theta_g, d_p, eps)) < 0:
@@ -131,7 +131,7 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
         @staticmethod
         def _get_FG(R_t, R_g, d_f, theta_g):
             """Get the distance between the fulcrum and the gear center."""
-            OG =  R_t + R_g
+            OG = R_t + R_g
             return np.sqrt(d_f**2 + OG**2 - 2*d_f*OG*np.cos(theta_g))
 
         @staticmethod

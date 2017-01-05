@@ -75,7 +75,7 @@ class EllipticSpirograph(DrawingMechanism):
             """Get the upper bound of the squared eccentricity."""
             # Approximate this bound using an inversion of the Naive
             # Approximation of the ellipse circumference.
-            emax2_approx = ((R - 4*req) + math.sqrt(R*(R + 8*req))) / (2*R)
+            emax2_approx = ((R - 4*req) + np.sqrt(R*(R + 8*req))) / (2*R)
             # Compute the exact bound.
             return opt.fsolve(
                 lambda x: x + (req*math.pi / (2*spec.ellipe(x)*R)) ** 2 - 1,

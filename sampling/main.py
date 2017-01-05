@@ -7,25 +7,34 @@ Sampling the design space.
 """
 import time
 import numpy as np
-import context
+import _context
 
-if(1):
+if(0):
+    from mecha import EllipticSpirograph as TYPE
+    filename = "ellip_dom.npy"
+elif(0):
     from mecha import SingleGearFixedFulcrumCDM as TYPE
     filename = "cdm_dom.npy"
-    TYPE.ConstraintSolver.max_nb_turns = 10
 else:
     from mecha import HootNanny as TYPE
     filename = "hoot_dom.npy"
-    TYPE.ConstraintSolver.max_nb_turns = 5
     # max_nb_turns = 3, grid_resol = 4; Nb. samples = 3988; Elapsed time: 19s
+
+MAX_DVAL = 7
+CONT_DENSITY = 4
 
 #import warnings
 #warnings.filterwarnings("error")
 
 def fun():
+    TYPE.ConstraintSolver.max_nb_turns = 7
+    grid_size = (CONT_DENSITY,) * TYPE.ConstraintSolver.nb_cprops
     t1 = time.time()
-    dom = list(TYPE.ConstraintSolver.sample_feasible_domain())
+    dom = list(TYPE.ConstraintSolver.sample_feasible_domain(grid_size))
     t2 = time.time()
+    fields = TYPE.__name__, (MAX_DVAL, CONT_DENSITY), len(dom), t2-t1
+    with open("sample_log", 'a') as log_file:
+        print("{}; {}; {}; {}".format(*fields), file=log_file)
     print("Elapsed time: {}s".format(t2-t1))
     return np.array(dom)
 
@@ -34,7 +43,7 @@ def load(filename):
     return dom
 
 if __name__ == "__main__":
-    if(0):
+    if(1):
         dom = fun()
         print("Number of samples: ", dom.shape[0])
         constraints = TYPE.ConstraintSolver.get_constraints()
