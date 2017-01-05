@@ -4,6 +4,7 @@ Testing self-intersection detection algorithms.
 
 @author: Robin Roussel
 """
+import time
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -21,7 +22,6 @@ def itv_overlap(i1, i2):
             i2min <= i1[1] <= i2max or
             i1min <= i2[0] <= i1max)    # 4th case is redundant.
 
-
 def get_orientation(A, B, C):
     """Get the orientation of triangle ABC.
 
@@ -32,7 +32,6 @@ def get_orientation(A, B, C):
     """
     # The orientation is sign(det(AB, AC)).
     return np.sign(np.linalg.det(np.array([B-A, C-A])))
-
 
 def seg_intersect(s1, s2):
     """Check whether 2 segments intersect.
@@ -62,7 +61,6 @@ def seg_intersect(s1, s2):
     else:
         return 0
 
-
 def get_seg_intersection(s1, s2):
     """Get the intersection of s1 and s2, assuming they are not collinear."""
     s1_vect = s1[1] - s1[0]
@@ -70,7 +68,6 @@ def get_seg_intersection(s1, s2):
     s0_vect = s1[0] - s2[0]
     t = np.linalg.det((s2_vect, s0_vect)) / np.linalg.det((s1_vect, s2_vect))
     return s1[0] + t * s1_vect
-
 
 def get_seg_intersection_collinear_no_overlap(s1, s2):
     """Get the intersection of s1 and s2, collinear but not overlapping."""
@@ -132,8 +129,8 @@ class SelfIntersectionFinder:
     """Finds self-intersections."""
 
     def __init__(self):
-        self.mecha = BaseSpirograph(8.,5.,2.)
-#        self.mecha = BaseSpirograph(4.,3.,2.) # Buggy case
+#        self.mecha = BaseSpirograph(8, 5, 2.)
+        self.mecha = BaseSpirograph(4, 3, 2.) # Buggy case
         self.nb = 2**6
         self.init_draw()
 
@@ -145,25 +142,25 @@ class SelfIntersectionFinder:
 
         curve = self.mecha.get_curve(self.nb)
         self.plot = self.ax.plot(curve[0], curve[1], c='b')[0]
-
         print("Number of points: ", curve.shape[1])
-        import time
+        c = ('r', 'g', 'k')
+        m = ('o', '*', '+')
 
+        for i, method in enumerate((find_self_inter_v1, find_self_inter_v2)):
+            inter, duration = self.test_find_self_iter(method, curve)
+            print("Version {}".format(i+1))
+            print("\t Elapsed time: {}".format(duration))
+            print("\t Nb. of intersection points: {}".format(inter.shape[-1]))
+            if len(inter):
+                self.ax.scatter(*inter, c='w', edgecolor=c[i], marker=m[i],
+                                s=100, zorder=3+i)
+
+    def test_find_self_iter(self, method, curve):
         start = time.clock()
-        inter = find_self_inter_v1(curve)
+        inter = method(curve)
         end = time.clock()
-        print("Version 1 - Elapsed time: ", end - start)
+        return inter, end - start
 
-        if len(inter):
-            plt.scatter(inter[0], inter[1], c='g', edgecolor='none', s=100)
-
-        start = time.clock()
-        inter = find_self_inter_v2(curve)
-        end = time.clock()
-        print("Version 2 - Elapsed time: ", end - start)
-        if len(inter):
-            plt.scatter(inter[0], inter[1], c='r', marker='*',
-                        edgecolor='none', s=100)
 
 
 def main():

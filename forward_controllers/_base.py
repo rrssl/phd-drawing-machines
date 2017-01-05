@@ -31,8 +31,8 @@ class ForwardController:
         gs = GridSpec(9, 6)
         self.ax = self.fig.add_subplot(gs[:, :3])
         self.ax.set_aspect('equal')
-        self.ax.get_xaxis().set_ticks([])
-        self.ax.get_yaxis().set_ticks([])
+#        self.ax.get_xaxis().set_ticks([])
+#        self.ax.get_yaxis().set_ticks([])
         plt.subplots_adjust(left=.05, wspace=0., hspace=1.)
 
         self.crv_plot = self.ax.plot([], [], lw=1, alpha=.8)[0]

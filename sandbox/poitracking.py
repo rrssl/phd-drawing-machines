@@ -27,7 +27,7 @@ def get_self_isect(poly):
     """
     poly1 = np.asarray(poly)
     # Reflect polygon along first bisector.
-    poly2 = poly1[[1, 0], :]
+#    poly2 = poly1[[1, 0], :]
 
     # Find intersections.
     inter1, seg_ids = ppi.isect_polygon(poly1.T)
@@ -40,23 +40,23 @@ def get_self_isect(poly):
         [len(pair) == 2 and abs(pair[0] % N - pair[1] % N) > 1
          for pair in seg_ids])
 
-    ppi.USE_RETURN_SEGMENT_ID = False
-    inter2 = np.array(ppi.isect_polygon(poly2.T)).T
-    ppi.USE_RETURN_SEGMENT_ID = True
-    # De-reflect intersection points.
-    try:
-        inter2 = inter2[[1, 0], :]
-    except IndexError:
-        return None, None
-
-    # Find all (x,y) pairs which are both in inter1 and inter2.
-    valid_points = np.logical_and(
-        valid_points,
-        np.logical_and(
-            np.in1d(inter1[0], inter2[0]),
-            np.in1d(inter1[1], inter2[1])))
-#    if not valid_points.all():
-#        print('False positive')
+#    ppi.USE_RETURN_SEGMENT_ID = False
+#    inter2 = np.array(ppi.isect_polygon(poly2.T)).T
+#    ppi.USE_RETURN_SEGMENT_ID = True
+#    # De-reflect intersection points.
+#    try:
+#        inter2 = inter2[[1, 0], :]
+#    except IndexError:
+#        return None, None
+#
+#    # Find all (x,y) pairs which are both in inter1 and inter2.
+#    valid_points = np.logical_and(
+#        valid_points,
+#        np.logical_and(
+#            np.in1d(inter1[0], inter2[0]),
+#            np.in1d(inter1[1], inter2[1])))
+##    if not valid_points.all():
+##        print('False positive')
     seg_ids = np.array(list(compress(seg_ids, valid_points))).T
 
     return inter1[:, valid_points], seg_ids

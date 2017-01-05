@@ -9,13 +9,14 @@ import time
 import numpy as np
 import context
 
-if(0):
+if(1):
     from mecha import SingleGearFixedFulcrumCDM as TYPE
     filename = "cdm_dom.npy"
+    TYPE.ConstraintSolver.max_nb_turns = 10
 else:
     from mecha import HootNanny as TYPE
     filename = "hoot_dom.npy"
-    TYPE.ConstraintSolver.max_nb_turns = 3
+    TYPE.ConstraintSolver.max_nb_turns = 5
     # max_nb_turns = 3, grid_resol = 4; Nb. samples = 3988; Elapsed time: 19s
 
 #import warnings
@@ -33,7 +34,7 @@ def load(filename):
     return dom
 
 if __name__ == "__main__":
-    if(1):
+    if(0):
         dom = fun()
         print("Number of samples: ", dom.shape[0])
         constraints = TYPE.ConstraintSolver.get_constraints()

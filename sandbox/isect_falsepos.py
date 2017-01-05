@@ -122,7 +122,7 @@ def get_self_isect_super_robust(poly):
     """
     poly1 = np.asarray(poly)
     # Reflect polygon along first bisector.
-    poly2 = poly1[[1, 0], :]
+#    poly2 = poly1[[1, 0], :]
 
     # Find intersections.
     ppi.USE_RETURN_SEGMENT_ID = True
@@ -135,19 +135,19 @@ def get_self_isect_super_robust(poly):
         [len(pair) == 2 and abs(pair[0] % N - pair[1] % N) > 1
          for pair in seg_ids])
 
-    inter2 = np.array(ppi.isect_polygon(poly2.T)).T
-    # De-reflect intersection points.
-    try:
-        inter2 = inter2[[1, 0], :]
-    except IndexError:
-        return None, None
-
-    # Find all (x,y) pairs which are both in inter1 and inter2.
-    valid_points = np.logical_and(
-        valid_points,
-        np.logical_and(
-            np.in1d(inter1[0], inter2[0]),
-            np.in1d(inter1[1], inter2[1])))
+#    inter2 = np.array(ppi.isect_polygon(poly2.T)).T
+#    # De-reflect intersection points.
+#    try:
+#        inter2 = inter2[[1, 0], :]
+#    except IndexError:
+#        return None, None
+#
+#    # Find all (x,y) pairs which are both in inter1 and inter2.
+#    valid_points = np.logical_and(
+#        valid_points,
+#        np.logical_and(
+#            np.in1d(inter1[0], inter2[0]),
+#            np.in1d(inter1[1], inter2[1])))
     if not valid_points.all():
         print('False positive')
 
@@ -158,7 +158,7 @@ class SelfIntersectionFinder:
     """Finds self-intersections."""
 
     def __init__(self):
-        self.mecha = BaseSpirograph(8.,3.,1.)
+        self.mecha = BaseSpirograph(8.,5.,1.)
         self.pid = 2
         bounds = self.mecha.get_prop_bounds(self.pid)
         self.prop_data = (self.pid, {'valmin': bounds[0],
