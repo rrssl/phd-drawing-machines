@@ -144,6 +144,6 @@ kick_data = (
     (5,                     # Distance of end_effector from arm junction.
      {'valmin': 0.,
       'valmax': 10.,
-      'valinit': 2.,
+      'valinit': 6.,
       'label': "End-effector distance"})
     )

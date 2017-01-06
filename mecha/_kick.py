@@ -120,7 +120,7 @@ class Kicker(DrawingMechanism):
             self.leg = Actuator(['z', thigh, 'z', calf, 'z', foot],
                                 optimizer=ConjugateGradientOptimizer())
             # TODO: let origin be movable by the user.
-            self.leg._origin = np.array([[d_G1G2*1.2], [2*halflen]])
+            self.leg._origin = np.array([[d_G1G2*1.2], [halflen]])
             # The angles output by tinyik are relative from one link to the
             # next, and for two consecutive links, relative to the original
             # angle between them; therefore we need to keep track of the
@@ -183,7 +183,7 @@ class Kicker(DrawingMechanism):
                 (pos - asb['ankle']['pos'])*1.5)
 
         def _compute_vectors(self, t):
-            t = np.atleast_1d(t)
+            t = np.atleast_1d(-t)
             r1, r2, d_G1G2, l1, l2, d = self.props
             # Fixed points
             OG1 = np.array([[0.], [0.]])
@@ -196,7 +196,7 @@ class Kicker(DrawingMechanism):
             d12 = np.sqrt(d12_sq)
             cos_a = (d12_sq + l1**2 - l2**2) / (2.*l1*d12)
             # Under the non-singularity constraint sin > 0 for all t
-            sin_a = np.sqrt(1. - cos_a**2)
+            sin_a = -np.sqrt(1. - cos_a**2)
             rot_a = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
             OC = OP1 + (d+l1) * np.einsum('ijk,jk->ik', rot_a, P1P2 / d12)
             return OG1, OG2, OP1, OP2, OC
