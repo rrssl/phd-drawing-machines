@@ -75,7 +75,7 @@ cdm_data = (
 hoot_data = (
     (0,                     # Radius of the turntable.
      {'valmin': 1,
-      'valmax': 25,
+      'valmax': 20,
       'valinit': 10,
       'label': "Turntable radius"}),
     (1,                     # Radius of gear 1.
@@ -85,7 +85,7 @@ hoot_data = (
       'label': "Gear 1 radius"}),
     (2,                     # Radius of gear 2.
      {'valmin': 1,
-      'valmax': 10,
+      'valmax': 20,
       'valinit': 2,
       'label': "Gear 2 radius"}),
     (3,                     # Polar angle between gears.

@@ -5,7 +5,7 @@ App allowing direct exploration of the feasible design space of a machine.
 
 @author: Robin Roussel
 """
-import context
+import _context
 from _base import ForwardController
 
 #import warnings
@@ -21,11 +21,11 @@ elif 0:
 elif 0:
     from mecha import SingleGearFixedFulcrumCDM as mecha_type
     from _config import cdm_data as data
-elif 0:
+elif 1:
     from mecha import HootNanny as mecha_type
     from _config import hoot_data as data
     pt_density = 2**10
-elif 1:
+elif 0:
     from mecha import Kicker as mecha_type
     from _config import kick_data as data
 

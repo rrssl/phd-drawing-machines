@@ -4,13 +4,14 @@ Base class for the forward controller.
 
 @author: Robin Roussel
 """
+import json
 import random
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.widgets import Button
 import numpy as np
 
-import context
+import _context
 from mechaplot import mechaplot_factory
 from controlpane import ControlPane
 
@@ -28,8 +29,8 @@ class ForwardController:
 
     def _init_draw(self, param_data):
         self.fig = plt.figure(figsize=(16,8))
-        gs = GridSpec(9, 6)
-        self.ax = self.fig.add_subplot(gs[:, :3])
+        gs = GridSpec(9, 8)
+        self.ax = self.fig.add_subplot(gs[:, :4])
         self.ax.set_aspect('equal')
 #        self.ax.get_xaxis().set_ticks([])
 #        self.ax.get_yaxis().set_ticks([])
@@ -41,11 +42,15 @@ class ForwardController:
 
         bounds = [self.get_bounds(i) for i in range(len(self.mecha.props))]
         self.control_pane = ControlPane(self.fig, param_data, self.update,
-                                        subplot_spec=gs[:-2, 4:], bounds=bounds)
+                                        subplot_spec=gs[:-2, 5:], bounds=bounds)
 
-        btn_ax = self.fig.add_subplot(gs[-1, 4:])
+        btn_ax = self.fig.add_subplot(gs[-1, 4:6])
         self.gen_btn = Button(btn_ax, "Generate random combination")
         self.gen_btn.on_clicked(self.generate_random_params)
+
+        btn_ax = self.fig.add_subplot(gs[-1, 6:])
+        self.sv_btn = Button(btn_ax, "Save combination")
+        self.sv_btn.on_clicked(self.save_params)
 
         self.redraw()
 
@@ -75,6 +80,20 @@ class ForwardController:
         self.crv = self.mecha.get_curve(nb=self.pt_density)
         self.redraw()
         self.fig.canvas.draw_idle()
+
+    def save_params(self, event):
+        save = {
+            'type': type(self.mecha).__name__,
+            'params': self.mecha.props
+            }
+        try:
+            with open("saved_params.json", "r") as file:
+                data = json.load(file)
+                data.append(save)
+        except FileNotFoundError:
+                data = [save]
+        with open("saved_params.json", "w") as file:
+                json.dump(data, file)
 
     def get_bounds(self, i):
         a, b = self.mecha.get_prop_bounds(i)
