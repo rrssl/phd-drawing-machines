@@ -35,7 +35,8 @@ class FixPosHoot(ManyDimsDemo):
         self.labels = [r"$ \theta_{12}$", "$d_1$", "$d_2$", "$l_1$", "$l_2$"]
         # Reference curve and parameter(s).
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
-        self.ref_par = 100
+#        self.ref_par = 100
+        self.ref_par = 150
         self.ref_poi, self.ref_par = self.get_corresp(
             self.ref_crv, self.ref_par, [self.ref_crv])
         self.ref_poi, self.ref_par = self.ref_poi[0], self.ref_par[0]

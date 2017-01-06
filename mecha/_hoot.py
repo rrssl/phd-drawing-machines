@@ -22,7 +22,7 @@ class HootNanny(DrawingMechanism):
         """Class for handling design constraints."""
         nb_dprops = 3
         nb_cprops = 5
-        max_nb_turns = 11 # Arbitrary value
+        max_nb_turns = 15 # Arbitrary value
         _prop_constraint_map = {
             0: (0, 1, 13, 15, 16, 17, 18),
             1: (2, 3, 9, 12, 13, 16, 17, 18),
