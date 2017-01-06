@@ -43,6 +43,7 @@ class DrawingExplorer:
         self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
 
     def get_drawing(self, data):
+        print(data)
         cls = getattr(mecha, data['type'])
         mch = cls(*data['params'])
         return mch.get_curve(2**10)

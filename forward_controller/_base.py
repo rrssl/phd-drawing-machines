@@ -29,8 +29,8 @@ class ForwardController:
 
     def _init_draw(self, param_data):
         self.fig = plt.figure(figsize=(16,8))
-        gs = GridSpec(9, 8)
-        self.ax = self.fig.add_subplot(gs[:, :4])
+        gs = GridSpec(9, 12)
+        self.ax = self.fig.add_subplot(gs[:, :6])
         self.ax.set_aspect('equal')
 #        self.ax.get_xaxis().set_ticks([])
 #        self.ax.get_yaxis().set_ticks([])
@@ -42,13 +42,13 @@ class ForwardController:
 
         bounds = [self.get_bounds(i) for i in range(len(self.mecha.props))]
         self.control_pane = ControlPane(self.fig, param_data, self.update,
-                                        subplot_spec=gs[:-2, 5:], bounds=bounds)
+                                        subplot_spec=gs[:-2, 8:], bounds=bounds)
 
-        btn_ax = self.fig.add_subplot(gs[-1, 4:6])
-        self.gen_btn = Button(btn_ax, "Generate random combination")
+        btn_ax = self.fig.add_subplot(gs[-1, 7:9])
+        self.gen_btn = Button(btn_ax, "Generate random\ncombination")
         self.gen_btn.on_clicked(self.generate_random_params)
 
-        btn_ax = self.fig.add_subplot(gs[-1, 6:])
+        btn_ax = self.fig.add_subplot(gs[-1, 10:])
         self.sv_btn = Button(btn_ax, "Save combination")
         self.sv_btn.on_clicked(self.save_params)
 
