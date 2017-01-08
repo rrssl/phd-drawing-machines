@@ -1,6 +1,7 @@
 fixkrv_data = {
     'disc_prop': (5, 3),
     'cont_prop': (.2, 1.),
+    'init_poi_id': 0,
     'pts_per_dim': 15,
 #    'keep_ratio': .05,
 #    'deg_invar_poly': 2,
@@ -13,6 +14,8 @@ fixdist_data = {
 #    'cont_prop' = (.3, 1.) # Nonzero dist between PoIs
 #    'cont_prop' = (.3, .692) # Quasi zero dist
     'cont_prop': (.1, .2),  # Non zero dist
+    'init_poi_id': (150, 117),
+#    'init_poi_id': (53, 267),
 #    'pts_per_dim': 20,
 #    'keep_ratio': .05,
 #    'deg_invar_poly': 2,
@@ -22,6 +25,7 @@ fixdist_data = {
 fixpos_data = {
     'disc_prop': (7, 3),
     'cont_prop': (.2, 1.),
+    'init_poi_id': 0,
 #    'pts_per_dim': 20,
 #    'keep_ratio': .05,
 #    'deg_invar_poly': 2,
@@ -31,6 +35,8 @@ fixpos_data = {
 fixisectangle_data = {
     'disc_prop': (5, 3),
     'cont_prop': (.31, .4755), # Quasi zero angle between segments
+#    'init_poi_id': (11, 117),
+    'init_poi_id': (53, 267),
     'pts_per_dim': 10,
 #    'keep_ratio': .05,
 #    'deg_invar_poly': 2,
@@ -40,6 +46,8 @@ fixisectangle_data = {
 fixisectpos_data = {
     'disc_prop': (5, 3),
     'cont_prop': (.31, .48), # Quasi zero angle between segments
+#    'init_poi_id': (11, 117),
+    'init_poi_id': (53, 267),
     'pts_per_dim': 17,
 #    'keep_ratio': .05,
     'deg_invar_poly': 3,

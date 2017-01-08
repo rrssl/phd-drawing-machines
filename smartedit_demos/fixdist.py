@@ -20,47 +20,12 @@ Lastly we use index value as an approx. of parameter value (discretized curve).
 @author: Robin Roussel
 """
 import context
-from mecha import EllipticSpirograph
 from smartedit_demos import TwoDimsDemo
 from poitrackers import get_corresp_krvmax
 
 
 class FixDistDemo(TwoDimsDemo):
     """Find the subspace where the PoIs are at the same distance."""
-
-    def __init__(self, disc_prop, cont_prop, pts_per_dim=20, keep_ratio=.05,
-                 deg_invar_poly=2, nb_crv_pts=2**6):
-        # Initial parameters.
-        self.disc_prop = disc_prop
-        self.cont_prop = cont_prop
-        self.pts_per_dim = pts_per_dim
-        self.keep_ratio = keep_ratio
-        self.deg_invar_poly = deg_invar_poly
-        self.mecha = EllipticSpirograph(*self.disc_prop+self.cont_prop)
-        self.labels = ["$e^2$", "$d$"]
-        self.nb_crv_pts = nb_crv_pts
-        # Reference curve and parameter.
-        self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
-        self.ref_par = (150, 117)
-#        self.ref_par = (53, 267)
-        self.ref_poi, self.ref_par = self.get_corresp(
-            self.ref_crv, self.ref_par, [self.ref_crv])
-        self.ref_poi, self.ref_par = self.ref_poi[0], self.ref_par[0]
-        # New curve and parameter(s).
-        self.new_crv = None
-        self.new_poi = None
-        # Solution space.
-        self.samples = None
-        self.scores = None
-        self.phi = None
-        self.invar_space_bnds = None
-        # Optimal solution.
-        self.opt_path = None
-        self.phi_opt = None
-
-        self.compute_invar_space()
-
-        self.init_draw()
 
     ### MODEL
 
