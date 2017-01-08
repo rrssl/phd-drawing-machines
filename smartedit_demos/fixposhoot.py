@@ -13,7 +13,7 @@ however there is no loss of generality.
 @author: Robin Roussel
 """
 import context
-from mecha import HootNanny
+from mecha import HootNanny as DrawingMachine
 from smartedit_demos import ManyDimsDemo
 from poitrackers import get_corresp_krvmax
 
@@ -21,22 +21,23 @@ from poitrackers import get_corresp_krvmax
 class FixPosHoot(ManyDimsDemo):
     """Find the subspace where the PoIs coincide."""
 
-    def __init__(self, disc_prop, cont_prop, pts_per_dim=5, keep_ratio=.05,
-                 nbhood_size=.1, ndim_invar_space=2, nb_crv_pts=2**6):
+    def __init__(self, props, init_poi_id, pts_per_dim=5,
+                 keep_ratio=.05, nbhood_size=.1, ndim_invar_space=2,
+                 nb_crv_pts=2**6):
         # Initial parameters.
-        self.disc_prop = disc_prop
-        self.cont_prop = cont_prop
+        nb_dprops = DrawingMachine.ConstraintSolver.nb_dprops
+        self.disc_prop = props[:nb_dprops]
+        self.cont_prop = props[nb_dprops:]
         self.pts_per_dim = pts_per_dim
         self.keep_ratio = keep_ratio
         self.nbhood_size = nbhood_size
         self.ndim_invar_space = ndim_invar_space
-        self.mecha = HootNanny(*self.disc_prop+self.cont_prop)
+        self.mecha = DrawingMachine(*props)
         self.nb_crv_pts = nb_crv_pts
-        self.labels = [r"$ \theta_{12}$", "$d_1$", "$d_2$", "$l_1$", "$l_2$"]
+        self.labels = DrawingMachine.param_names[nb_dprops:]
         # Reference curve and parameter(s).
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
-#        self.ref_par = 100
-        self.ref_par = 150
+        self.ref_par = init_poi_id
         self.ref_poi, self.ref_par = self.get_corresp(
             self.ref_crv, self.ref_par, [self.ref_crv])
         self.ref_poi, self.ref_par = self.ref_poi[0], self.ref_par[0]

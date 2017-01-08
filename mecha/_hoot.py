@@ -16,6 +16,8 @@ from utils import skipends, farey
 
 class HootNanny(DrawingMechanism):
     """Hoot-Nanny (Magic Designer), aka the HTMLSpirograph."""
+    param_names = ["r_T", "r_{G1}", "r_{G2}",
+                   r"$ \theta_{12}$", "$d_1$", "$d_2$", "$l_1$", "$l_2$"]
 
 
     class ConstraintSolver(Mechanism.ConstraintSolver):
