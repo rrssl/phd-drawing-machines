@@ -182,9 +182,8 @@ class InvarDemo:
         init = self.mecha.props.copy()
         for props in samples:
             for i, prop in enumerate(props):
-                # TODO: use reset, and more importantly, disable constraint
-                # checking here (all samples have already been tested).
-                self.mecha.update_prop(len(self.disc_prop)+i, prop)
+                self.mecha.update_prop(len(self.disc_prop)+i, prop,
+                                       check=False, update_state=False)
             # TODO: only recompute around the reference parameter instead of
             # the whole curve.
             curves.append(self.mecha.get_curve(self.nb_crv_pts))
@@ -799,7 +798,7 @@ class ManyDimsDemo(InvarDemo):
 #        frame.margins(.1)
         frame.set_aspect('equal')
         frame.set_title("Drawing machine (hidden).\n")
-        self.draw_plt = frame.plot(*self.ref_crv, lw=2, alpha=.8)[0]
+        self.draw_plt = frame.plot(*self.ref_crv, lw=1, alpha=.8)[0]
         self.mecha_plt = mechaplot_factory(self.mecha, frame, self.draw_plt)
         self.mecha_plt.redraw()
 

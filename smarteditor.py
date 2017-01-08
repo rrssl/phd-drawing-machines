@@ -168,7 +168,7 @@ class SmartEditor:
         for props in samples:
             for i, prop in enumerate(props):
                 self.mecha.update_prop(len(self.dprops)+i, prop,
-                                       check=False)
+                                       check=False, update_state=False)
             # TODO: only recompute around the reference parameter instead of
             # the whole curve.
             curves.append(self.mecha.get_curve(self.nb_crv_pts))
