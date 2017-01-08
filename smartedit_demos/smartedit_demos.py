@@ -692,8 +692,7 @@ def anyclose(l, tol=1e-1):
 
 
 class ManyDimsDemo(InvarDemo):
-    """Specialization for mechanisms with more than 2 continuous properties.
-    (Actually works for 2 as well, but is a bit overkill.)
+    """Specialization for mechanisms with 2 continuous properties or more.
 
     Attributes
     ----------
@@ -712,6 +711,43 @@ class ManyDimsDemo(InvarDemo):
     slider_active: bool
         Used to know if the slider is being used.
     """
+    def __init__(self, mecha_type, props, init_poi_id, pts_per_dim=5,
+                 keep_ratio=.05, nbhood_size=.1, ndim_invar_space=2,
+                 nb_crv_pts=2**6):
+        # Initial parameters.
+        nb_dprops = mecha_type.ConstraintSolver.nb_dprops
+        self.disc_prop = props[:nb_dprops]
+        self.cont_prop = props[nb_dprops:]
+        self.pts_per_dim = pts_per_dim
+        self.keep_ratio = keep_ratio
+        self.nbhood_size = nbhood_size
+        self.ndim_invar_space = ndim_invar_space
+        self.mecha = mecha_type(*props)
+        self.nb_crv_pts = nb_crv_pts
+        self.labels = mecha_type.param_names[nb_dprops:]
+        # Reference curve and parameter(s).
+        self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
+        self.ref_par = init_poi_id
+        self.ref_poi, self.ref_par = self.get_corresp(
+            self.ref_crv, self.ref_par, [self.ref_crv])
+        self.ref_poi, self.ref_par = self.ref_poi[0], self.ref_par[0]
+        # New curve and parameter(s).
+        self.new_crv = None
+        self.new_poi = None
+        # Solution space.
+        self.phi = None
+        self.phi_inv = None
+        self.pca = None
+        self.new_cont_prop = None
+        self.invar_space_bnds = None
+        self.compute_invar_space()
+
+        self.init_draw()
+
+        # Controller
+        self.slider_active = False
+        self.fig.canvas.mpl_connect('button_release_event',
+                                    self.on_button_release)
 
     ### MODEL
 
