@@ -13,13 +13,13 @@ mpl.rcParams['keymap.forward'].remove('right')
 
 import _context
 import mecha
-#from mechaplot import mechaplot_factory
 
 
 class DrawingExplorer:
     def __init__(self, filename, id_):
         with open(filename, "r") as file:
             self.db = json.load(file)
+        print("Number of drawings: {}".format(len(self.db)))
         self.id_ = id_
         self.drw = self.get_drawing(self.db[id_])
         self._init_draw()
@@ -34,8 +34,6 @@ class DrawingExplorer:
 #        self.ax.get_yaxis().set_ticks([])
 
         self.drw_plot = self.ax.plot([], [], lw=1, alpha=.8)[0]
-#        # Since the paper may rotate with the turntable, we pass the drawing.
-#        self.mecha_plot = mechaplot_factory(self.mecha, self.ax, self.crv_plot)
 
         self.redraw()
 
@@ -49,19 +47,22 @@ class DrawingExplorer:
         return mch.get_curve(2**10)
 
     def on_key_press(self, event):
+        redraw = False
         if event.key == 'left':
             self.id_ = (self.id_ - 1) % len(self.db)
+            redraw = True
         if event.key == 'right':
             self.id_ = (self.id_ + 1) % len(self.db)
-        self.drw = self.get_drawing(self.db[self.id_])
-        self.redraw()
+            redraw = True
+        if redraw:
+            self.drw = self.get_drawing(self.db[self.id_])
+            self.redraw()
 
     def redraw(self):
         self.drw_plot.set_data(*self.drw)
         self.ax.relim()
         self.ax.autoscale()
         self.fig.canvas.draw_idle()
-#        self.mecha_plot.redraw()
 
     def run(self):
         plt.ioff()

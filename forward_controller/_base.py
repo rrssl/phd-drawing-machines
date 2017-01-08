@@ -94,6 +94,7 @@ class ForwardController:
                 data = [save]
         with open("saved_params.json", "w") as file:
                 json.dump(data, file)
+        print('Successfully saved {}'.format(save))
 
     def get_bounds(self, i):
         a, b = self.mecha.get_prop_bounds(i)
