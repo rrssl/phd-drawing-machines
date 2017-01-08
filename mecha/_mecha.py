@@ -4,6 +4,7 @@ Bases classes for parameterized cyclic mechanisms.
 
 @author: Robin Roussel
 """
+import math
 
 class Mechanism:
     """Common base class for all cyclic mechanical assemblies."""
@@ -104,7 +105,7 @@ class Mechanism:
                        for cons in self.constraint_solver.get_constraints()])
             return False
 
-    def update_prop(self, pid, value, check=True):
+    def update_prop(self, pid, value, check=True, update_state=True):
         """Update the property referenced by the input index.
 
         Returns True if the new value complies with the constraints, False
@@ -117,7 +118,8 @@ class Mechanism:
         if (not check
             or self.constraint_solver.check_constraints(self.props)):
             self._simulator.update_prop(pid, value)
-            self._simulator.compute_state(self.assembly, 0.)
+            if update_state:
+                self._simulator.compute_state(self.assembly, 0.)
             return True
         else:
             if self.verbose:
@@ -144,6 +146,14 @@ class Mechanism:
 
 class DrawingMechanism(Mechanism):
     """Functional specialization: Mechanism that can draw a closed curve."""
+
+    def id2time(self, id_):
+        """Return the time value of p = get_curve()[:, id_]."""
+        simu = self._simulator
+        cycle_length = simu.get_cycle_length()
+        nb_samples = ((cycle_length / (2*math.pi)) * simu.nb_samples + 1
+                      if simu.per_turn else simu.nb_samples)
+        return id_ * cycle_length / nb_samples
 
     def get_curve(self, nb=2**6, per_turn=True):
         """Return an array of points sampled on the full curve.
