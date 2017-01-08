@@ -17,7 +17,7 @@ Lastly we use index value as an approx. of parameter value (discretized curve).
 """
 import context
 from curveproc import compute_curvature
-from mecha import SingleGearFixedFulcrumCDM
+from mecha import SingleGearFixedFulcrumCDM as DrawingMachine
 from smartedit_demos import ManyDimsDemo
 from poitrackers import get_corresp_krvmax
 
@@ -25,22 +25,23 @@ from poitrackers import get_corresp_krvmax
 class FixKrvCDM(ManyDimsDemo):
     """Find the subspace where the curve has the same curvature at the PoIs."""
 
-    def __init__(self, disc_prop, cont_prop, pts_per_dim=5, keep_ratio=.05,
-                 nbhood_size=.1, ndim_invar_space=2, nb_crv_pts=2**6):
+    def __init__(self, props, init_poi_id, pts_per_dim=5,
+                 keep_ratio=.05, nbhood_size=.1, ndim_invar_space=2,
+                 nb_crv_pts=2**6):
         # Initial parameters.
-        self.disc_prop = disc_prop
-        self.cont_prop = cont_prop
+        nb_dprops = DrawingMachine.ConstraintSolver.nb_dprops
+        self.disc_prop = props[:nb_dprops]
+        self.cont_prop = props[nb_dprops:]
         self.pts_per_dim = pts_per_dim
         self.keep_ratio = keep_ratio
         self.nbhood_size = nbhood_size
         self.ndim_invar_space = ndim_invar_space
-        self.mecha = SingleGearFixedFulcrumCDM(*self.disc_prop+self.cont_prop)
-        self.labels = ["$d_f$", r"$ \theta_g$", "$d_p$", "$d_s$"]
+        self.mecha = DrawingMachine(*props)
         self.nb_crv_pts = nb_crv_pts
+        self.labels = DrawingMachine.param_names[nb_dprops:]
         # Reference curve and parameter(s).
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
-        self.ref_par = 0
-#        self.ref_par = (98, 183) # Intersection
+        self.ref_par = init_poi_id
         self.ref_poi, self.ref_par = self.get_corresp(
             self.ref_crv, self.ref_par, [self.ref_crv])
         self.ref_poi, self.ref_par = self.ref_poi[0], self.ref_par[0]

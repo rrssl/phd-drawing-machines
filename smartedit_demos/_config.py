@@ -1,3 +1,5 @@
+### EllipticSpirograph
+
 fixkrv_data = {
     'disc_prop': (5, 3),
     'cont_prop': (.2, 1.),
@@ -54,9 +56,12 @@ fixisectpos_data = {
 #    'nb_crv_pts': 2**6
     }
 
+
+### SingleGearFixedFulcrumCDM
+
 fixposcdm_data = {
-    'disc_prop': (4, 3),
-    'cont_prop': (5., 2.6, 5.9, 2.5),
+    'props': (4, 3, 5., 2.6, 5.9, 2.5),
+    'init_poi_id': 0,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -65,8 +70,8 @@ fixposcdm_data = {
     }
 
 fixkrvcdm_data = {
-    'disc_prop': (7, 3),
-    'cont_prop': (13., 2.8, 14., 2.),
+    'props': (7, 3, 13., 2.8, 14., 2.),
+    'init_poi_id': 0,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -75,8 +80,8 @@ fixkrvcdm_data = {
     }
 
 fixlinecdm_data = {
-    'disc_prop': (6, 5),
-    'cont_prop': (7.65, 2.66, 9.63, 3.79),
+    'props': (6, 5, 7.65, 2.66, 9.63, 3.79),
+    'init_poi_id': 50,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -85,10 +90,9 @@ fixlinecdm_data = {
     }
 
 fixkrvlinecdm_data = {
-    'disc_prop': (12, 4),
-#    'disc_prop': (12, 3),
-    'cont_prop': (13.9, 3., 17.5, 3.3),
-#    'cont_prop': (13., 2.3, 14., 2.5),
+    'props': (12, 4, 13.9, 3., 17.5, 3.3),
+#    'props': (12, 3, 13., 2.3, 14., 2.5),
+    'init_poi_id': 0,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -97,14 +101,17 @@ fixkrvlinecdm_data = {
     }
 
 fixisectanglecdm_data = {
-    'disc_prop': (2, 2),
-    'cont_prop': (3.5, 2.9, 3.8, 1.7),
+    'props': (3, 2, 3.5, 2.9, 3.7, 1.7),
+    'init_poi_id': (46, 56),
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
 #    'ndim_invar_space': 2,
 #    'nb_crv_pts': 2**6
     }
+
+
+### HootNanny
 
 fixposhoot_data = {
 #    'props': (10, 4, 2, .69, 2.52, .86, 10.22, 9.56),

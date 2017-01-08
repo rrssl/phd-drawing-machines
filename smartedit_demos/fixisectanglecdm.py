@@ -15,7 +15,7 @@ however there is no loss of generality.
 import numpy as np
 
 import context
-from mecha import SingleGearFixedFulcrumCDM
+from mecha import SingleGearFixedFulcrumCDM as DrawingMachine
 from smartedit_demos import ManyDimsDemo
 from poitrackers import get_corresp_isect
 
@@ -23,26 +23,26 @@ from poitrackers import get_corresp_isect
 class FixIsectAngleCDM(ManyDimsDemo):
     """Find the subspace where the intersection angle is constant."""
 
-    def __init__(self, disc_prop, cont_prop, pts_per_dim=5, keep_ratio=.05,
-                 nbhood_size=.1, ndim_invar_space=2, nb_crv_pts=2**6):
+    def __init__(self, props, init_poi_id, pts_per_dim=5,
+                 keep_ratio=.05, nbhood_size=.1, ndim_invar_space=2,
+                 nb_crv_pts=2**6):
         # Initial parameters.
-        self.disc_prop = disc_prop
-        self.cont_prop = cont_prop
+        nb_dprops = DrawingMachine.ConstraintSolver.nb_dprops
+        self.disc_prop = props[:nb_dprops]
+        self.cont_prop = props[nb_dprops:]
         self.pts_per_dim = pts_per_dim
         self.keep_ratio = keep_ratio
         self.nbhood_size = nbhood_size
         self.ndim_invar_space = ndim_invar_space
-        self.mecha = SingleGearFixedFulcrumCDM(*self.disc_prop+self.cont_prop)
-        self.labels = ["$d_f$", r"$ \theta_g$", "$d_p$", "$d_s$"]
+        self.mecha = DrawingMachine(*props)
         self.nb_crv_pts = nb_crv_pts
+        self.labels = DrawingMachine.param_names[nb_dprops:]
         # Reference curve and parameter(s).
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
-
-        self.ref_par = (44, 61)
+        self.ref_par = init_poi_id
         self.ref_poi, self.ref_par = self.get_corresp(
             self.ref_crv, self.ref_par, [self.ref_crv])
         self.ref_poi, self.ref_par = self.ref_poi[0], self.ref_par[0]
-        print(self.ref_par)
         # New curve and parameter(s).
         self.new_crv = None
         self.new_poi = None
