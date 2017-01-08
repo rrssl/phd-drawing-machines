@@ -348,7 +348,7 @@ class InvarDemo:
 
     ### CONTROLLER
 
-    def set_cont_prop(self, props):
+    def set_cont_prop(self, props, update_bounds=True):
         """Set the continuous property vector, update data."""
         self.cont_prop = props
         # We need to update all the parameters before getting the bounds.
@@ -356,8 +356,9 @@ class InvarDemo:
         # Update ref sliders.
         for i, prop in enumerate(props):
             self.ref_control.set_val(i, prop)
-            bnds = self.mecha.get_prop_bounds(i+len(self.disc_prop))
-            self.ref_control.set_bounds(i, bnds)
+            if update_bounds:
+                bnds = self.mecha.get_prop_bounds(i+len(self.disc_prop))
+                self.ref_control.set_bounds(i, bnds)
         # Update new curve and PoI.
         self.new_crv = self.mecha.get_curve(self.nb_crv_pts)
         self.new_poi = self.get_corresp(
@@ -878,11 +879,11 @@ class ManyDimsDemo(InvarDemo):
 
         self.cont_prop_invar_space[id_] = value
         cont_prop = self.phi(self.cont_prop_invar_space).ravel()
-        self.set_cont_prop(cont_prop)
+        self.set_cont_prop(cont_prop, update_bounds=False)
         # Update slider bounds.
-        for i in range(self.ndim_invar_space):
-            if i != id_:
-                bnds = self.get_bounds_invar_space(i)
-                self.control.set_bounds(i, bnds)
+#        for i in range(self.ndim_invar_space):
+#            if i != id_:
+#                bnds = self.get_bounds_invar_space(i)
+#                self.control.set_bounds(i, bnds)
 
         self.redraw()
