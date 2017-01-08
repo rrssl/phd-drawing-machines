@@ -37,7 +37,7 @@ def find_krv_max(poly, closed=True):
     """
     krv = compute_curvature(poly, closed)
     if closed: krv = krv[:-1]
-    peaks = sig.argrelmax(krv, mode=('clip','wrap')[closed])[0]
+    peaks = sig.argrelmax(krv, mode=('wrap' if closed else 'clip'))[0]
 
     pois = np.vstack([poly[:, peaks], peaks, krv[peaks]]).T
     return pois
@@ -62,10 +62,10 @@ def find_isect(poly):
     poly1 = np.asarray(poly)
 
     # Find intersections.
-    inter1, seg_ids = ppi.isect_polygon(poly1.T)
+    inter, seg_ids = ppi.isect_polygon(poly1.T)
     if not seg_ids:
         return None
-    inter1 = np.array(inter1)
+    inter = np.array(inter)
     N = poly1.shape[1] - 2
     # Valid points give exactly two non-consecutive segments.
     valid_points = np.array(
@@ -77,7 +77,7 @@ def find_isect(poly):
     else:
         seg_ids.sort(axis=1)
 
-    pois = np.hstack([inter1[valid_points, :], seg_ids])
+    pois = np.hstack([inter[valid_points, :], seg_ids])
     return pois
 
 
