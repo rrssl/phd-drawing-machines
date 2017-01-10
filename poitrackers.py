@@ -14,7 +14,6 @@ ppi.USE_DEBUG = False
 ppi.USE_IGNORE_SEGMENT_ENDINGS = False
 ppi.USE_RETURN_SEGMENT_ID = True
 
-import context
 from curveproc import compute_curvature
 
 

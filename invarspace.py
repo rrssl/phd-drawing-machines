@@ -292,3 +292,15 @@ class InvariantSpaceFinder:
         samples = filter(condition, product(*coords))
         # TODO: Check/Extract connected region
         return samples
+
+    def set_cont_prop(self, props):
+        """Set the continuous property vector, update data."""
+        self.cont_prop = props
+        # We need to update all the parameters before getting the bounds.
+        self.mecha.reset(*list(self.disc_prop)+list(props))
+        # Update new curve and PoI.
+        self.new_crv = self.mecha.get_curve(self.nb_crv_pts)
+        new_poi, new_par = self.get_corresp(
+            self.ref_crv, self.ref_par, [self.new_crv])
+        self.new_poi = new_poi[0]
+        self.new_par = new_par[0]
