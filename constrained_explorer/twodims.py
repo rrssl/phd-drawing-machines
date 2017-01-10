@@ -249,13 +249,13 @@ def main():
     elif 0:
         from _config import fixkrv_data as data
         app = FixKrvDemo(**data)
-    elif 0:
+    elif 1:
         from _config import fixdist_data as data
         app = FixDistDemo(**data)
     elif 0:
         from _config import fixisectpos_data as data
         app = FixIsectPosDemo(**data)
-    elif 1:
+    elif 0:
         from _config import fixisectangle_data as data
         app = FixIsectAngle(**data)
 
