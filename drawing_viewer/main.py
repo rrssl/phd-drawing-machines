@@ -15,7 +15,7 @@ import _context
 import mecha
 
 
-class DrawingExplorer:
+class DrawingViewer:
     def __init__(self, filename, id_):
         with open(filename, "r") as file:
             self.db = json.load(file)
@@ -25,13 +25,22 @@ class DrawingExplorer:
         self._init_draw()
         self._init_ctrl()
 
+        # Output all
+#        for i, drw in enumerate(self.db):
+#            self.drw = self.get_drawing(drw)
+#            title = 'drawing_{}'.format(i)
+#            self.ax.set_title(title + '\n')
+#            self.redraw()
+#            plt.savefig(title)
+
     def _init_draw(self):
         self.fig = plt.figure(figsize=(8,8))
         self.ax = self.fig.add_subplot(111)
         self.ax.set_aspect('equal')
         self.ax.margins(.1)
-#        self.ax.get_xaxis().set_ticks([])
-#        self.ax.get_yaxis().set_ticks([])
+        self.ax.get_xaxis().set_ticks([])
+        self.ax.get_yaxis().set_ticks([])
+        self.fig.subplots_adjust(left=.01, right=.99, bottom=0.01, top=.99)
 
         self.drw_plot = self.ax.plot([], [], lw=1, alpha=.8)[0]
 
@@ -69,7 +78,7 @@ class DrawingExplorer:
         plt.show()
 
 def main():
-    app = DrawingExplorer("saved_params.json", 0)
+    app = DrawingViewer("saved_params.json", 0)
     app.run()
 
 if __name__ == "__main__":
