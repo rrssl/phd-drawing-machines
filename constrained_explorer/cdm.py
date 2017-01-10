@@ -6,12 +6,13 @@ Constrained exploration demos with the Cycloid Drawing Machine.
 @author: Robin Roussel
 """
 from matplotlib.lines import Line2D
+from matplotlib.patches import Circle
 import numpy as np
 
 import context
 from curveproc import compute_curvature
 from mecha import SingleGearFixedFulcrumCDM
-from smartedit_demos import ManyDimsDemo
+from smartedit_demos import ManyDimsDemo, _get_inwards_normal
 from poitrackers import get_corresp_krvmax, get_corresp_isect
 
 
@@ -62,12 +63,33 @@ class FixKrvCDM(ManyDimsDemo):
 
     ### VIEW
 
+    def redraw(self):
+        """Redraw dynamic elements."""
+        super().redraw()
+        # Mutliply radius by 2 to make the circle more visible.
+        rk = 2. / compute_curvature(self.new_crv)[self.new_par]
+        normal = _get_inwards_normal(self.new_crv, self.new_par) * rk
+        self.new_osc_plt.center = self.new_poi + normal
+        self.new_osc_plt.radius = rk
+
     def draw_curve_space(self, frame):
         """Draw the curve."""
         super().draw_curve_space(frame)
         frame.set_title("Curve space (visible in the UI).\n"
                         "The point of interest's curvature is fixed by the "
                         "user.\n")
+        # Ref osculating circle.
+        # Mutliply radius by 2 to make the circle more visible.
+        ref_rk = 2. / compute_curvature(self.ref_crv)[self.ref_par]
+        normal = _get_inwards_normal(self.ref_crv, self.ref_par) * ref_rk
+        self.ref_osc_plt = Circle(
+            self.ref_poi+normal, ref_rk, color='k', alpha=.5, lw=1, fill=False,
+            ls='--', label="Ref. osc. circle")
+        frame.add_patch(self.ref_osc_plt)
+        # New osculating circle.
+        self.new_osc_plt = Circle((0,0), 0, color='b', alpha=.7, lw=2,
+                              fill=False, ls='--', label="New osc. circle")
+        frame.add_patch(self.new_osc_plt)
 
 
 class FixLineCDM(ManyDimsDemo):
@@ -174,13 +196,13 @@ def main():
     if 0:
         from _config import fixposcdm_data as data
         app = FixPosCDM(**data)
-    elif 0:
+    elif 1:
         from _config import fixkrvcdm_data as data
         app = FixKrvCDM(**data)
     elif 0:
         from _config import fixlinecdm_data as data
         app = FixLineCDM(**data)
-    elif 1:
+    elif 0:
         from _config import fixkrvlinecdm_data as data
         SingleGearFixedFulcrumCDM.ConstraintSolver.max_nb_turns = 12
         app = FixKrvLineCDM(**data)
