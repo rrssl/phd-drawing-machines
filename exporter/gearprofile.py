@@ -8,6 +8,7 @@ import math
 import numpy as np
 import scipy.optimize as opt
 
+import _context
 import curves as cu
 
 

@@ -5,6 +5,7 @@ Export script.
 
 @author: Robin Roussel
 """
+import datetime, os
 import math
 import numpy as np
 import svgwrite as svg
@@ -149,35 +150,42 @@ def export_hoot_arm_svg(length, rad1, rad2, filename):
 
 
 def main():
-    """Entry point."""
+    base = "svg/{}/" + datetime.datetime.now().strftime("%Y%m%d-%H:%M") + "/"
+    name = "{}.svg"
+
+
     if EXPORT_SPIRO:
+        base = base.format("spiro")
+        os.makedirs(base)
         rad_gear = 2.5
         rad_ring = 5.5
         circular_pitch = 15
-        holes = [(i*.5, 0.) for i in range(1, 2*rad_gear)]
+        holes = [(i*.5, 0.) for i in range(1, 2*int(rad_gear))]
 
         export_gear_svg(
-            Involute(rad_gear, rad_gear*circular_pitch),
-            'svg/spiro/involute_pinion.svg', holes)
+            Involute(rad_gear, int(rad_gear*circular_pitch)),
+            base+name.format("involute_pinion"), holes)
         export_internal_ring_svg(
-            Involute(rad_ring, rad_ring*circular_pitch, internal=True),
-            'svg/spiro/involute_internal.svg')
+            Involute(rad_ring, int(rad_ring*circular_pitch), internal=True),
+            base+name.format("involute_internal"))
 
         export_gear_svg(
-            Sinusoidal(rad_gear, rad_gear*circular_pitch, tooth_radius=.1),
-            'svg/spiro/sinusoidal_pinion.svg', holes)
+            Sinusoidal(rad_gear, int(rad_gear*circular_pitch), tooth_radius=.1),
+            base+name.format("sinusoidal_pinion"), holes)
         export_internal_ring_svg(
-            Sinusoidal(rad_ring, rad_ring*circular_pitch, tooth_radius=.1),
-            'svg/spiro/sinusoidal_internal.svg')
+            Sinusoidal(rad_ring, int(rad_ring*circular_pitch), tooth_radius=.1),
+            base+name.format("sinusoidal_internal"))
 
         export_gear_svg(
-            Cycloidal(rad_gear, rad_gear*circular_pitch),
-            'svg/spiro/cycloidal_pinion.svg', holes)
+            Cycloidal(rad_gear, int(rad_gear*circular_pitch)),
+            base+name.format("cycloidal_pinion"), holes)
         export_internal_ring_svg(
-            Cycloidal(rad_ring, rad_ring*circular_pitch),
-            'svg/spiro/cycloidal_internal.svg')
+            Cycloidal(rad_ring, int(rad_ring*circular_pitch)),
+            base+name.format("cycloidal_internal"))
 
     if EXPORT_ELLIP_SPIRO:
+        base = base.format("ellip_spiro")
+        os.makedirs(base)
         rad_gear = 3
         rad_ring = 5
         circular_pitch = 15
@@ -185,27 +193,29 @@ def main():
         export_internal_ring_svg(
             InvoluteElliptical(rad_ring, 0., rad_ring*circular_pitch,
                                internal=True),
-            'svg/ellip_spiro/involute_elliptical_fixed.svg')
+            base+name.format("involute_elliptical_fixed"))
         holes = [(1., 0.)]
         export_gear_svg(
             InvoluteElliptical(rad_gear, .2, rad_gear*circular_pitch),
-            'svg/ellip_spiro/involute_elliptical_moving_fixpoi_1.svg', holes)
+            base+name.format("involute_elliptical_moving_fixpoi_1"), holes)
         holes = [(1.232, 0.)]
         export_gear_svg(
             InvoluteElliptical(rad_gear, .429, rad_gear*circular_pitch),
-            'svg/ellip_spiro/involute_elliptical_moving_fixpoi_2.svg', holes)
+            base+name.format("involute_elliptical_moving_fixpoi_2"), holes)
         holes = [(.4755, 0.)]
         export_gear_svg(
             InvoluteElliptical(rad_gear, .31, rad_gear*circular_pitch),
-            'svg/ellip_spiro/involute_elliptical_moving_fixisectangle_1.svg',
+            base+name.format("involute_elliptical_moving_fixisectangle_1"),
             holes)
         holes = [(.615, 0.)]
         export_gear_svg(
             InvoluteElliptical(rad_gear, .4005, rad_gear*circular_pitch),
-            'svg/ellip_spiro/involute_elliptical_moving_fixisectangle_2.svg',
+            base+name.format("involute_elliptical_moving_fixisectangle_2"),
             holes)
 
     if EXPORT_HOOT:
+        base = base.format("hoot_nanny")
+        os.makedirs(base)
         scale = 1
         rad_turntable = 10*scale
         rad_gear1 = 4*scale
@@ -221,39 +231,38 @@ def main():
         # Base
         export_hoot_base_svg(
             rad_turntable, rad_gear1, rad_gear2, gear_angle,
-            'svg/hoot_nanny/base.svg')
+            base+name.format("base"))
         # Turntable
-
         export_gear_svg(
             Involute(rad_turntable, int(rad_turntable*circular_pitch)),
-            'svg/hoot_nanny/turntable_gear.svg',
+            base+name.format("turntable_gear"),
             center_hole_size=2*rad_pivot)
         export_toothless_ring_svg(
             1.3/2, rad_turntable*.97,
-            'svg/hoot_nanny/turntable_ring.svg')
+            base+name.format("turntable_ring"))
         # Gears
         holes = [(dist1, 0.)]
         export_gear_svg(
             Involute(rad_gear1, int(rad_gear1*circular_pitch)),
-            'svg/hoot_nanny/gear1.svg',
+            base+name.format("gear1"),
             holes, center_hole_size=2*rad_pivot)
         holes = [(dist2, 0.)]
         export_gear_svg(
             Involute(rad_gear2, int(rad_gear2*circular_pitch)),
-            'svg/hoot_nanny/gear2.svg',
+            base+name.format("gear2"),
             holes, center_hole_size=2*rad_pivot)
         # Arms
         export_hoot_arm_svg(
-            length1, rad_pivot, rad_pen, 'svg/hoot_nanny/arm1.svg')
+            length1, rad_pivot, rad_pen, base+name.format("arm1"))
         export_hoot_arm_svg(
-            length2, rad_pivot, rad_pen, 'svg/hoot_nanny/arm2.svg')
+            length2, rad_pivot, rad_pen, base+name.format("arm2"))
         # Bunch of custom rings
         export_toothless_ring_svg(
             rad_pen, 2*rad_pen,
-            'svg/hoot_nanny/pen_ring.svg')
+            base+name.format("pen_ring"))
         export_toothless_ring_svg(
             rad_pivot, 2*rad_pivot,
-            'svg/hoot_nanny/pivot_ring.svg')
+            base+name.format("pivot_ring"))
 
 
 if __name__ == "__main__":
