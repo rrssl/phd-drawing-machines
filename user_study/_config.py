@@ -16,7 +16,7 @@ tasks = (
     #    'pts_per_dim': 5,
     #    'keep_ratio': .05,
     #    'nbhood_size': .1,
-        'ndim_invar_space': 3,
+        'ndim_invar_space': 5,
         'pt_density': 2**7
         },
     )

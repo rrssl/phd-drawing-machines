@@ -49,17 +49,30 @@ class TaskManager(InvariantSpaceFinder):
                 }
             }
 
+#    def randomize_cont_props(self):
+#        # Collect bounds.
+#        ndp = len(self.disc_prop)
+#        ncp = len(self.cont_prop)
+#        dp = list(self.disc_prop)
+#        bounds = [self.mecha.get_prop_bounds(i)
+#                  for i in range(ndp, ndp+ncp)]
+#        # Find feasible parameters.
+#        feasible = False
+#        while not feasible:
+#            cp = [random.random() * (b-a) + a for a, b in bounds]
+#            feasible = self.mecha.reset(*dp+cp)
+#        cp = list(self.project_cont_prop_vect())
+#        self.mecha.reset(*dp+cp)
+
     def randomize_cont_props(self):
-        # Collect bounds.
-        ndp = len(self.disc_prop)
-        ncp = len(self.cont_prop)
         dp = list(self.disc_prop)
-        bounds = [self.mecha.get_prop_bounds(i)
-                  for i in range(ndp, ndp+ncp)]
+        bounds = [self.get_bounds_invar_space(i)
+                  for i in range(self.ndim_invar_space)]
         # Find feasible parameters.
         feasible = False
         while not feasible:
             cp = [random.random() * (b-a) + a for a, b in bounds]
+            cp = list(self.phi(cp).ravel())
             feasible = self.mecha.reset(*dp+cp)
         cp = list(self.project_cont_prop_vect())
         self.mecha.reset(*dp+cp)
@@ -308,6 +321,24 @@ class ExploreInvarSpaceV2(ExploreInvarSpace):
     def _init_ctrl(self):
         super()._init_ctrl()
         self.fig.canvas.mpl_connect('key_press_event', self.project)
+
+    def _create_controls(self):
+        """Create the controls to explore the invariant space."""
+        data = [
+            (i, {'valmin': -5.,
+                 'valmax': 5.,
+                 'valinit': self.cont_prop_invar_space[i],
+                 'label': ''
+                 })
+            for i in range(self.ndim_invar_space)
+            ]
+
+        cp = ControlPane(self.fig, data, self.update,
+                         bounds=self.bnds_invar_space, show_value=False)
+        for s in cp.sliders.values():
+            s.drawon = False
+
+        return cp
 
     def project(self, event):
         """Method called by the projection command."""
