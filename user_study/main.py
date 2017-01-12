@@ -32,10 +32,11 @@ class TaskManager(InvariantSpaceFinder):
         self.randomize_cont_props()
         self.subtask_params['init_props'] = self.mecha.props.copy()
         # Define and randomize subtasks.
-        self.subtasks = [ExploreBaseSpace, ExploreInvarSpaceV2]
+        self.subtasks = [ExploreBaseSpaceV2, ExploreInvarSpaceV2]
         random.shuffle(self.subtasks)
         # Initialize user data.
         get_subtask_data = lambda: { # use lambda to avoid shallow copy
+            'order': -1,
             'tot_time': 0.,
             'cont_props': [] # Continuous props at each step
             }
@@ -70,12 +71,24 @@ class TaskManager(InvariantSpaceFinder):
                   for i in range(self.ndim_invar_space)]
         # Find feasible parameters.
         feasible = False
-        while not feasible:
-            cp = [random.random() * (b-a) + a for a, b in bounds]
+        valid = False
+        while not feasible or not valid:
+            cp = [random.random() * (0.9*b - 1.1*a) + 1.1*a for a, b in bounds]
             cp = list(self.phi(cp).ravel())
             feasible = self.mecha.reset(*dp+cp)
-        cp = list(self.project_cont_prop_vect())
-        self.mecha.reset(*dp+cp)
+
+            if feasible:
+                cp = self.project_cont_prop_vect()
+                self.set_cont_prop(cp)
+                try:
+                    self.ref_par[0]
+                except (TypeError, IndexError):
+                    valid = True
+                else:
+                    if self.ref_par[0] != self.ref_par[1]:
+                        valid = True
+
+        self.mecha.reset(*dp+list(cp))
 
     def save_data(self):
         filename = self.cand_name + "_task_" + str(self.taskid) + ".json"
@@ -85,8 +98,9 @@ class TaskManager(InvariantSpaceFinder):
 
     def run(self):
         print("Starting subtasks of task {}".format(self.taskid))
-        for subtask in self.subtasks:
+        for i, subtask in enumerate(self.subtasks):
             data = self.data['subtask_data'][subtask.__name__]
+            data['order'] = i
             app = subtask(data, **self.subtask_params)
             app.run()
         self.save_data()
@@ -130,6 +144,10 @@ class Subtask:
         self.slider_active = -1
         self.fig.canvas.mpl_connect('button_release_event',
                                     self.on_button_release)
+
+    def _set_sliders_active(self, state):
+        for s in self.control_pane.sliders.values():
+            s.set_active(state)
 
     def get_bounds(self, i):
         a, b = self.mecha.get_prop_bounds(i)
@@ -267,10 +285,6 @@ class ExploreInvarSpace(InvariantSpaceFinder, Subtask):
 
         return cp
 
-    def _set_sliders_active(self, state):
-        for s in self.control_pane.sliders.values():
-            s.set_active(state)
-
     def on_button_release(self, event):
         """Callback function for mouse button release."""
         pid = self.slider_active
@@ -316,29 +330,35 @@ class ExploreInvarSpace(InvariantSpaceFinder, Subtask):
         self.redraw()
 
 
-class ExploreInvarSpaceV2(ExploreInvarSpace):
+class ExploreBaseSpaceV2(ExploreBaseSpace):
 
     def _init_ctrl(self):
         super()._init_ctrl()
         self.fig.canvas.mpl_connect('key_press_event', self.project)
 
-    def _create_controls(self):
-        """Create the controls to explore the invariant space."""
-        data = [
-            (i, {'valmin': -5.,
-                 'valmax': 5.,
-                 'valinit': self.cont_prop_invar_space[i],
-                 'label': ''
-                 })
-            for i in range(self.ndim_invar_space)
-            ]
+    def project(self, event):
+        """Method called by the projection command."""
+        if event.key == ' ':
+            # Update title
+            self.ax.set_title("Please wait\n")
+            plt.pause(.001)
 
-        cp = ControlPane(self.fig, data, self.update,
-                         bounds=self.bnds_invar_space, show_value=False)
-        for s in cp.sliders.values():
-            s.drawon = False
+            # Nothing happens, this is just a dummy! The prevents the candidate
+            # from easily distinguishing between subtasks.
 
-        return cp
+            # Flush sliders events that happened during computation.
+            self._set_sliders_active(False)
+            plt.pause(3)
+            self._set_sliders_active(True)
+            # Update title
+            self.ax.set_title("")
+            self.redraw()
+
+class ExploreInvarSpaceV2(ExploreInvarSpace):
+
+    def _init_ctrl(self):
+        super()._init_ctrl()
+        self.fig.canvas.mpl_connect('key_press_event', self.project)
 
     def project(self, event):
         """Method called by the projection command."""
