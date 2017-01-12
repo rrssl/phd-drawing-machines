@@ -243,7 +243,7 @@ class InvariantSpaceFinder:
     def project_cont_prop_vect(self):
         """Return the projection of the vector of continuous properties on the
         solution space."""
-        dp = self.disc_prop
+        dp = list(self.disc_prop)
         init = np.asarray(self.mecha.props[len(dp):]).ravel()
 
         ref_feat = self.get_features(self.ref_crv, self.ref_par, self.ref_poi)
@@ -256,15 +256,23 @@ class InvariantSpaceFinder:
         cstrs = [adapt(cstrs[i]) for i in range(2*len(dp), len(cstrs))]
 
         def objective(p):
-            self.mecha.reset(*np.r_[dp, p])
+            self.mecha.reset(*dp+list(p))
             crv = self.mecha.get_curve(self.nb_crv_pts)
             poi, par = self.get_corresp(self.ref_crv, self.ref_par, [crv])
             feat = self.get_features(crv, par[0], poi[0])
             d_feat = ref_feat - feat
             d_init = p - init
             return np.dot(d_feat, d_feat) + np.dot(d_init, d_init)
-        sol = opt.fmin_cobyla(objective, init, cons=cstrs, disp=0)
-        self.mecha.reset(*np.r_[dp, init])
+
+        valid = False
+        optinit = init.copy()
+        while not valid:
+            sol = opt.fmin_cobyla(objective, optinit, cons=cstrs, disp=0)
+            valid = self.mecha.reset(*dp+list(sol))
+            if not valid:
+                optinit = sol
+
+        self.mecha.reset(*dp+list(init))
         return sol
 
     def sample_props(self, nb=5, extent=.1):
