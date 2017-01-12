@@ -32,7 +32,7 @@ class TaskManager(InvariantSpaceFinder):
         self.randomize_cont_props()
         self.subtask_params['init_props'] = self.mecha.props.copy()
         # Define and randomize subtasks.
-        self.subtasks = [ExploreBaseSpace, ExploreInvarSpace]
+        self.subtasks = [ExploreBaseSpace, ExploreInvarSpaceV2]
         random.shuffle(self.subtasks)
         # Initialize user data.
         get_subtask_data = lambda: { # use lambda to avoid shallow copy
@@ -44,8 +44,8 @@ class TaskManager(InvariantSpaceFinder):
             'init_props': tuple(self.mecha.props),
             'subtask_data': {
                 # The values of this dict are passed to each sub_task
-                ExploreBaseSpace.__name__: get_subtask_data(),
-                ExploreInvarSpace.__name__: get_subtask_data()
+                self.subtasks[0].__name__: get_subtask_data(),
+                self.subtasks[1].__name__: get_subtask_data()
                 }
             }
 
@@ -239,8 +239,8 @@ class ExploreInvarSpace(InvariantSpaceFinder, Subtask):
     def _create_controls(self):
         """Create the controls to explore the invariant space."""
         data = [
-            (i, {'valmin': -2.,
-                 'valmax': 2.,
+            (i, {'valmin': -5.,
+                 'valmax': 5.,
                  'valinit': self.cont_prop_invar_space[i],
                  'label': ''
                  })
@@ -301,6 +301,55 @@ class ExploreInvarSpace(InvariantSpaceFinder, Subtask):
 #                self.control_pane.set_bounds(i, bnds)
 
         self.redraw()
+
+
+class ExploreInvarSpaceV2(ExploreInvarSpace):
+
+    def _init_ctrl(self):
+        super()._init_ctrl()
+        self.fig.canvas.mpl_connect('key_press_event', self.project)
+
+    def project(self, event):
+        """Method called by the projection command."""
+        if event.key == ' ':
+            # Update title
+            self.ax.set_title("Please wait\n")
+            plt.pause(.001)
+            # Project position and recompute invariant approximation.
+            cont_prop = self.project_cont_prop_vect()
+            self.set_cont_prop(cont_prop)
+            self.compute_invar_space()
+            # Update sliders.
+            for i, val in enumerate(self.cont_prop_invar_space):
+                self.control_pane.set_val(i, val, incognito=True)
+                self.control_pane.set_bounds(i, self.bnds_invar_space[i])
+            # Flush sliders events that happened during computation.
+            self._set_sliders_active(False)
+            plt.pause(.1)
+            self._set_sliders_active(True)
+            # Update title
+            self.ax.set_title("")
+
+            self.save_step('p')
+
+            self.redraw()
+
+    def on_button_release(self, event):
+        """Callback function for mouse button release over slider."""
+        pid = self.slider_active
+        if pid >= 0:
+            self.slider_active = -1
+
+            # Recompute bounds.
+            self.bnds_invar_space = [self.get_bounds_invar_space(i)
+                                     for i in range(self.ndim_invar_space)]
+            for i, val in enumerate(self.cont_prop_invar_space):
+                self.control_pane.set_bounds(i, self.bnds_invar_space[i])
+
+
+            self.save_step('s')
+
+            self.redraw()
 
 
 def main():
