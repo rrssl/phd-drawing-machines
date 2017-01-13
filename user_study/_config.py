@@ -21,7 +21,8 @@ def get_isect_angle(curve, param, poi):
 
 def get_poi_dist(curve, param, poi):
     diff = poi[:, 1] - poi[:, 0]
-    return diff[0]**2 + diff[1]**2
+    return diff
+#    return diff[0]**2 + diff[1]**2
 
 tasks = (
     {

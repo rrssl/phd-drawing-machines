@@ -66,26 +66,36 @@ class TaskManager(InvariantSpaceFinder):
 #        self.mecha.reset(*dp+cp)
 
     def randomize_cont_props(self):
-        dp = list(self.disc_prop)
+        # Compute local bounds.
         bounds = [self.get_bounds_invar_space(i)
                   for i in range(self.ndim_invar_space)]
+        cp_target = list(self.phi_inv(self.cont_prop).ravel())
+        w = .5 # The higher the weight, the closer to the point
+        print(cp_target)
+        print(bounds)
+        bounds = [(w*p + (1.-w)*a, w*p + (1.-w)*b)
+                  for p, (a, b) in zip(cp_target, bounds)]
+        print(bounds)
         # Find feasible parameters.
+        dp = list(self.disc_prop)
         feasible = False
         valid = False
         while not feasible or not valid:
-            cp = [random.random() * (0.9*b - 1.1*a) + 1.1*a for a, b in bounds]
+            cp = [random.random() * (b-a) + a for a, b in bounds]
             cp = list(self.phi(cp).ravel())
             feasible = self.mecha.reset(*dp+cp)
 
             if feasible:
+                # If the PoI in an intersection point, check that the
+                # intersection has not been lost during the randomization.
                 cp = self.project_cont_prop_vect()
                 self.set_cont_prop(cp)
                 try:
-                    self.ref_par[0]
-                except (TypeError, IndexError):
+                    self.new_par[0]
+                except (TypeError, IndexError): # Not a sequence
                     valid = True
                 else:
-                    if self.ref_par[0] != self.ref_par[1]:
+                    if self.new_par[0] != self.new_par[1]:
                         valid = True
 
         self.mecha.reset(*dp+list(cp))
@@ -340,16 +350,26 @@ class ExploreBaseSpaceV2(ExploreBaseSpace):
         """Method called by the projection command."""
         if event.key == ' ':
             # Update title
-            self.ax.set_title("Please wait\n")
-            plt.pause(.001)
+            self.ax.set_title("Please  wait\n")
+#            plt.pause(.001)
 
             # Nothing happens, this is just a dummy! The prevents the candidate
             # from easily distinguishing between subtasks.
 
-            # Flush sliders events that happened during computation.
+            # Ignore sliders events that happen during 'computation'.
             self._set_sliders_active(False)
             plt.pause(3)
             self._set_sliders_active(True)
+
+            # Add a tiny random perturbation to suggest this had an effect
+            ndp = self.mecha.ConstraintSolver.nb_dprops
+            for i, p in enumerate(self.mecha.props[ndp:]):
+                p += (random.random() - .5) * 1e-2
+                if self.mecha.update_prop(i+ndp, p, update_state=False):
+                    self.control_pane.set_val(i+ndp, p, incognito=True)
+                    self.control_pane.set_bounds(i+ndp, self.get_bounds(i+ndp))
+                    self.new_crv = self.mecha.get_curve(nb=self.pt_density)
+
             # Update title
             self.ax.set_title("")
             self.redraw()
@@ -403,12 +423,38 @@ class ExploreInvarSpaceV2(ExploreInvarSpace):
             self.redraw()
 
 
+def show_results():
+    from _config import tasks, cand_name
+    fig, axes = plt.subplots(len(tasks), 3, sharex='all', sharey='all',
+                             figsize=(10, 11))
+    fig.subplots_adjust(left=.05, right=.95, bottom=0.05, top=.95)
+    axes[0, 0].set_aspect('equal')
+
+    for i, task_data in enumerate(tasks):
+        taskid = task_data['taskid']
+        mecha = task_data['mecha_type'](*task_data['target_props'])
+        dp = list(mecha.props[:mecha.constraint_solver.nb_dprops])
+        nb = task_data['pt_density']
+        axes[i, 0].plot(*mecha.get_curve(nb))
+        # Load candidate data
+        filename = cand_name + "_task_" + str(taskid) + ".json"
+        with open(filename, "r") as file:
+            for subtask, data in json.load(file)['subtask_data'].items():
+                final_props = dp+data['cont_props'][-1][0]
+                mecha.reset(*final_props)
+                axes[i, data['order']+1].plot(*mecha.get_curve(nb))
+    plt.ioff()
+    plt.show()
+
+
 def main():
     from _config import tasks, cand_name
 
     for task_data in tasks:
         tm = TaskManager(cand_name, **task_data)
         tm.run()
+
+    show_results()
 
 if __name__ == "__main__":
     main()
