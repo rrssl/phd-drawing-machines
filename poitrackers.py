@@ -45,8 +45,14 @@ def get_corresp_krvmax(ref_crv, ref_par, curves):
         # Extract candidate PoIs' ids.
         krv = compute_curvature(crv)[:-1]
         peaks = sig.argrelmax(krv, mode='wrap')[0]
-        # For each ref_par find the corresponding poi_par.
-        crv_pars = [peaks[np.argmin(np.abs(peaks - par))] for par in ref_par]
+        # For each reference parameter find the corresponding PoI.
+        try:
+            crv_pars = [peaks[np.argmin(np.abs(peaks - par))]
+                        for par in ref_par]
+        except ValueError:
+            cor_par.append(None)
+            cor_par.append([None] * len(ref_par))
+            continue
         if len(crv_pars) == 1:
             crv_pars = crv_pars[0]
         cor_par.append(crv_pars)
