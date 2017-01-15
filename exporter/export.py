@@ -169,7 +169,7 @@ def export_hoot(props, scale, base, name):
     rad_turntable = props[0]*scale
     rad_gear1 = props[1]*scale
     rad_gear2 = props[2]*scale
-    gear_angle = props[3]*scale
+    gear_angle = props[3]
     dist1 = props[4]*scale
     dist2 = props[5]*scale
     length1 = props[6]*scale
