@@ -78,7 +78,7 @@ class DrawingViewer:
         plt.show()
 
 def main():
-    app = DrawingViewer("saved_params.json", 0)
+    app = DrawingViewer("../saved_params.json", 0)
     app.run()
 
 if __name__ == "__main__":

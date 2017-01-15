@@ -87,12 +87,12 @@ class ForwardController:
             'params': self.mecha.props
             }
         try:
-            with open("saved_params.json", "r") as file:
+            with open("../saved_params.json", "r") as file:
                 data = json.load(file)
                 data.append(save)
         except FileNotFoundError:
                 data = [save]
-        with open("saved_params.json", "w") as file:
+        with open("../saved_params.json", "w") as file:
                 json.dump(data, file)
         print('Successfully saved {}'.format(save))
 
