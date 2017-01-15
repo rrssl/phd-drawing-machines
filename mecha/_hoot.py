@@ -198,12 +198,6 @@ class HootNanny(DrawingMechanism):
 
         def __init__(self, properties, nb_samples=2**6, per_turn=True):
             self.reset(properties, nb_samples, per_turn)
-            # Structure dict. (useful if we do animations later)
-            self.assembly = {
-                'pivot_1': None,
-                'pivot_2': None,
-                'pen': None
-            }
 
         def reset(self, properties, nb_samples=2**6, per_turn=True):
             """Reset the properties.

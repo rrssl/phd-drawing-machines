@@ -238,7 +238,7 @@ def main():
     elif 0:
         from _config import fixisectanglehoot_data as data
         app = FixIsectAngleHoot(**data)
-    elif 1:
+    elif 0:
         from _config import fixdisthoot_data as data
         app = FixDistHoot(**data)
     elif 0:
