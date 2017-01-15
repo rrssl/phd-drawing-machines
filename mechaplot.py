@@ -624,3 +624,156 @@ class Kicker(AniMecha):
             self.bg_coll.set_paths(
                 [patch for shape in self.shapes.values() for patch in shape])
         return self.bg_coll,
+
+
+class Thing(AniMecha):
+    rod_thickness = .02
+
+    def __init__(self, mechanism, ax, anim_plt=None):
+        self.mecha = mechanism
+        nb_props = len(mechanism.props)
+        self.ax = ax
+        self.shapes = odict[
+            'turntable': [
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7)
+                ],
+            'canvas': [
+                pat.Circle((0., 0.), 0., color='white', alpha=1.)
+                ],
+            'pen-holder': [
+                pat.Circle((0., 0.), 0., color='lightblue', alpha=1.)
+                ]
+            ]
+        self.shapes.update(
+            {'gear_{}'.format(i): [
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7),
+                pat.Circle((0., 0.), 0., color='grey', alpha=.7)
+                ]
+             for i in range(nb_props)
+            })
+        self.shapes.update(
+            {'pivot_{}'.format(i): [
+                pat.Circle((0., 0.), .03, color='pink', alpha=1.)
+                ]
+             for i in range(nb_props)
+            })
+        self.shapes.update(
+            {'joint_{}'.format(i): [
+                pat.Circle((0., 0.), .03, color='lightgreen', alpha=1.)
+                ]
+             for i in range(nb_props-1)
+            })
+        self.shapes.update(
+            {'link_{}'.format(i): [
+                pat.Rectangle((0., 0.), width=3., height=self.rod_thickness,
+                              angle=0., color='grey', alpha=1.)
+                ]
+             for i in range(nb_props)
+            })
+        self.bg_labels = ['turntable', 'canvas'] + [
+            'gear_{}'.format(i) for i in range(nb_props)]
+        self.bg_coll = self.ax.add_collection(PatchCollection(
+            [patch for label in self.bg_labels
+             for patch in self.shapes[label]],
+            match_original=True))
+        self.fg_labels = ['pen-holder'] + [
+            'link_{}'.format(i) for i in range(nb_props)] + [
+            'joint_{}'.format(i) for i in range(nb_props-1)] + [
+            'pivot_{}'.format(i) for i in range(nb_props)]
+        self.fg_coll = self.ax.add_collection(PatchCollection(
+            [patch for label in self.fg_labels
+             for patch in self.shapes[label]],
+            match_original=True))
+
+        super().__init__(mechanism, ax, anim_plt)
+
+    def redraw(self):
+        r_T = 1.
+        asb = self.mecha.assembly
+        nb_props = len(self.mecha.props)
+        r_G = self.mecha.constraint_solver.get_radius
+        # Static properties
+        self.shapes['turntable'][0].radius = r_T
+        self.shapes['canvas'][0].radius = r_T * .95
+        self.shapes['pen-holder'][0].radius = r_T * .05
+        for i in range(nb_props):
+            gear = 'gear_{}'.format(i)
+            self.shapes[gear][0].center = asb[gear]['pos']
+            self.shapes[gear][0].radius = r_G(i)
+            self.shapes[gear][1].center = asb[gear]['pos']
+            self.shapes[gear][1].radius = r_G(i) * .1
+        self.shapes['link_{}'.format(nb_props-1)][0].set_width(np.linalg.norm(
+            asb['pen-holder']['pos']
+            - asb['joint_{}'.format(nb_props-2)]['pos']))
+        # Moving parts
+        self._redraw_moving_parts()
+        # Update patches
+        self.bg_coll.set_paths(
+            [patch for label in self.bg_labels
+             for patch in self.shapes[label]])
+        self.fg_coll.set_paths(
+            [patch for label in self.fg_labels
+             for patch in self.shapes[label]])
+        self.fg_coll.set_zorder(3)
+        # Compute new limits.
+        self.ax.set_xlim(1.1*(-r_T - 2*r_G(nb_props-1)), 1.1*(r_T + 2*r_G(0)))
+        self.ax.set_ylim(-1.1*r_T, 1.5*r_T)
+        # Reset animation.
+        self.reset_anim()
+
+    def _redraw_moving_parts(self):
+        asb = self.mecha.assembly
+        nb_props = len(self.mecha.props)
+        rectangle_offset = np.array([[0.], [-self.rod_thickness/2.]])
+
+        for i in range(nb_props):
+            pivot = 'pivot_{}'.format(i)
+            self.shapes[pivot][0].center = asb[pivot]['pos']
+            if i < nb_props - 1:
+                joint = 'joint_{}'.format(i)
+                self.shapes[joint][0].center = asb[joint]['pos']
+                link = 'link_{}'.format(i)
+                if i > 0:
+                    prev_joint = 'joint_{}'.format(i-1)
+                    next_pivot = 'pivot_{}'.format(i+1)
+                    _align_linkage_to_joints(asb[prev_joint]['pos'],
+                                             asb[next_pivot]['pos'],
+                                             self.shapes[link][0],
+                                             rectangle_offset)
+        _align_linkage_to_joints(
+            asb['pivot_0']['pos'],
+            asb['pivot_1']['pos'],
+            self.shapes['link_0'][0],
+            rectangle_offset
+            )
+        _align_linkage_to_joints(
+            asb['joint_{}'.format(nb_props-2)]['pos'],
+            asb['pen-holder']['pos'],
+            self.shapes['link_{}'.format(nb_props-1)][0],
+            rectangle_offset
+            )
+        self.shapes['pen-holder'][0].center = asb['pen-holder']['pos']
+
+    def _rotate_plot(self):
+        theta = self.mecha.assembly['turntable']['or']
+        cos = np.cos(theta)
+        sin = np.sin(theta)
+        rot = np.array([[cos, -sin], [sin, cos]])
+        points = rot.dot(self.anim_plt_init)
+
+        self.anim_plt.set_data(*points)
+
+    def set_visible(self, b):
+        self.bg_coll.set_visible(b)
+        self.fg_coll.set_visible(b)
+
+    def animate(self, t):
+        if self.play:
+            self.mecha.set_state(t)
+            self._redraw_moving_parts()
+            self._rotate_plot()
+            self.fg_coll.set_paths(
+                [patch for label in self.fg_labels
+                 for patch in self.shapes[label]])
+        return self.fg_coll, self.anim_plt
+

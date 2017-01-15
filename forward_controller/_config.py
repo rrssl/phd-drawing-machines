@@ -147,3 +147,14 @@ kick_data = (
       'valinit': 6.,
       'label': "End-effector distance"})
     )
+
+import _context
+from mecha import Thing
+thing_data = [
+    (i,                     # Amplitude
+     {'valmin': 0.,
+      'valmax': .5,
+      'valinit': .15,
+      'label': "a_{}".format(i)})
+    for i in range(Thing.ConstraintSolver.nb_cprops)
+    ]

@@ -21,13 +21,17 @@ elif 0:
 elif 0:
     from mecha import SingleGearFixedFulcrumCDM as mecha_type
     from _config import cdm_data as data
-elif 1:
+elif 0:
     from mecha import HootNanny as mecha_type
     from _config import hoot_data as data
     pt_density = 2**10
 elif 0:
     from mecha import Kicker as mecha_type
     from _config import kick_data as data
+elif 1:
+    from mecha import Thing as mecha_type
+    from _config import thing_data as data
+    pt_density = 2**8
 
 
 def main():
