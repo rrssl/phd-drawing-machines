@@ -89,5 +89,7 @@ ENV/
 .ropeproject
 
 # Perso
-svg/
-external/
+_*/
+*.npy
+exporter/svg
+user_study/data
