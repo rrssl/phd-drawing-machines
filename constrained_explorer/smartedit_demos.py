@@ -273,6 +273,7 @@ class InvarDemo(InvariantSpaceFinder):
     def set_cont_prop(self, props, update_bounds=True):
         """Set the continuous property vector, update data."""
         self.cont_prop = props
+#        print(props)
         # We need to update all the parameters before getting the bounds.
         self.mecha.reset(*np.r_[self.disc_prop, props])
         # Update ref sliders.
@@ -600,8 +601,8 @@ class ManyDimsDemo(InvarDemo):
     def create_controls(self, subplot_spec):
         """Create the controls to explore the invariant space."""
         data = [
-            (i, {'valmin': -2.,
-                 'valmax': 2.,
+            (i, {'valmin': -1.,
+                 'valmax': 1.,
                  'valinit': self.cont_prop_invar_space[i],
                  'label': "$x_{}$".format(i+1)
                  })

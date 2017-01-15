@@ -238,3 +238,32 @@ fixdistkrvhoot_data = {
     'ndim_invar_space': 2,
     'nb_crv_pts': 2**7
     }
+
+### Thing
+
+import context
+from mecha import Thing
+nb_cprops = Thing.ConstraintSolver.nb_cprops
+
+fixposthing_data = {
+    'props': [Thing.ConstraintSolver.get_bounds(None, 0)[1]*.9] * nb_cprops,
+    'init_poi_id': 70,
+
+#    'pts_per_dim': 5,
+#    'keep_ratio': .05,
+#    'nbhood_size': .1,
+    'ndim_invar_space': nb_cprops - 2,
+    'nb_crv_pts': 2**8
+    }
+
+fixkrvthing_data = {
+    'props': (0.09191176470588247, 0.1663602941176472, 0.08226102941176472, 0.020220588235294157, 0.38419117647058854),
+    'init_poi_id': (69, 1396),
+#    'init_poi_id': 69,
+
+#    'pts_per_dim': 5,
+#    'keep_ratio': .05,
+#    'nbhood_size': .1,
+    'ndim_invar_space': nb_cprops - 2,
+    'nb_crv_pts': 2**8
+    }

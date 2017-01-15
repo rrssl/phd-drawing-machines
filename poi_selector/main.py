@@ -89,7 +89,6 @@ class PoISelector:
         self.redraw()
 
     def redraw(self):
-        # Poi drawing stuff goes here
         self.fig.canvas.draw_idle()
 
     def run(self):
@@ -98,10 +97,12 @@ class PoISelector:
 
 def main():
     import mecha
-    m = mecha.HootNanny(
-        *[10, 6, 9, 1.2291966490265334, 2.6430974335195967, 3.127350753737246,
-        14.09806003237071, 16.71404771682645])
-    drawing = m.get_curve(2**7)
+#    m = mecha.HootNanny(
+#        *[15, 10, 2, 1.3433724430459493, 1.9058189313461327, 1.98, 18.500079276993844, 17.13017282384655])
+#    drawing = m.get_curve(2**7)
+    m = mecha.Thing(
+        *[0.09191176470588247, 0.1663602941176472, 0.08226102941176472, 0.020220588235294157, 0.38419117647058854])
+    drawing = m.get_curve(2**8)
     app = PoISelector(drawing, m.id2time)
     app.run()
 

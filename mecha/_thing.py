@@ -14,6 +14,9 @@ from ._mecha import Mechanism, DrawingMechanism
 #from utils import skipends, farey
 
 NB_GEARS = 5
+RADII = 1. / np.arange(2, 2+NB_GEARS)[::-1]
+RADII[2] = 6/7
+#RADII[0] = 2
 
 
 class Thing(DrawingMechanism):
@@ -27,7 +30,7 @@ class Thing(DrawingMechanism):
         nb_cprops = NB_GEARS
         max_nb_turns = 1 # Arbitrary value
         _prop_constraint_map = {
-            i: (i*2+2, i*2+3) for i in range(NB_GEARS)
+            i: ((i-1)*2+2, (i-1)*2+3) for i in range(NB_GEARS)
             }
 
         @classmethod
@@ -57,7 +60,7 @@ class Thing(DrawingMechanism):
 
         @staticmethod
         def get_radius(i):
-            return 1. / (2. + NB_GEARS - 1. - i)
+            return RADII[i]
 
 
     class Simulator(Mechanism.Simulator):
@@ -91,7 +94,7 @@ class Thing(DrawingMechanism):
 
         def get_cycle_length(self):
             """Compute and return the interval length of one full cycle."""
-            nb_turns = 1
+            nb_turns = 6
             return 2*math.pi*nb_turns
 
         def simulate_cycle(self):
@@ -119,7 +122,7 @@ class Thing(DrawingMechanism):
         def _compute_vectors(self, t):
             t = np.atleast_1d(t)
             # Geometric parameters
-            radii = (1. / np.arange(2, 2+NB_GEARS)[::-1]).reshape(-1, 1, 1)
+            radii = RADII.reshape(-1, 1, 1)
             amplitudes = np.asarray(self.props).reshape(-1, 1, 1)
             angles = np.pi * np.linspace(0., 1., NB_GEARS).reshape(-1, 1, 1)
             gears = (1.+radii) * np.concatenate(

@@ -120,12 +120,13 @@ class InvariantSpaceFinder:
         # New curve and parameter(s).
         self.new_crv = None
         self.new_poi = None
+        self.new_par = None
         # Solution space.
         self.phi = None
         self.phi_inv = None
         self.pca = None
-        self.new_cont_prop = None
-        self.invar_space_bnds = None
+        self.new_cont_prop = None # TODO: either use it or remove it
+        self.invar_space_bnds = None # TODO: either use it or remove it
         self.compute_invar_space()
 
     def compute_invar_space(self):
@@ -177,7 +178,7 @@ class InvariantSpaceFinder:
         cs = self.mecha.constraint_solver
         cstrs = cs.get_constraints()
         # Start at 4 to remove constraints on discrete props.
-        cstrs = [adapt(cstrs[i]) for i in range(4, len(cstrs))]
+        cstrs = [adapt(cstrs[i]) for i in range(len(dp), len(cstrs))]
 
         min_ = opt.fmin_cobyla(
             lambda x: x, cpis[pid], cons=cstrs, disp=0) + 2*cs.eps
@@ -271,7 +272,7 @@ class InvariantSpaceFinder:
             valid = self.mecha.reset(*dp+list(sol))
             if not valid:
                 optinit = sol
-
+        # Reset to initial state.
         self.mecha.reset(*dp+list(init))
         return sol
 
