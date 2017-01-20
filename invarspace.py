@@ -97,9 +97,9 @@ class InvariantSpaceFinder:
         Current continuous property vector expressed in the new coordinates
         (i.e. the coordinates of the current linear approximation).
     """
-    def __init__(self, mecha_type, props, init_poi_id, pts_per_dim=5,
-                 keep_ratio=.05, nbhood_size=.1, ndim_invar_space=2,
-                 nb_crv_pts=2**6):
+    def __init__(self, mecha_type, props, init_poi_id, get_corresp=None,
+                 get_features = None, pts_per_dim=5, keep_ratio=.05,
+                 nbhood_size=.1, ndim_invar_space=2, nb_crv_pts=2**6):
         # Initial parameters.
         nb_dprops = mecha_type.ConstraintSolver.nb_dprops
         self.disc_prop = props[:nb_dprops]
@@ -110,7 +110,11 @@ class InvariantSpaceFinder:
         self.ndim_invar_space = ndim_invar_space
         self.mecha = mecha_type(*props)
         self.nb_crv_pts = nb_crv_pts
-        self.labels = mecha_type.param_names[nb_dprops:]
+        self.labels = mecha_type.param_names[nb_dprops:] # TODO: move it to GUI demos
+        if get_corresp is not None:
+            self.get_corresp = get_corresp
+        if get_features is not None:
+            self.get_features = get_features
         # Reference curve and parameter(s).
         self.ref_crv = self.mecha.get_curve(self.nb_crv_pts)
         self.ref_par = init_poi_id
