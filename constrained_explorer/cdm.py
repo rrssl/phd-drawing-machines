@@ -11,7 +11,6 @@ import numpy as np
 
 import context
 from curveproc import compute_curvature
-from mecha import SingleGearFixedFulcrumCDM
 from smartedit_demos import ManyDimsDemo, _get_inwards_normal
 from poitrackers import get_corresp_krvmax, get_corresp_isect
 
@@ -21,8 +20,6 @@ class FixPosCDM(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(SingleGearFixedFulcrumCDM, *args, **kwargs)
 
     ### MODEL
 
@@ -47,8 +44,6 @@ class FixKrvCDM(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(SingleGearFixedFulcrumCDM, *args, **kwargs)
 
     ### MODEL
 
@@ -97,8 +92,6 @@ class FixLineCDM(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(SingleGearFixedFulcrumCDM, *args, **kwargs)
 
     ### MODEL
 
@@ -129,8 +122,6 @@ class FixKrvLineCDM(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(SingleGearFixedFulcrumCDM, *args, **kwargs)
 
     ### MODEL
 
@@ -161,8 +152,6 @@ class FixIsectAngleCDM(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(SingleGearFixedFulcrumCDM, *args, **kwargs)
 
     ### MODEL
 
@@ -196,15 +185,15 @@ def main():
     if 0:
         from _config import fixposcdm_data as data
         app = FixPosCDM(**data)
-    elif 1:
+    elif 0:
         from _config import fixkrvcdm_data as data
         app = FixKrvCDM(**data)
     elif 0:
         from _config import fixlinecdm_data as data
         app = FixLineCDM(**data)
-    elif 0:
+    elif 1:
         from _config import fixkrvlinecdm_data as data
-        SingleGearFixedFulcrumCDM.ConstraintSolver.max_nb_turns = 12
+        data['mecha_type'].ConstraintSolver.max_nb_turns = 12
         app = FixKrvLineCDM(**data)
     elif 0:
         from _config import fixisectanglecdm_data as data

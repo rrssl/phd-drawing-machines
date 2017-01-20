@@ -1,3 +1,6 @@
+import context
+import mecha
+
 ### EllipticSpirograph
 
 fixkrv_data = {
@@ -60,6 +63,7 @@ fixisectpos_data = {
 ### SingleGearFixedFulcrumCDM
 
 fixposcdm_data = {
+    'mecha_type': mecha.SingleGearFixedFulcrumCDM,
     'props': (4, 3, 5., 2.6, 5.9, 2.5),
     'init_poi_id': 0,
 #    'pts_per_dim': 5,
@@ -70,6 +74,7 @@ fixposcdm_data = {
     }
 
 fixkrvcdm_data = {
+    'mecha_type': mecha.SingleGearFixedFulcrumCDM,
     'props': (7, 3, 13., 2.8, 14., 2.),
     'init_poi_id': 0,
 #    'pts_per_dim': 5,
@@ -80,6 +85,7 @@ fixkrvcdm_data = {
     }
 
 fixlinecdm_data = {
+    'mecha_type': mecha.SingleGearFixedFulcrumCDM,
     'props': (6, 5, 7.65, 2.66, 9.63, 3.79),
     'init_poi_id': 50,
 #    'pts_per_dim': 5,
@@ -90,6 +96,7 @@ fixlinecdm_data = {
     }
 
 fixkrvlinecdm_data = {
+    'mecha_type': mecha.SingleGearFixedFulcrumCDM,
     'props': (12, 4, 13.9, 3., 17.5, 3.3),
 #    'props': (12, 3, 13., 2.3, 14., 2.5),
     'init_poi_id': 0,
@@ -101,6 +108,7 @@ fixkrvlinecdm_data = {
     }
 
 fixisectanglecdm_data = {
+    'mecha_type': mecha.SingleGearFixedFulcrumCDM,
     'props': (3, 2, 3.5, 2.9, 3.7, 1.7),
     'init_poi_id': (46, 56),
 #    'pts_per_dim': 5,
@@ -114,6 +122,7 @@ fixisectanglecdm_data = {
 ### HootNanny
 
 fixposhoot_data = {
+    'mecha_type': mecha.HootNanny,
 #    'props': (10, 4, 2, .69, 2.52, .86, 10.22, 9.56),
 #    'init_poi_id': 100,
 
@@ -165,6 +174,7 @@ fixposhoot_data = {
     }
 
 fixlinehoot_data = {
+    'mecha_type': mecha.HootNanny,
     'props': (10, 4, 2, 1., 2.5, 1.5, 10., 8.),
     'init_poi_id': 0,
 #    'pts_per_dim': 5,
@@ -175,6 +185,7 @@ fixlinehoot_data = {
     }
 
 fixkrvhoot_data = {
+    'mecha_type': mecha.HootNanny,
 #    'props': (10, 4, 2, 1., 2.5, 1.5, 10., 8.),
 #    'init_poi_id': 0,
 
@@ -192,6 +203,7 @@ fixkrvhoot_data = {
     }
 
 fixisectanglehoot_data = {
+    'mecha_type': mecha.HootNanny,
 #    'props': (14, 12, 3, 1.3777060049918841, 7.727921357222151, 2.787223195468503, 22.22926906611704, 17.813880263168564),
 #    'init_poi_id': (214, 333),
 
@@ -212,6 +224,7 @@ fixisectanglehoot_data = {
     }
 
 fixdisthoot_data = {
+    'mecha_type': mecha.HootNanny,
 #    'props': (12, 12, 3, 1.2494177746242003, 1.7916600602505284, 2.4766132868241755, 23.979705089583035, 18.11954970667516),
 #    'init_poi_id': (59, 120),
 
@@ -229,6 +242,7 @@ fixdisthoot_data = {
     }
 
 fixdistkrvhoot_data = {
+    'mecha_type': mecha.HootNanny,
     'props': (15, 10, 2, 1.3433724430459493, 1.9058189313461327, 1.98, 18.500079276993844, 17.13017282384655),
     'init_poi_id': (79, 90),
 
@@ -241,12 +255,12 @@ fixdistkrvhoot_data = {
 
 ### Thing
 
-import context
-from mecha import Thing
-nb_cprops = Thing.ConstraintSolver.nb_cprops
+
+nb_cprops = mecha.Thing.ConstraintSolver.nb_cprops
 
 fixposthing_data = {
-    'props': [Thing.ConstraintSolver.get_bounds(None, 0)[1]*.9] * nb_cprops,
+    'mecha_type': mecha.Thing,
+    'props': [mecha.Thing.ConstraintSolver.get_bounds(None, 0)[1]*.9] * nb_cprops,
     'init_poi_id': 70,
 
 #    'pts_per_dim': 5,
@@ -257,6 +271,7 @@ fixposthing_data = {
     }
 
 fixkrvthing_data = {
+    'mecha_type': mecha.Thing,
     'props': (0.09191176470588247, 0.1663602941176472, 0.08226102941176472, 0.020220588235294157, 0.38419117647058854),
     'init_poi_id': (69, 1396),
 #    'init_poi_id': 69,

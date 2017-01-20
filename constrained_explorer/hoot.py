@@ -11,7 +11,6 @@ import numpy as np
 
 import context
 from curveproc import compute_curvature
-from mecha import HootNanny
 from smartedit_demos import ManyDimsDemo, _get_inwards_normal
 from poitrackers import get_corresp_krvmax, get_corresp_isect
 
@@ -21,8 +20,6 @@ class FixPosHoot(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(HootNanny, *args, **kwargs)
 
     ### MODEL
 
@@ -48,8 +45,6 @@ class FixLineHoot(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(HootNanny, *args, **kwargs)
 
     ### MODEL
 
@@ -79,8 +74,6 @@ class FixKrvHoot(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(HootNanny, *args, **kwargs)
 
     ### MODEL
 
@@ -126,8 +119,6 @@ class FixIsectAngleHoot(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(HootNanny, *args, **kwargs)
 
     ### MODEL
 
@@ -161,8 +152,6 @@ class FixDistHoot(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(HootNanny, *args, **kwargs)
 
     ### MODEL
 
@@ -194,8 +183,6 @@ class FixDistKrvHoot(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(HootNanny, *args, **kwargs)
 
     ### MODEL
 
