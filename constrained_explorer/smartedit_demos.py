@@ -598,6 +598,13 @@ class ManyDimsDemo(InvarDemo):
         self.mecha_plt = mechaplot_factory(self.mecha, frame, self.draw_plt)
         self.mecha_plt.redraw()
 
+    def redraw(self):
+        self.draw_plt.set_data(*self.new_crv)
+        self.mecha_plt.redraw()
+        super().redraw()
+
+    ### CONTROLLER
+
     def create_controls(self, subplot_spec):
         """Create the controls to explore the invariant space."""
         data = [
@@ -611,14 +618,6 @@ class ManyDimsDemo(InvarDemo):
 
         return ControlPane(self.fig, data, self.on_slider_update, subplot_spec,
                            bounds=self.bnds_invar_space, show_value=False)
-
-
-    def redraw(self):
-        self.draw_plt.set_data(*self.new_crv)
-        self.mecha_plt.redraw()
-        super().redraw()
-
-    ### CONTROLLER
 
     def on_button_release(self, event):
         """Callback function for mouse button release."""

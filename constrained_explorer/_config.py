@@ -1,5 +1,48 @@
+from functools import partial
+import numpy as np
+
 import context
+from curveproc import compute_curvature
 import mecha
+from poitrackers import get_corresp_krvmax, get_corresp_isect
+
+### Feature getters
+# TODO: once PoI have been harmonized, used invariants.py instead
+
+def get_position(curve, param, poi):
+    return poi
+
+def get_curvature(curve, param, poi):
+    return compute_curvature(curve)[param]
+
+def get_angle(curve, param, poi):
+    return np.arctan2(poi[1], poi[0])
+
+def get_curvature_and_angle(curve, param, poi):
+    return np.r_[compute_curvature(curve)[param] * 3e-2, np.arctan2(poi[1], poi[0])]
+#    return np.r_[compute_curvature(curve)[param], np.arctan2(poi[1], poi[0])]
+
+def get_isect_angle(curve, param, poi):
+    if poi is None or not poi.size:
+        feats= np.full(2, 1e6)
+    else:
+        curve = curve[:, :-1] # Remove last point
+        n = curve.shape[1]
+        param = np.asarray(param)
+        v = curve[:, (param+1)%n] - curve[:, param%n]
+        v /= np.linalg.norm(v, axis=0)
+        feats = v[:, 1] - v[:, 0]
+    return feats
+
+def get_dist(curve, param, poi):
+    diff = poi[:, 1] - poi[:, 0]
+    return diff[0]**2 + diff[1]**2
+
+def get_dist_and_krv_diff(curve, param, poi):
+    krv = compute_curvature(curve)[param]
+    diffpos = (poi[:, 1] - poi[:, 0]) / poi[:, 0]
+    diffkrv = (krv[1] - krv[0]) / krv[0]
+    return diffpos[0]**2 + diffpos[1]**2 + diffkrv**2
 
 ### EllipticSpirograph
 
@@ -66,6 +109,8 @@ fixposcdm_data = {
     'mecha_type': mecha.SingleGearFixedFulcrumCDM,
     'props': (4, 3, 5., 2.6, 5.9, 2.5),
     'init_poi_id': 0,
+    'get_corresp': get_corresp_krvmax,
+    'get_features': get_position,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -77,6 +122,8 @@ fixkrvcdm_data = {
     'mecha_type': mecha.SingleGearFixedFulcrumCDM,
     'props': (7, 3, 13., 2.8, 14., 2.),
     'init_poi_id': 0,
+    'get_corresp': get_corresp_krvmax,
+    'get_features': get_curvature,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -88,6 +135,8 @@ fixlinecdm_data = {
     'mecha_type': mecha.SingleGearFixedFulcrumCDM,
     'props': (6, 5, 7.65, 2.66, 9.63, 3.79),
     'init_poi_id': 50,
+    'get_corresp': get_corresp_krvmax,
+    'get_features': get_angle,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -100,6 +149,8 @@ fixkrvlinecdm_data = {
     'props': (12, 4, 13.9, 3., 17.5, 3.3),
 #    'props': (12, 3, 13., 2.3, 14., 2.5),
     'init_poi_id': 0,
+    'get_corresp': get_corresp_krvmax,
+    'get_features': get_curvature_and_angle,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -111,6 +162,8 @@ fixisectanglecdm_data = {
     'mecha_type': mecha.SingleGearFixedFulcrumCDM,
     'props': (3, 2, 3.5, 2.9, 3.7, 1.7),
     'init_poi_id': (46, 56),
+    'get_corresp': partial(get_corresp_isect, loc_size=6),
+    'get_features': get_isect_angle,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -165,7 +218,8 @@ fixposhoot_data = {
 #    'props': (14, 13, 3, 2.8999591131718314, 1.001741010640731, 1.525113033369887, 29.0775357017975, 18.28479547355801),
 #    'init_poi_id': 4514,
 
-
+    'get_corresp': get_corresp_krvmax,
+    'get_features': get_position,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -177,6 +231,8 @@ fixlinehoot_data = {
     'mecha_type': mecha.HootNanny,
     'props': (10, 4, 2, 1., 2.5, 1.5, 10., 8.),
     'init_poi_id': 0,
+    'get_corresp': get_corresp_krvmax,
+    'get_features': get_angle,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -195,6 +251,8 @@ fixkrvhoot_data = {
     'props': (14, 13, 3, 2.8999591131718314, 1.001741010640731, 1.525113033369887, 29.0775357017975, 18.28479547355801),
     'init_poi_id': 4514,
 
+    'get_corresp': get_corresp_krvmax,
+    'get_features': get_curvature,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -216,6 +274,8 @@ fixisectanglehoot_data = {
     'props': (10, 4, 2, 1.0472, 3.290441176470587, 0.533088235294116, 10.882352941176478, 9.558823529411768),
     'init_poi_id': (67, 191),
 
+    'get_corresp': partial(get_corresp_isect, loc_size=6),
+    'get_features': get_isect_angle,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -234,6 +294,8 @@ fixdisthoot_data = {
     'props': (15, 10, 2, 1.3433724430459493, 1.9058189313461327, 1.98, 18.500079276993844, 17.13017282384655),
     'init_poi_id': (79, 90),
 
+    'get_corresp': get_corresp_krvmax,
+    'get_features': get_dist,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -246,6 +308,8 @@ fixdistkrvhoot_data = {
     'props': (15, 10, 2, 1.3433724430459493, 1.9058189313461327, 1.98, 18.500079276993844, 17.13017282384655),
     'init_poi_id': (79, 90),
 
+    'get_corresp': get_corresp_krvmax,
+    'get_features': get_dist_and_krv_diff,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -263,6 +327,8 @@ fixposthing_data = {
     'props': [mecha.Thing.ConstraintSolver.get_bounds(None, 0)[1]*.9] * nb_cprops,
     'init_poi_id': 70,
 
+    'get_corresp': get_corresp_krvmax,
+    'get_features': get_position,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,
@@ -276,6 +342,8 @@ fixkrvthing_data = {
     'init_poi_id': (69, 1396),
 #    'init_poi_id': 69,
 
+    'get_corresp': get_corresp_krvmax,
+    'get_features': get_curvature,
 #    'pts_per_dim': 5,
 #    'keep_ratio': .05,
 #    'nbhood_size': .1,

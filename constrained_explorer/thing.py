@@ -7,9 +7,7 @@ Constrained exploration demos with the Thing.
 """
 from matplotlib.patches import Circle
 import context
-from curveproc import compute_curvature
 from smartedit_demos import ManyDimsDemo, _get_inwards_normal
-from poitrackers import get_corresp_krvmax
 
 
 class FixPosThing(ManyDimsDemo):
@@ -17,15 +15,6 @@ class FixPosThing(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-
-    ### MODEL
-
-    def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_krvmax(ref_crv, ref_par, curves)
-
-
-    def get_features(self, curve, param, poi):
-        return poi
 
     ### VIEW
 
@@ -42,14 +31,6 @@ class FixKrvThing(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-
-    ### MODEL
-
-    def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_krvmax(ref_crv, ref_par, curves)
-
-    def get_features(self, curve, param, poi):
-        return compute_curvature(curve)[param]
 
     ### VIEW
 

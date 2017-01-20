@@ -12,7 +12,6 @@ import numpy as np
 import context
 from curveproc import compute_curvature
 from smartedit_demos import ManyDimsDemo, _get_inwards_normal
-from poitrackers import get_corresp_krvmax, get_corresp_isect
 
 
 class FixPosHoot(ManyDimsDemo):
@@ -23,12 +22,9 @@ class FixPosHoot(ManyDimsDemo):
 
     ### MODEL
 
-    def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_krvmax(ref_crv, ref_par, curves)
 
-
-    def get_features(self, curve, param, poi):
-        return poi
+#    def get_features(self, curve, param, poi):
+#        return poi
 
     ### VIEW
 
@@ -48,11 +44,8 @@ class FixLineHoot(ManyDimsDemo):
 
     ### MODEL
 
-    def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_krvmax(ref_crv, ref_par, curves)
-
-    def get_features(self, curve, param, poi):
-        return np.arctan2(poi[1], poi[0])
+#    def get_features(self, curve, param, poi):
+#        return np.arctan2(poi[1], poi[0])
 
     ### VIEW
 
@@ -76,12 +69,9 @@ class FixKrvHoot(ManyDimsDemo):
     """
 
     ### MODEL
-
-    def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_krvmax(ref_crv, ref_par, curves)
-
-    def get_features(self, curve, param, poi):
-        return compute_curvature(curve)[param]
+#
+#    def get_features(self, curve, param, poi):
+#        return compute_curvature(curve)[param]
 
     ### VIEW
 
@@ -122,20 +112,17 @@ class FixIsectAngleHoot(ManyDimsDemo):
 
     ### MODEL
 
-    def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_isect(ref_crv, ref_par, curves, loc_size=6)
-
-    def get_features(self, curve, param, poi):
-        if poi is None or not poi.size:
-            feats= np.full(2, 1e6)
-        else:
-            curve = curve[:, :-1] # Remove last point
-            n = curve.shape[1]
-            param = np.asarray(param)
-            v = curve[:, (param+1)%n] - curve[:, param%n]
-            v /= np.linalg.norm(v, axis=0)
-            feats = v[:, 1] - v[:, 0]
-        return feats
+#    def get_features(self, curve, param, poi):
+#        if poi is None or not poi.size:
+#            feats= np.full(2, 1e6)
+#        else:
+#            curve = curve[:, :-1] # Remove last point
+#            n = curve.shape[1]
+#            param = np.asarray(param)
+#            v = curve[:, (param+1)%n] - curve[:, param%n]
+#            v /= np.linalg.norm(v, axis=0)
+#            feats = v[:, 1] - v[:, 0]
+#        return feats
 
     ### VIEW
 
@@ -155,12 +142,9 @@ class FixDistHoot(ManyDimsDemo):
 
     ### MODEL
 
-    def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_krvmax(ref_crv, ref_par, curves)
-
-    def get_features(self, curve, param, poi):
-        diff = poi[:, 1] - poi[:, 0]
-        return diff[0]**2 + diff[1]**2
+#    def get_features(self, curve, param, poi):
+#        diff = poi[:, 1] - poi[:, 0]
+#        return diff[0]**2 + diff[1]**2
 
     ### VIEW
 
@@ -186,14 +170,11 @@ class FixDistKrvHoot(ManyDimsDemo):
 
     ### MODEL
 
-    def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_krvmax(ref_crv, ref_par, curves)
-
-    def get_features(self, curve, param, poi):
-        krv = compute_curvature(curve)[param]
-        diffpos = (poi[:, 1] - poi[:, 0]) / poi[:, 0]
-        diffkrv = (krv[1] - krv[0]) / krv[0]
-        return diffpos[0]**2 + diffpos[1]**2 + diffkrv**2
+#    def get_features(self, curve, param, poi):
+#        krv = compute_curvature(curve)[param]
+#        diffpos = (poi[:, 1] - poi[:, 0]) / poi[:, 0]
+#        diffkrv = (krv[1] - krv[0]) / krv[0]
+#        return diffpos[0]**2 + diffpos[1]**2 + diffkrv**2
 
     ### VIEW
 
@@ -228,7 +209,7 @@ def main():
     elif 0:
         from _config import fixdisthoot_data as data
         app = FixDistHoot(**data)
-    elif 0:
+    elif 1:
         from _config import fixdistkrvhoot_data as data
         app = FixDistKrvHoot(**data)
     app.run()

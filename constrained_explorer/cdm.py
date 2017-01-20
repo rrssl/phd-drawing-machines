@@ -7,12 +7,10 @@ Constrained exploration demos with the Cycloid Drawing Machine.
 """
 from matplotlib.lines import Line2D
 from matplotlib.patches import Circle
-import numpy as np
 
 import context
 from curveproc import compute_curvature
 from smartedit_demos import ManyDimsDemo, _get_inwards_normal
-from poitrackers import get_corresp_krvmax, get_corresp_isect
 
 
 class FixPosCDM(ManyDimsDemo):
@@ -20,14 +18,6 @@ class FixPosCDM(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-
-    ### MODEL
-
-    def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_krvmax(ref_crv, ref_par, curves)
-
-    def get_features(self, curve, param, poi):
-        return poi
 
     ### VIEW
 
@@ -44,17 +34,6 @@ class FixKrvCDM(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-
-    ### MODEL
-
-    def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_krvmax(ref_crv, ref_par, curves)
-
-    def get_features(self, curve, param, poi):
-        return compute_curvature(curve)[param]
-    #    return np.arctan2(poi[1], poi[0])
-    #    return np.r_[compute_curvature(curve)[param] * 3e-2, np.arctan2(poi[1], poi[0])]
-    #    return np.r_[compute_curvature(curve)[param], np.arctan2(poi[1], poi[0])]
 
     ### VIEW
 
@@ -93,14 +72,6 @@ class FixLineCDM(ManyDimsDemo):
     We use index value as an approx. of parameter value (discretized curve).
     """
 
-    ### MODEL
-
-    def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_krvmax(ref_crv, ref_par, curves)
-
-    def get_features(self, curve, param, poi):
-        return np.arctan2(poi[1], poi[0])
-
     ### VIEW
 
     def draw_curve_space(self, frame):
@@ -123,15 +94,6 @@ class FixKrvLineCDM(ManyDimsDemo):
     We use index value as an approx. of parameter value (discretized curve).
     """
 
-    ### MODEL
-
-    def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_krvmax(ref_crv, ref_par, curves)
-
-    def get_features(self, curve, param, poi):
-        return np.r_[compute_curvature(curve)[param] * 3e-2, np.arctan2(poi[1], poi[0])]
-    #    return np.r_[compute_curvature(curve)[param], np.arctan2(poi[1], poi[0])]
-
     ### VIEW
 
     def draw_curve_space(self, frame):
@@ -153,23 +115,6 @@ class FixIsectAngleCDM(ManyDimsDemo):
     We use index value as an approx. of parameter value (discretized curve).
     """
 
-    ### MODEL
-
-    def get_corresp(self, ref_crv, ref_par, curves):
-        return get_corresp_isect(ref_crv, ref_par, curves, loc_size=6)
-
-    def get_features(self, curve, param, poi):
-        if poi is None or not poi.size:
-            feats= np.full(2, 1e6)
-        else:
-            curve = curve[:, :-1] # Remove last point
-            n = curve.shape[1]
-            param = np.asarray(param)
-            v = curve[:, (param+1)%n] - curve[:, param%n]
-            v /= np.linalg.norm(v, axis=0)
-            feats = v[:, 1] - v[:, 0]
-        return feats
-
     ### VIEW
 
     def draw_curve_space(self, frame):
@@ -185,13 +130,13 @@ def main():
     if 0:
         from _config import fixposcdm_data as data
         app = FixPosCDM(**data)
-    elif 0:
+    elif 1:
         from _config import fixkrvcdm_data as data
         app = FixKrvCDM(**data)
     elif 0:
         from _config import fixlinecdm_data as data
         app = FixLineCDM(**data)
-    elif 1:
+    elif 0:
         from _config import fixkrvlinecdm_data as data
         data['mecha_type'].ConstraintSolver.max_nb_turns = 12
         app = FixKrvLineCDM(**data)
