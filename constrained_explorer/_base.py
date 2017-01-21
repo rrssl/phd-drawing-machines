@@ -13,7 +13,7 @@ import numpy.polynomial.polynomial as npol
 import scipy.interpolate as interp
 import scipy.optimize as opt
 
-import context
+import _context
 from controlpane import ControlPane
 from invarspace import InvariantSpaceFinder
 from mecha import EllipticSpirograph

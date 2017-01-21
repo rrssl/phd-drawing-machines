@@ -1,7 +1,7 @@
 from functools import partial
 import numpy as np
 
-import context
+import _context
 from curveproc import compute_curvature
 import mecha
 from poitrackers import get_corresp_krvmax, get_corresp_isect

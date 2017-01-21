@@ -9,9 +9,9 @@ space. This allows us to visualize this space easily.
 import numpy as np
 from matplotlib.patches import Circle
 
-import context
+import _context
 from curveproc import compute_curvature
-from smartedit_demos import TwoDimsDemo
+from _base import TwoDimsDemo
 from poitrackers import get_corresp_krvmax, get_corresp_isect
 
 

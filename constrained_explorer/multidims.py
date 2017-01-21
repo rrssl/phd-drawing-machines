@@ -8,9 +8,9 @@ Constrained exploration with in multidimensional spaces.
 from matplotlib.lines import Line2D
 from matplotlib.patches import Circle
 
-import context
+import _context
 from curveproc import compute_curvature
-from smartedit_demos import ManyDimsDemo, _get_inwards_normal
+from _base import ManyDimsDemo, _get_inwards_normal
 
 
 class FixPos(ManyDimsDemo):
