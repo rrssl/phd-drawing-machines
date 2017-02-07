@@ -64,10 +64,10 @@ class EllipticSpirograph(DrawingMechanism):
             for req, R in skipends(farey(cls.max_nb_turns)):
 
                 emax2 = cls._get_e2max(R, req) - 2*cls.eps
-                for e2 in np.linspace(0, emax2, n_e2):
+                for e2 in np.linspace(0, emax2, n_e2, endpoint=False):
 
                     dmax = cls._get_dmax(req, e2) - 2*cls.eps
-                    for d in np.linspace(0, dmax, n_d):
+                    for d in np.linspace(0, dmax, n_d, endpoint=False):
                         yield R, req, e2, d
 
         @staticmethod
