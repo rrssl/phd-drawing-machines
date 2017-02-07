@@ -5,10 +5,6 @@ Demo for sketch-based curve retrieval.
 
 @author: Robin Roussel
 """
-from enum import Enum
-import math
-
-from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 import numpy as np
@@ -18,13 +14,14 @@ from controlpane import make_slider
 import mecha
 TYPES = mecha.EllipticSpirograph, # mecha.SingleGearFixedFulcrumCDM
 import curvedistances as cdist
+from sketcher import Sketcher, remove_axes
 
 DEBUG = True
 if DEBUG:
     from curveplotlib import distshow
 
 
-Actions = Enum('Actions', 'none sketch set_min_bound set_max_bound')
+
 
 #import warnings
 #warnings.filterwarnings("error")
@@ -119,11 +116,13 @@ class View:
             'bg': '.2'
             }
 
-        self.sk_canvas = self.draw_sketch_canvas()
+        self.sk_canvas = plt.subplot2grid(
+            self.grid_size, (0, 0), rowspan=self.grid_size[0],
+            colspan=self.grid_size[0])
 
         self.widgets = {}
 
-        self.sk_layer = []
+        self.axlist = []
         self.draw_sketcher_panel()
 
         self.max_nb_props = 5
@@ -132,35 +131,13 @@ class View:
 
         self.draw_bottom_pane()
 
-        self.undone_plots = []
-        self.borders = [None, None]
-        self.sym_lines = []
-
-    @staticmethod
-    def remove_axes(ax):
-        """Remove the actual 'axes' from a matplotlib Axes object."""
-        ax.get_xaxis().set_ticks([])
-        ax.get_yaxis().set_ticks([])
-        for s in ax.spines.values():
-            s.set_color('none')
-
     ### Low-level graphical elements (buttons, separators, etc.)
-
-    def draw_sketch_canvas(self):
-        canvas = plt.subplot2grid(
-            self.grid_size, (0, 0), rowspan=self.grid_size[0],
-            colspan=self.grid_size[0])
-        self.remove_axes(canvas)
-        canvas.set_xlim([-1, 1])
-        canvas.set_ylim([-1, 1])
-        canvas.set_aspect('equal', 'datalim')
-        return canvas
 
     def draw_section_title(self, grid_pos, label):
         width = (self.grid_size[1] - self.grid_size[0]) // 2
         ax = plt.subplot2grid(
             self.grid_size, grid_pos, rowspan=1, colspan=width, axisbg='none')
-        self.remove_axes(ax)
+        remove_axes(ax)
         ax.set_navigate(False)
         title = ax.text(0.5, 0.5, label,
                         verticalalignment='bottom',
@@ -174,7 +151,7 @@ class View:
     def draw_slider(self, grid_pos, slider_args, width):
         ax = plt.subplot2grid(
             self.grid_size, grid_pos, rowspan=1, colspan=width, axisbg='.9')
-        self.remove_axes(ax)
+        remove_axes(ax)
         slider_args['color'] = 'lightgreen'
         slider = make_slider(ax, **slider_args)
         slider.label.set_weight('bold')
@@ -189,6 +166,7 @@ class View:
         bt_ax = plt.subplot2grid(
             self.grid_size, grid_pos, rowspan=height, colspan=width)
         bt = Button(bt_ax, label, color='.9', hovercolor='lightgreen')
+        remove_axes(bt_ax)
         bt.label.set_fontsize(12)
         bt.label.set_weight('bold')
         bt.label.set_color('.2')
@@ -198,39 +176,10 @@ class View:
         width = (self.grid_size[1] - self.grid_size[0])
         ax = plt.subplot2grid(
             self.grid_size, grid_pos, rowspan=1, colspan=width, axisbg='none')
-        self.remove_axes(ax)
+        remove_axes(ax)
         ax.set_navigate(False)
         ax.axhline(.1, 0.01, .99, color='.5', linestyle='dashed')
         return ax
-
-    def draw_inner_bound(self, radius):
-        self.borders[0] = Circle((0, 0), radius, fc='.9', ec='.7', ls='dashed')
-        self.sk_canvas.add_patch(self.borders[0])
-
-    def draw_outer_bound(self, radius):
-        self.sk_canvas.set_axis_bgcolor('.9')
-        self.borders[1] = Circle(
-            (0, 0), radius, fc='1.', ec='.7', ls='dashed', zorder=-1)
-        self.sk_canvas.add_patch(self.borders[1])
-
-    def draw_sym_lines(self, order):
-        if order > 1:
-            radius = 2 * math.sqrt(
-                max(np.abs(self.sk_canvas.get_xlim()))**2 +
-                max(np.abs(self.sk_canvas.get_ylim()))**2
-                )
-            for i in range(order):
-                angle = 2 * math.pi * i / order
-                self.sym_lines.append(
-                    self.sk_canvas.plot(
-                        (0., radius*math.cos(angle)),
-                        (0., radius*math.sin(angle)),
-                        c='.7', ls='dashed')[0]
-                    )
-            # Move these plots at the beginning so that they don't disturb the
-            # undo/redo.
-            self.sk_canvas.lines = (self.sk_canvas.lines[-order:] +
-                                 self.sk_canvas.lines[:-order])
 
     ### High-level graphical elements (tabs and panels)
 
@@ -238,7 +187,7 @@ class View:
         tab_width = (self.grid_size[1] - self.grid_size[0]) // 2
         row_id = 1
 
-        self.sk_layer.append(
+        self.axlist.append(
             self.draw_section_title((row_id, self.grid_size[0]+tab_width//2),
                                     "Construction lines")
             )
@@ -247,7 +196,7 @@ class View:
         self.widgets['sk_bnd'] = self.draw_button(
             (row_id, self.grid_size[0]+tab_width//2), tab_width, 1,
             "Set boundaries")
-        self.sk_layer.append(self.widgets['sk_bnd'].ax)
+        self.axlist.append(self.widgets['sk_bnd'].ax)
         row_id += 2
 
         slider_args = {'valmin': 0, 'valmax': 25, 'valinit': 1,
@@ -255,15 +204,15 @@ class View:
         self.widgets['sk_sym'] = self.draw_slider(
             (row_id, self.grid_size[0]+tab_width*3//4), slider_args,
             tab_width*5//4)
-        self.sk_layer.append(self.widgets['sk_sym'].ax)
+        self.axlist.append(self.widgets['sk_sym'].ax)
         row_id += 1
 
-        self.sk_layer.append(
+        self.axlist.append(
             self.draw_separator((row_id, self.grid_size[0]))
             )
         row_id += 2
 
-        self.sk_layer.append(
+        self.axlist.append(
             self.draw_section_title((row_id, self.grid_size[0]+tab_width//2),
                                     "Sketch")
             )
@@ -272,11 +221,11 @@ class View:
         self.widgets['sk_undo'] = self.draw_button(
             (row_id, self.grid_size[0]+tab_width//4), tab_width*3//4, 2,
             "Undo\nlast stroke")
-        self.sk_layer.append(self.widgets['sk_undo'].ax)
+        self.axlist.append(self.widgets['sk_undo'].ax)
         self.widgets['sk_redo'] = self.draw_button(
             (row_id, self.grid_size[0]+tab_width*5//4), tab_width*3//4, 2,
             "Redo\nlast stroke")
-        self.sk_layer.append(self.widgets['sk_redo'].ax)
+        self.axlist.append(self.widgets['sk_redo'].ax)
 
     def draw_bottom_pane(self):
         width = (self.grid_size[1] - self.grid_size[0]) // 2
@@ -288,13 +237,13 @@ class View:
         row_id += 1
         self.widgets['search'] = self.draw_button(
             (row_id, self.grid_size[0]+width//2), width, 1, "Search database")
-        row_id += 2
-        self.widgets['show'] = self.draw_button(
-            (row_id, self.grid_size[0]+width//4), width*3//4, 2,
-            "Show\nmechanism")
-        self.widgets['export'] = self.draw_button(
-            (row_id, self.grid_size[0]+width*5//4), width*3//4, 2,
-            "Export\nmechanism")
+#        row_id += 2
+#        self.widgets['show'] = self.draw_button(
+#            (row_id, self.grid_size[0]+width//4), width*3//4, 2,
+#            "Show\nmechanism")
+#        self.widgets['export'] = self.draw_button(
+#            (row_id, self.grid_size[0]+width*5//4), width*3//4, 2,
+#            "Export\nmechanism")
 
     ### Update view
 
@@ -303,93 +252,35 @@ class View:
 #        self.fig.canvas.blit(ax)
         self.fig.canvas.update()
 
-    def remove_borders(self):
-        self.sk_canvas.set_axis_bgcolor('1.')
-        for patch in self.borders:
-            patch.remove()
-        self.borders = [None, None]
-
-    def remove_sym_lines(self):
-        for line in self.sym_lines:
-            line.remove()
-        self.sym_lines = []
 
 
-class SketchApp:
+class App(Sketcher):
 
     def __init__(self):
-        self.model = DrawingFinder()
         self.view = View()
-        self.connect_widgets()
-        self.connect_canvas()
-
-        # Base state
-        self.action = Actions.none
+        super().__init__(self.view.sk_canvas, DrawingFinder())
 
     def run(self):
         plt.ioff()
         plt.show()
 
-    def connect_widgets(self):
-        self.view.widgets['sk_bnd'].on_clicked(self.set_sketch_bounds)
-        self.view.widgets['sk_undo'].on_clicked(self.undo_stroke)
-        self.view.widgets['sk_redo'].on_clicked(self.redo_stroke)
-        self.view.widgets['search'].on_clicked(self.search_mecha)
-        self.view.widgets['sk_sym'].on_changed(self.set_symmetry)
-
-    def connect_canvas(self):
-        self.view.fig.canvas.mpl_connect(
-            'button_press_event', self.on_press)
-        self.view.fig.canvas.mpl_connect(
-            'button_release_event', self.on_release)
-        self.view.fig.canvas.mpl_connect(
-            'motion_notify_event', self.on_move)
-
-    def check_tb_inactive(self):
-        """Check if the matplotlib toolbar plugin is inactive."""
-        return self.view.fig.canvas.manager.toolbar._active is None
-
-    def set_sketch_bounds(self, event):
-        print("Set the bounds of the drawing.")
-        self.action = Actions.set_min_bound
-        # Flush previous bounds.
-        if self.model.crv_bnds[0] is not None:
-            self.model.crv_bnds = [None, None]
-            self.view.remove_borders()
-
-    def set_symmetry(self, value):
-        print("Set the symmetry order of the drawing: {}".format(value))
-        self.model.sym_order = value
-        self.view.remove_sym_lines()
-        self.view.draw_sym_lines(value)
-        self.view.redraw_axes(self.view.sk_canvas)
-
-    def undo_stroke(self, event):
-        if not len(self.model.strokes):
-            print("There is no stroke to undo.")
-        else:
-            print("Undo the last sketch stroke.")
-            self.model.undone_strokes.append(self.model.strokes.pop())
-            self.view.undone_plots.append(self.view.sk_canvas.lines.pop())
-            self.view.redraw_axes(self.view.sk_canvas)
-
-    def redo_stroke(self, event):
-        if not len(self.model.undone_strokes):
-            print("There is no undone stroke.")
-        else:
-            print("Redo the last undone sketch stroke.")
-            self.model.strokes.append(self.model.undone_strokes.pop())
-            self.view.sk_canvas.lines.append(self.view.undone_plots.pop())
-            self.view.redraw_axes(self.view.sk_canvas)
+    def _init_ctrl(self, ax):
+        super()._init_ctrl(ax)
+        wdg = self.view.widgets
+        wdg['sk_bnd'].on_clicked(self.set_sketch_bounds)
+        wdg['sk_undo'].on_clicked(self.undo_stroke)
+        wdg['sk_redo'].on_clicked(self.redo_stroke)
+        wdg['sk_sym'].on_changed(self.set_symmetry)
+        wdg['search'].on_clicked(self.search_mecha)
 
     def search_mecha(self, event):
-        if not len(self.model.strokes):
+        if not len(self.data.strokes):
             print("There is no query sketch.")
         else:
             print("Search for the best matching mechanism.")
-            self.model.search_mecha(6)
+            self.data.search_mecha(6)
             if DEBUG:
-                sketch = np.array(self.model.strokes).swapaxes(1, 2)
+                sketch = np.array(self.data.strokes).swapaxes(1, 2)
                 fig = plt.figure(figsize=(6,12))
                 ax1 = fig.add_subplot(211)
                 ax1.set_aspect('equal')
@@ -401,92 +292,15 @@ class SketchApp:
                 fig.show()
 
                 fig = plt.figure(figsize=(12,6))
-                for i, sr in enumerate(self.model.search_res):
+                for i, sr in enumerate(self.data.search_res):
                     ax = fig.add_subplot(2, 3, i+1)
                     distshow(ax, sketch, sr['curve'])
                 fig.tight_layout()
                 fig.show()
 
-    def add_sketch_point(self, xy, start=False):
-        nb_sym = self.model.sym_order
-        if start:
-            for _ in range(nb_sym):
-                # Careful to put this append in the loop, rather than appending
-                # N * [], since the latter appends N copies of the same list.
-                self.model.strokes.append([])
-                self.view.sk_canvas.plot([], [], lw=2, c='b', alpha=.8)
-            # Flush history
-            self.model.undone_strokes.clear()
-            self.view.undone_plots.clear()
-        else:
-            for i in range(nb_sym):
-                angle = 2 * math.pi * i / nb_sym
-                cos_, sin_ = math.cos(angle), math.sin(angle)
-                xy_ = [xy[0]*cos_ + xy[1]*sin_, -xy[0]*sin_ + xy[1]*cos_]
-                self.model.strokes[-nb_sym+i].append(xy_)
-                self.view.sk_canvas.lines[-nb_sym+i].set_data(
-                    *np.asarray(self.model.strokes[-nb_sym+i]).T)
-        self.view.redraw_axes(self.view.sk_canvas)
-
-    def update_sketch_bound(self, radius):
-        if self.action is Actions.set_min_bound:
-            if self.view.borders[0] is None:
-                self.view.draw_inner_bound(radius)
-            else:
-                self.view.borders[0].radius = radius
-        if self.action is Actions.set_max_bound:
-            if self.view.borders[1] is None:
-                self.view.draw_outer_bound(radius)
-            else:
-                self.view.borders[1].radius = radius
-        self.view.redraw_axes(self.view.sk_canvas)
-
-    def on_move(self, event):
-        if self.check_tb_inactive():
-            if event.inaxes == self.view.sk_canvas:
-                if (self.action is Actions.set_min_bound
-                    or self.action is Actions.set_max_bound):
-                    radius = math.sqrt(event.xdata**2 + event.ydata**2)
-                    self.update_sketch_bound(radius)
-                elif self.action is Actions.sketch:
-                    self.add_sketch_point([event.xdata, event.ydata])
-
-    def on_press(self, event):
-        if self.check_tb_inactive():
-            if event.inaxes == self.view.sk_canvas:
-                event.canvas.grab_mouse(self.view.sk_canvas)
-
-                if (self.action is Actions.set_min_bound
-                    or self.action is Actions.set_max_bound):
-                    pass
-                else:
-                    # Default action is sketching.
-                    self.action = Actions.sketch
-                    self.add_sketch_point([event.xdata, event.ydata],
-                                          start=True)
-
-    def on_release(self, event):
-        if self.check_tb_inactive():
-            if event.inaxes == self.view.sk_canvas:
-                print("Canvas was clicked.")
-                event.canvas.release_mouse(self.view.sk_canvas)
-
-                if self.action is Actions.set_min_bound:
-                    self.model.crv_bnds[0] = self.view.borders[0].radius
-                    print("Inner bound set: {}".format(
-                          self.model.crv_bnds[0]))
-                    self.action = Actions.set_max_bound
-                elif self.action is Actions.set_max_bound:
-                    self.model.crv_bnds[1] = self.view.borders[1].radius
-                    print("Outer bound set: {}".format(
-                          self.model.crv_bnds[1]))
-                    self.action = Actions.none
-                elif self.action is Actions.sketch:
-                    self.action = Actions.none
-
 
 def main():
-    app = SketchApp()
+    app = App()
     app.run()
 
 if __name__ == "__main__":
