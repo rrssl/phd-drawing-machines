@@ -31,9 +31,9 @@ def distshow(ax, crv, aux_crv=None):
     if aux_crv is not None:
         ax.lines[0].set_linewidth(2)
         ax.lines[0].set_color('1.')
-        ax.set_title('Distance value: {:.2f}\n'.format(
-                          df.get_dist(aux_crv, crv)),
-                      fontsize='xx-large')
+        d = max(df.get_dist(aux_crv, crv), df.get_dist(crv, aux_crv))
+        ax.set_title(
+            'Distance value: {:.2f}\n'.format(d), fontsize='xx-large')
 
 
 class PixelFormatter:
