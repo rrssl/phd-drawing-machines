@@ -80,17 +80,27 @@ class Thing(DrawingMechanism):
 
             self.nb_samples = nb_samples
             self.per_turn = per_turn
-
-            self.offset = np.zeros((2, 1))
-            self.offset = self._compute_vectors(0.)[-1]
+            self._set_offset()
 
         def update_prop(self, pid, value):
             """Update the property referenced by the input index."""
             assert (0 <= pid < NB_GEARS)
             self.props[pid] = value
+            self._set_offset()
 
-            self.offset = np.zeros((2, 1))
-            self.offset = self._compute_vectors(0.)[-1]
+        def _set_offset(self):
+            """Set the initial offset so that the end arm is at the origin."""
+            # Offset is defined in the referential of the last arm.
+            self.offset_length = 0.
+            self.offset_angle = 0.
+            _, p, j, _, _ = self._compute_vectors(0.)
+            p = p[-1]
+            j = j[-1]
+            pj = p - j
+            j_len = math.sqrt(j[0]**2 + j[1]**2)
+            pj_len = math.sqrt(pj[0]**2 + pj[1]**2)
+            self.offset_length = j_len
+            self.offset_angle = np.arccos((-j*pj).sum() / (j_len * pj_len))
 
         def get_cycle_length(self):
             """Compute and return the interval length of one full cycle."""
@@ -136,12 +146,18 @@ class Thing(DrawingMechanism):
             joints = [pivots[0]]
             for i in range(NB_GEARS-1):
                 vec = pivots[i+1] - joints[-1]
-                vec *=  lengths[i] / (vec[0]**2 + vec[1]**2)
+                vec *=  lengths[i] / np.sqrt(vec[0]**2 + vec[1]**2)
                 joints.append(joints[-1] + vec)
             del joints[0]
-            # Shift so that first position coincides with origin
-            motion = joints[-1].copy()
-            motion -= self.offset
+            # Apply offset.
+            cos = math.cos(self.offset_angle)
+            sin = math.sin(self.offset_angle)
+            rot = np.array([[cos, -sin],
+                            [sin, cos]])
+            pj = pivots[-1] - joints[-1]
+            motion = (joints[-1]
+                      + self.offset_length
+                      * rot.dot(pj) / np.sqrt(pj[0]**2 + pj[1]**2))
             # Frame change (Turntable rotation) -- Angle is theta = -t
             cos = np.cos(t)
             sin = np.sin(-t)
