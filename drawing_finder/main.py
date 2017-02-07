@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 import numpy as np
 
-import context
+import _context
 from controlpane import make_slider
 import mecha
 TYPES = mecha.EllipticSpirograph, # mecha.SingleGearFixedFulcrumCDM
