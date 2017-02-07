@@ -10,16 +10,12 @@ import numpy as np
 import cv2
 
 def fit_in_box(curve, box_limits):
-    """Resize and translate the input curve to fit inside the box limits.
+    """Resize and translate the input curves to fit inside the box limits.
 
     box_limits = (xmax, ymax) => [0, xmax) x [0, ymax)
                 OR
                = (xmin, ymin, xmax, ymax) => [xmin, xmax) x [ymin, ymax)
     """
-    # Center the curve.
-    curve_average = curve.mean(axis=1)
-    centered_curve = curve - curve_average.reshape(2, 1)
-
     # Compute the box center and half-dimensions.
     if len(box_limits) == 2:
         A = np.array([0, 0])
@@ -30,12 +26,19 @@ def fit_in_box(curve, box_limits):
     box_center = (A + B) * 0.5 - 0.5    # /!\ Note: -0.5 offset for images.
     box_half_dims = (B - A) * 0.5 - 0.5
 
-    # Rescale and translate the curve to fit in the box.
-    den = np.abs(centered_curve).max(axis=1)
+    # Compute transform
+    curve = np.asarray(curve)
+    if len(curve.shape) == 2 and curve.shape[0] == 2:
+        ctr = curve.mean(axis=1).reshape(2, 1)
+        den = np.abs(curve - ctr).max(axis=1)
+    elif len(curve.shape) == 3 and curve.shape[1] == 2:
+        join = np.hstack(curve)
+        ctr = join.mean(axis=1).reshape(2, 1)
+        den = np.abs(join - ctr).max(axis=1)
     den[den == 0.] = 1.
-    scale = np.diag(box_half_dims / den)
+    scale = (box_half_dims / den).reshape(2, 1)
 
-    return scale.dot(centered_curve) + box_center.reshape(2, 1)
+    return scale * (curve - ctr) + box_center.reshape(2, 1)
 
 def getim(curve, resol):
     """Rasterize the input curve to the given resolution."""
@@ -44,12 +47,15 @@ def getim(curve, resol):
 
     # Create the image.
     img = np.zeros(resol, np.uint8)
-    pts = np.int32(adapted_curve.T)
+    curve = np.asarray(curve)
+    if len(curve.shape) == 2 and curve.shape[0] == 2:
+        pts = [np.int32(adapted_curve.T)]
+    elif len(curve.shape) == 3 and curve.shape[1] == 2:
+        pts = [np.int32(arc.T) for arc in adapted_curve]
     color = 255
-    is_closed = True
-    img = cv2.polylines(img, [pts], is_closed, color)
+    is_closed = False
 
-    return img
+    return cv2.polylines(img, pts, is_closed, color)
 
 def get_ext_contour(img, filled=True):
     """Compute and return the external contour of a binary image."""

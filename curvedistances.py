@@ -42,6 +42,7 @@ class CurveDistance:
 
     def get_target_desc(self, target_curve):
         """Get the target descriptor (possibly cached to save computations)."""
+        # TODO rewrite, this is not efficient at all
         if self.use_cache:
             try:
                 if np.array_equal(self.cached_target, target_curve):
@@ -64,7 +65,7 @@ class CurveDistance:
         """Normalize the curve's position, scale, orientation and skewness."""
         if curve.size == 0:
             return curve
-            
+
         # Center and (uniformly) rescale the curve.
         mean = curve.mean(axis=1)
         try:
@@ -81,7 +82,7 @@ class CurveDistance:
 
         # Normalize mirror reflection to get positive skewness (i.e. most of
         # the mass is on the positive side of each axis).
-        curve = curve * np.sign(st.skew(curve, axis=1)).reshape(2, 1)
+#        curve = curve * np.sign(st.skew(curve, axis=1)).reshape(2, 1)
 
         return curve
 
@@ -124,7 +125,9 @@ if CV2_IMPORTED:
 
         def get_desc(self, curve):
             """Get the descriptor on the input curve."""
-            if curve.shape[0] == 2:
+            if ((len(curve.shape) == 2 and curve.shape[0] == 2)
+                or len(curve.shape) == 3 and curve.shape[1] == 2):
+
                 if self.normalize:
                     curve = self.normalize_pose(curve)
                 img = cimp.getim(curve, self.resol)
@@ -136,20 +139,54 @@ if CV2_IMPORTED:
             """Get the distance between two curves."""
             df = self.get_target_desc(target_curve)
             # Adapt the candidate curve to the distance field.
-            if cand_curve.shape[0] == 2:
+            if ((len(cand_curve.shape) == 2 and cand_curve.shape[0] == 2)
+                or len(cand_curve.shape) == 3 and cand_curve.shape[1] == 2):
+
                 if self.normalize:
                     cand_curve = self.normalize_pose(cand_curve)
+
+                if len(cand_curve.shape) == 3 and cand_curve.shape[1] == 2:
+                    cand_curve = np.hstack(cand_curve)
             cand_curve = cimp.fit_in_box(cand_curve, df.shape)
             # Compute distance normalization factor.
             diag = (df.shape[0] * df.shape[0] + df.shape[1] * df.shape[1])**0.5
             normalization_factor = self.diag_ratio_dist_normalization * diag
             # Compute the average normalized distance.
             nb_samples = cand_curve.shape[1]
-            # Unoptimized version: 
+            # Unoptimized version:
             # return sum(df[int(y), int(x)] / normalization_factor
             #            for x, y in cand_curve.T) / nb_samples
-            return (df[tuple(cand_curve[::-1].astype(np.intp))].sum() / 
+            return (df[tuple(cand_curve[::-1].astype(np.intp))].sum() /
                     (nb_samples * normalization_factor))
+
+        @staticmethod
+        def normalize_pose(curve):
+            """Specialization for the Distance Field."""
+            curve = np.asarray(curve)
+            if curve.size == 0:
+                return curve
+            if len(curve.shape) == 2 and curve.shape[0] == 2:
+                whole = curve.copy()
+            elif len(curve.shape) == 3 and curve.shape[1] == 2:
+                whole = np.hstack(curve)
+            # Center and (uniformly) rescale the curve.
+            ctr = whole.mean(axis=1).reshape(2, 1)
+            try:
+                scale = 1 / la.norm(whole.std(axis=1))
+            except ZeroDivisionError:
+                scale = 1.
+            whole = (whole - ctr) * scale
+            # Compute the SVD (numerically more stable than eig(cov), and more
+            # efficient when nb_samples >> nb_dims).
+            u, _, _ = la.svd(whole)
+            # Rotate the curve.
+            whole = u.dot(whole)
+
+            # Normalize mirror reflection to get positive skewness (i.e. most of
+            # the mass is on the positive side of each axis).
+            flip = np.sign(st.skew(whole, axis=1)).reshape(2, 1)
+
+            return np.einsum('ij,...jk->...ik', u, curve - ctr) * scale * flip
 
     # Bug: these constants are not defined in the OpenCV Python namespace.
     cv2.CV_CONTOURS_MATCH_I1 = 1
