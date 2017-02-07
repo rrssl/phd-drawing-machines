@@ -24,9 +24,7 @@ if DEBUG:
     from curveplotlib import distshow
 
 
-Modes = Enum('Modes', 'sketcher editor')
-Actions = Enum('Actions',
-               'none sketch set_min_bound set_max_bound set_sym search show')
+Actions = Enum('Actions', 'none sketch set_min_bound set_max_bound')
 
 #import warnings
 #warnings.filterwarnings("error")
@@ -34,7 +32,7 @@ Actions = Enum('Actions',
 
 # TODO FIXME distance field is sometimes broken
 
-class Model:
+class DrawingFinder:
 
     def __init__(self):
         ## Sketcher
@@ -62,21 +60,10 @@ class Model:
         return samples
 
     def search_mecha(self, nb):
+        """Retrieve the closest drawings and their associated mechanisms."""
         if not len(self.strokes):
             return
-#        sketch = np.hstack([np.array(stroke).T for stroke in self.strokes])
         sketch = np.array(self.strokes).swapaxes(1, 2)
-
-        if DEBUG:
-            fig = plt.figure(figsize=(6,12))
-            ax1 = fig.add_subplot(211)
-            ax1.set_aspect('equal')
-            for stroke in self.strokes:
-                ax1.plot(*np.array(stroke).T, c='b', lw=2)
-            ax2 = fig.add_subplot(212)
-            distshow(ax2, sketch)
-            fig.tight_layout()
-            fig.show()
 
         self.search_res.clear()
         ranges = [0]
@@ -103,9 +90,9 @@ class Model:
         # Build the result.
         ranges = np.array(ranges)
         for id_ in best:
-            # TODO FIXME
             # Find index in ranges with a small trick: argmax gives id of the
             # first max value, here True.
+            # TODO FIXME
 #            typeid = np.argmax(ranges > id_) - 1
 #            print(id_, id_-ranges[typeid])
 #            type_ = types[typeid]
@@ -118,18 +105,10 @@ class Model:
                 'curve': mecha.get_curve(self.nb_crv_pts)
                 })
 
-        if DEBUG:
-            fig = plt.figure(figsize=(12,6))
-            for i, sr in enumerate(self.search_res):
-                ax = fig.add_subplot(2, 3, i+1)
-                distshow(ax, sketch, sr['curve'])
-            fig.tight_layout()
-            fig.show()
-
 
 class View:
 
-    def __init__(self, fig_size=(12,8), start_mode=Modes.sketcher):
+    def __init__(self, fig_size=(12,8)):
         self.fig = plt.figure(figsize=fig_size, facecolor='.2')
         self.fig.canvas.set_window_title('Sketcher')
         plt.subplots_adjust(left=0., right=1., bottom=0., top=1.,
@@ -339,7 +318,7 @@ class View:
 class SketchApp:
 
     def __init__(self):
-        self.model = Model()
+        self.model = DrawingFinder()
         self.view = View()
         self.connect_widgets()
         self.connect_canvas()
@@ -408,8 +387,25 @@ class SketchApp:
             print("There is no query sketch.")
         else:
             print("Search for the best matching mechanism.")
-            self.action = Actions.search
             self.model.search_mecha(6)
+            if DEBUG:
+                sketch = np.array(self.model.strokes).swapaxes(1, 2)
+                fig = plt.figure(figsize=(6,12))
+                ax1 = fig.add_subplot(211)
+                ax1.set_aspect('equal')
+                for stroke in sketch:
+                    ax1.plot(*stroke, c='b', lw=2)
+                ax2 = fig.add_subplot(212)
+                distshow(ax2, sketch)
+                fig.tight_layout()
+                fig.show()
+
+                fig = plt.figure(figsize=(12,6))
+                for i, sr in enumerate(self.model.search_res):
+                    ax = fig.add_subplot(2, 3, i+1)
+                    distshow(ax, sketch, sr['curve'])
+                fig.tight_layout()
+                fig.show()
 
     def add_sketch_point(self, xy, start=False):
         nb_sym = self.model.sym_order
