@@ -51,18 +51,20 @@ class PoISelector:
         self.ax.get_xaxis().set_ticks([])
         self.ax.get_yaxis().set_ticks([])
 
-        self.drw_plot = self.ax.plot(*self.drw, lw=1, alpha=.8)[0]
+        self.drw_plot = self.ax.plot(*self.drw, lw=3, alpha=.8)[0]
 
         self.opt_btns = CheckButtons(
             self.fig.add_subplot(gs[-1, 1:-1]), self.opt_labels, (True, True))
         colors = 'r', 'g'
+        labels = "Curvature maxima", "Intersection points"
         self.pois_plots = [
             # Scatter is better than plot here because in the latter, lines
             # would fire a PickEvent as well (even if they have 0 width).
-            self.ax.scatter(*pois[:, :2].T, s=50, c=c, edgecolor='w', zorder=3,
-                            picker=True)
-            for pois, c in zip(self.pois, colors)
+            self.ax.scatter(*pois[:, :2].T, s=100, c=c, edgecolor='w', zorder=3,
+                            picker=True, label=l)
+            for pois, c, l in zip(self.pois, colors, labels)
             ]
+        self.ax.legend()
 
         self.redraw()
 
@@ -97,12 +99,12 @@ class PoISelector:
 
 def main():
     import mecha
-#    m = mecha.HootNanny(
-#        *[15, 10, 2, 1.3433724430459493, 1.9058189313461327, 1.98, 18.500079276993844, 17.13017282384655])
-#    drawing = m.get_curve(2**7)
-    m = mecha.Thing(
-        *[0.09191176470588247, 0.1663602941176472, 0.08226102941176472, 0.020220588235294157, 0.38419117647058854])
+    m = mecha.HootNanny(
+        *[15, 2, 5, 1.3551568627450976, 1.6666666666666643, 3.4313725490196063, 18.72549019607844, 23.431372549019613])
     drawing = m.get_curve(2**8)
+#    m = mecha.Thing(
+#        *[0.09191176470588247, 0.1663602941176472, 0.08226102941176472, 0.020220588235294157, 0.38419117647058854])
+#    drawing = m.get_curve(2**8)
     app = PoISelector(drawing, m.id2time)
     app.run()
 

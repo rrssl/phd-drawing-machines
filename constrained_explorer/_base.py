@@ -440,6 +440,9 @@ class TwoDimsDemo(InvarDemo):
         xi, yi, zi = interp2d(*samples, z=self.scores)
         zi = np.ma.masked_invalid(zi)
         pcol = frame.pcolormesh(xi, yi, zi, cmap=self.cmap)
+        # Alternative version for PDF export
+#        pcol = frame.imshow(zi, cmap=self.cmap, origin='lower', aspect='auto',
+#                            extent=(xi.min(), xi.max(), yi.min(), yi.max()))
         # Draw the samples.
         frame.scatter(*samples, marker='.', c='k', linewidth=.1,
                       label="Sample")

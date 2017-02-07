@@ -58,10 +58,10 @@ fixkrv_data = {
 
 fixdist_data = {
     'disc_prop': (5, 3),
-#    'cont_prop' = (.31, .48) # Nonzero dist between PoIs
-#    'cont_prop' = (.3, 1.) # Nonzero dist between PoIs
-#    'cont_prop' = (.3, .692) # Quasi zero dist
-    'cont_prop': (.1, .2),  # Non zero dist
+#    'cont_prop': (.31, .48), # Nonzero dist between PoIs
+    'cont_prop': (.3, 1.), # Nonzero dist between PoIs
+#    'cont_prop': (.3, .692), # Quasi zero dist
+#    'cont_prop': (.1, .2),  # Non zero dist
     'init_poi_id': (150, 117),
 #    'init_poi_id': (53, 267),
 #    'pts_per_dim': 20,

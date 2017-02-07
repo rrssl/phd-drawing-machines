@@ -437,6 +437,7 @@ def show_results():
         nb = task_data['pt_density']
         axes[i, 0].plot(*mecha.get_curve(nb))
         # Load candidate data
+#        filename = "data/" + cand_name + "_task_" + str(taskid) + ".json"
         filename = cand_name + "_task_" + str(taskid) + ".json"
         with open(filename, "r") as file:
             for subtask, data in json.load(file)['subtask_data'].items():

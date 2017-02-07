@@ -255,7 +255,7 @@ def main():
     elif 0:
         from _config import fixisectpos_data as data
         app = FixIsectPosDemo(**data)
-    elif 0:
+    elif 1:
         from _config import fixisectangle_data as data
         app = FixIsectAngle(**data)
 

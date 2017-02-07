@@ -220,7 +220,7 @@ def main():
         from _config import fixisectanglecdm_data as data
         app = FixIsectAngle(**data)
     # Hoot-Nanny
-    elif 0:
+    elif 1:
         from _config import fixposhoot_data as data
         app = FixPos(**data)
     elif 0:
@@ -242,7 +242,7 @@ def main():
     elif 0:
         from _config import fixposthing_data as data
         app = FixPos(**data)
-    elif 1:
+    elif 0:
         from _config import fixkrvthing_data as data
         app = FixKrvNoDisplay(**data)
     app.run()

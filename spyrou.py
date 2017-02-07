@@ -16,7 +16,7 @@ from matplotlib.widgets import Button
 import numpy as np
 
 from controlpane import ControlPane, make_slider
-from mecha import EllipticSpirograph#, SingleGearFixedFulcrumCDM
+from mecha import EllipticSpirograph #, SingleGearFixedFulcrumCDM
 import pois
 import curvedistances as cdist
 from smarteditor import SmartEditor
@@ -30,6 +30,9 @@ if DEBUG:
 Modes = Enum('Modes', 'sketcher editor')
 Actions = Enum('Actions',
                'none sketch set_min_bound set_max_bound set_sym search show')
+
+#import warnings
+#warnings.filterwarnings("error")
 
 
 class FancyButton(Button):
@@ -114,7 +117,7 @@ class Model(SmartEditor):
         self.strokes = [] # List of N*2 lists of points
         self.undone_strokes = []
         # Mechanism retrieval
-        self.pts_per_dim = 7
+        self.pts_per_dim = 3
         self.samples = self.get_global_sampling()
         self.distance = cdist.DistanceField().get_dist
         self.search_res = [] # list of  {'type', 'props', 'curve'} dicts
@@ -382,7 +385,7 @@ class Model(SmartEditor):
     def get_global_sampling(self):
         """Sample feasible parameters across all mechanisms."""
         samples = {}
-        mechanisms_types = (EllipticSpirograph, )#, SingleGearFixedFulcrumCDM)
+        mechanisms_types = (EllipticSpirograph, )#SingleGearFixedFulcrumCDM)
         for type_ in mechanisms_types:
             size = (self.pts_per_dim,)*type_.ConstraintSolver.nb_cprops
             samples[type_] = np.array(list(
