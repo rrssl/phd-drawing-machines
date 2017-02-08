@@ -8,7 +8,7 @@ Sketcher class.
 from enum import Enum
 import math
 import numpy as np
-from matplotlib.patches import Circle
+from matplotlib.patches import Circle #, Rectangle
 
 
 # TODO: replace 'Actions' with pickable patches.
@@ -48,12 +48,11 @@ class Sketcher:
     ### Controller
 
     def _init_ctrl(self, ax):
-        ax.figure.canvas.mpl_connect(
-            'button_press_event', self.on_press)
-        ax.figure.canvas.mpl_connect(
-            'button_release_event', self.on_release)
-        ax.figure.canvas.mpl_connect(
-            'motion_notify_event', self.on_move)
+        connect = ax.figure.canvas.mpl_connect
+        connect('button_press_event', self.on_press)
+        connect('button_release_event', self.on_release)
+        connect('motion_notify_event', self.on_move)
+        connect('scroll_event', self.zoom)
 
     def set_sketch_bounds(self, event):
         print("Set the bounds of the drawing.")
@@ -123,52 +122,85 @@ class Sketcher:
         self.redraw_axes()
 
     def on_move(self, event):
-        if event.inaxes == self.canvas:
-            if (self.action is Actions.set_min_bound
-                or self.action is Actions.set_max_bound):
-                radius = math.sqrt(event.xdata**2 + event.ydata**2)
-                self.update_sketch_bound(radius)
-            elif self.action is Actions.sketch:
-                self.add_sketch_point([event.xdata, event.ydata])
+        if event.inaxes != self.canvas:
+            return
+        if event.button == 3:
+            self.shift(event)
+        elif self.action in (Actions.set_min_bound, Actions.set_max_bound):
+            radius = math.sqrt(event.xdata**2 + event.ydata**2)
+            self.update_sketch_bound(radius)
+        elif self.action is Actions.sketch:
+            self.add_sketch_point([event.xdata, event.ydata])
 
     def on_press(self, event):
-        if event.inaxes == self.canvas:
-            event.canvas.grab_mouse(self.canvas)
-
-            if (self.action is Actions.set_min_bound
-                or self.action is Actions.set_max_bound):
-                pass
-            else:
-                # Default action is sketching.
-                self.action = Actions.sketch
-                self.add_sketch_point([event.xdata, event.ydata],
-                                      start=True)
+        if event.inaxes != self.canvas:
+            return
+        event.canvas.grab_mouse(self.canvas)
+        if event.button in (2, 3):
+            self.init_xy = event.xdata, event.ydata
+        elif self.action not in (Actions.set_min_bound, Actions.set_max_bound):
+            # Default left button action is sketching.
+            self.action = Actions.sketch
+            self.add_sketch_point([event.xdata, event.ydata], start=True)
 
     def on_release(self, event):
-        if event.inaxes == self.canvas:
-            print("Canvas was clicked.")
-            event.canvas.release_mouse(self.canvas)
+        if event.inaxes != self.canvas:
+            return
+        event.canvas.release_mouse(self.canvas)
+        if event.button in (2, 3):
+            return
+        if self.action is Actions.set_min_bound:
+            self.data.crv_bnds[0] = self.bounds[0].radius
+            print("Inner bound set: {}".format(
+                  self.data.crv_bnds[0]))
+            self.action = Actions.set_max_bound
+        elif self.action is Actions.set_max_bound:
+            self.data.crv_bnds[1] = self.bounds[1].radius
+            print("Outer bound set: {}".format(
+                  self.data.crv_bnds[1]))
+            self.action = Actions.none
+        elif self.action is Actions.sketch:
+            self.action = Actions.none
 
-            if self.action is Actions.set_min_bound:
-                self.data.crv_bnds[0] = self.bounds[0].radius
-                print("Inner bound set: {}".format(
-                      self.data.crv_bnds[0]))
-                self.action = Actions.set_max_bound
-            elif self.action is Actions.set_max_bound:
-                self.data.crv_bnds[1] = self.bounds[1].radius
-                print("Outer bound set: {}".format(
-                      self.data.crv_bnds[1]))
-                self.action = Actions.none
-            elif self.action is Actions.sketch:
-                self.action = Actions.none
+    def shift(self, event):
+        ax = self.canvas
+        # Get the points and limits.
+#        xlim = np.array(ax.get_xlim())
+#        ylim = np.array(ax.get_ylim())
+        # Set new limits.
+        ax.set_xlim(ax.get_xlim() - event.xdata + self.init_xy[0])
+        ax.set_ylim(ax.get_ylim() - event.ydata + self.init_xy[1])
+        self.redraw_axes()
+
+    def zoom(self, event, scale_factor=1.5):
+        if event.inaxes != self.canvas:
+            return
+        ax = self.canvas
+        # Get the range.
+        xdata = event.xdata # get event x location
+        ydata = event.ydata # get event y location
+        cur_xrange = ax.get_xlim() - xdata
+        cur_yrange = ax.get_ylim() - ydata
+        if event.button == 'up':
+            # deal with zoom in
+            scale_factor = 1. / scale_factor
+        elif event.button == 'down':
+            # deal with zoom out
+            pass
+        # set new limits
+        ax.set_xlim(xdata + cur_xrange*scale_factor)
+        ax.set_ylim(ydata + cur_yrange*scale_factor)
+        self.redraw_axes()
 
     ### View
 
     def _init_view(self, ax):
         remove_axes(ax)
-        ax.set_xlim([-1, 1])
-        ax.set_ylim([-1, 1])
+        ax.set_xlim([-1.1, 1.1])
+        ax.set_ylim([-1.1, 1.1])
         ax.set_aspect('equal', 'datalim')
+#        ax.add_patch(Rectangle((-1.,-1.), 2., 2., lw=0, fc='1.'))
+#        ax.set_axis_bgcolor('.9')
 
     def draw_inner_bound(self, radius):
         self.bounds[0] = Circle((0, 0), radius, fc='.9', ec='.7', ls='dashed')
@@ -182,7 +214,7 @@ class Sketcher:
 
     def draw_sym_lines(self, order):
         if order > 1:
-            radius = 2 * math.sqrt(
+            radius = 10 * math.sqrt(
                 max(np.abs(self.canvas.get_xlim()))**2 +
                 max(np.abs(self.canvas.get_ylim()))**2
                 )

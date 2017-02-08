@@ -58,6 +58,8 @@ class DrawingFinder:
         """Retrieve the closest drawings and their associated mechanisms."""
         if not len(self.strokes):
             return
+        # TODO FIXME 'ValueError: bad axis1 argument to swapaxes'
+        # with more than 1 symmetrized stroke
         sketch = np.array(self.strokes).swapaxes(1, 2)
 
         self.search_res.clear()
