@@ -55,10 +55,6 @@ class Sketcher:
         ax.figure.canvas.mpl_connect(
             'motion_notify_event', self.on_move)
 
-    def check_tb_inactive(self):
-        """Check if the matplotlib toolbar plugin is inactive."""
-        return self.canvas.figure.canvas.manager.toolbar._active is None
-
     def set_sketch_bounds(self, event):
         print("Set the bounds of the drawing.")
         self.action = Actions.set_min_bound
@@ -127,7 +123,7 @@ class Sketcher:
         self.redraw_axes()
 
     def on_move(self, event):
-        if self.check_tb_inactive() and event.inaxes == self.canvas:
+        if event.inaxes == self.canvas:
             if (self.action is Actions.set_min_bound
                 or self.action is Actions.set_max_bound):
                 radius = math.sqrt(event.xdata**2 + event.ydata**2)
@@ -136,7 +132,7 @@ class Sketcher:
                 self.add_sketch_point([event.xdata, event.ydata])
 
     def on_press(self, event):
-        if self.check_tb_inactive() and event.inaxes == self.canvas:
+        if event.inaxes == self.canvas:
             event.canvas.grab_mouse(self.canvas)
 
             if (self.action is Actions.set_min_bound
@@ -149,7 +145,7 @@ class Sketcher:
                                       start=True)
 
     def on_release(self, event):
-        if self.check_tb_inactive() and event.inaxes == self.canvas:
+        if event.inaxes == self.canvas:
             print("Canvas was clicked.")
             event.canvas.release_mouse(self.canvas)
 

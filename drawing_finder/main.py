@@ -5,37 +5,27 @@ Demo for sketch-based curve retrieval.
 
 @author: Robin Roussel
 """
-#import sys
-#from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-#from matplotlib.figure import Figure
-#from PyQt5.QtCore import Qt
-#from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QApplication, QSizePolicy,
-#                             QSlider)
-
-
+#import warnings
+#warnings.filterwarnings("error")
+import sys
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Button
 import numpy as np
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (QWidget, QApplication, QSizePolicy,
+                             QSlider, QPushButton, QLabel, QFrame,
+                             QVBoxLayout, QHBoxLayout)
 
 import _context
-from controlpane import make_slider
 import mecha
 TYPES = mecha.EllipticSpirograph, # mecha.SingleGearFixedFulcrumCDM
 import curvedistances as cdist
-from sketcher import Sketcher, remove_axes
+from sketcher import Sketcher
 
 DEBUG = True
 if DEBUG:
     from curveplotlib import distshow
-
-
-
-
-#import warnings
-#warnings.filterwarnings("error")
-
-
-# TODO FIXME distance field is sometimes broken
 
 class DrawingFinder:
 
@@ -112,171 +102,82 @@ class DrawingFinder:
                 })
 
 
-class View:
-
-    def __init__(self, fig_size=(12,8)):
-        self.fig = plt.figure(figsize=fig_size, facecolor='.2')
-        self.fig.canvas.set_window_title('Sketcher')
-        plt.subplots_adjust(left=0., right=1., bottom=0., top=1.,
-                            wspace=0., hspace=0.)
-        self.grid_size = (3*fig_size[1], 3*fig_size[0])
-        self.colors = {
-            'light': '.9',
-            'bg': '.2'
-            }
-
-        self.sk_canvas = plt.subplot2grid(
-            self.grid_size, (0, 0), rowspan=self.grid_size[0],
-            colspan=self.grid_size[0])
-
-        self.widgets = {}
-
-        self.axlist = []
-        self.draw_sketcher_panel()
-        self.draw_bottom_pane()
-
-    ### Low-level graphical elements (buttons, separators, etc.)
-
-    def draw_section_title(self, grid_pos, label):
-        width = (self.grid_size[1] - self.grid_size[0]) // 2
-        ax = plt.subplot2grid(
-            self.grid_size, grid_pos, rowspan=1, colspan=width, axisbg='none')
-        remove_axes(ax)
-        ax.set_navigate(False)
-        title = ax.text(0.5, 0.5, label,
-                        verticalalignment='bottom',
-                        horizontalalignment='center',
-                        transform=ax.transAxes)
-        title.set_fontsize(15)
-        title.set_weight('light')
-        title.set_color('.9')
-        return ax
-
-    def draw_slider(self, grid_pos, slider_args, width):
-        ax = plt.subplot2grid(
-            self.grid_size, grid_pos, rowspan=1, colspan=width, axisbg='.9')
-        remove_axes(ax)
-        slider_args['color'] = 'lightgreen'
-        slider = make_slider(ax, **slider_args)
-        slider.label.set_weight('bold')
-        slider.label.set_color('.9')
-        slider.label.set_x(-0.25)
-        slider.label.set_horizontalalignment('center')
-        slider.valtext.set_weight('bold')
-        slider.valtext.set_color('.9')
-        return slider
-
-    def draw_button(self, grid_pos, width, height, label):
-        bt_ax = plt.subplot2grid(
-            self.grid_size, grid_pos, rowspan=height, colspan=width)
-        bt = Button(bt_ax, label, color='.9', hovercolor='lightgreen')
-        remove_axes(bt_ax)
-        bt.label.set_fontsize(12)
-        bt.label.set_weight('bold')
-        bt.label.set_color('.2')
-        return bt
-
-    def draw_separator(self, grid_pos):
-        width = (self.grid_size[1] - self.grid_size[0])
-        ax = plt.subplot2grid(
-            self.grid_size, grid_pos, rowspan=1, colspan=width, axisbg='none')
-        remove_axes(ax)
-        ax.set_navigate(False)
-        ax.axhline(.1, 0.01, .99, color='.5', linestyle='dashed')
-        return ax
-
-    ### High-level graphical elements (tabs and panels)
-
-    def draw_sketcher_panel(self):
-        tab_width = (self.grid_size[1] - self.grid_size[0]) // 2
-        row_id = 1
-
-        self.axlist.append(
-            self.draw_section_title((row_id, self.grid_size[0]+tab_width//2),
-                                    "Construction lines")
-            )
-        row_id += 1
-
-        self.widgets['sk_bnd'] = self.draw_button(
-            (row_id, self.grid_size[0]+tab_width//2), tab_width, 1,
-            "Set boundaries")
-        self.axlist.append(self.widgets['sk_bnd'].ax)
-        row_id += 2
-
-        slider_args = {'valmin': 0, 'valmax': 25, 'valinit': 1,
-                       'label': "Symmetry\norder"}
-        self.widgets['sk_sym'] = self.draw_slider(
-            (row_id, self.grid_size[0]+tab_width*3//4), slider_args,
-            tab_width*5//4)
-        self.axlist.append(self.widgets['sk_sym'].ax)
-        row_id += 1
-
-        self.axlist.append(
-            self.draw_separator((row_id, self.grid_size[0]))
-            )
-        row_id += 2
-
-        self.axlist.append(
-            self.draw_section_title((row_id, self.grid_size[0]+tab_width//2),
-                                    "Sketch")
-            )
-        row_id += 1
-
-        self.widgets['sk_undo'] = self.draw_button(
-            (row_id, self.grid_size[0]+tab_width//4), tab_width*3//4, 2,
-            "Undo\nlast stroke")
-        self.axlist.append(self.widgets['sk_undo'].ax)
-        self.widgets['sk_redo'] = self.draw_button(
-            (row_id, self.grid_size[0]+tab_width*5//4), tab_width*3//4, 2,
-            "Redo\nlast stroke")
-        self.axlist.append(self.widgets['sk_redo'].ax)
-
-    def draw_bottom_pane(self):
-        width = (self.grid_size[1] - self.grid_size[0]) // 2
-        row_id = self.grid_size[0] * 2 // 3
-        self.draw_separator((row_id, self.grid_size[0]))
-        row_id += 2
-        self.draw_section_title((row_id, self.grid_size[0]+width//2),
-                                "Drawing machine")
-        row_id += 1
-        self.widgets['search'] = self.draw_button(
-            (row_id, self.grid_size[0]+width//2), width, 1, "Search database")
-#        row_id += 2
-#        self.widgets['show'] = self.draw_button(
-#            (row_id, self.grid_size[0]+width//4), width*3//4, 2,
-#            "Show\nmechanism")
-#        self.widgets['export'] = self.draw_button(
-#            (row_id, self.grid_size[0]+width*5//4), width*3//4, 2,
-#            "Export\nmechanism")
-
-    ### Update view
-
-    def redraw_axes(self, ax):
-        ax.redraw_in_frame()
-#        self.fig.canvas.blit(ax)
-        self.fig.canvas.update()
+def HLine():
+    line = QFrame()
+    line.setFrameShape(QFrame.HLine)
+    line.setFrameShadow(QFrame.Sunken)
+    return line
 
 
-
-class App:
+class Window(QWidget):
 
     def __init__(self):
-        self.view = View()
+        super().__init__()
+
         self.finder = DrawingFinder()
-        self.sketcher = Sketcher(self.view.sk_canvas, self.finder)
-        self._init_ctrl()
+        self.initUI()
 
-    def run(self):
-        plt.ioff()
-        plt.show()
+        self.show()
 
-    def _init_ctrl(self):
-        wdg = self.view.widgets
-        wdg['sk_bnd'].on_clicked(self.sketcher.set_sketch_bounds)
-        wdg['sk_undo'].on_clicked(self.sketcher.undo_stroke)
-        wdg['sk_redo'].on_clicked(self.sketcher.redo_stroke)
-        wdg['sk_sym'].on_changed(self.sketcher.set_symmetry)
-        wdg['search'].on_clicked(self.search_mecha)
+    def initUI(self):
+        # Define matplotlib context for the sketcher.
+        fig = Figure(figsize=(6, 6), dpi=100)
+        can = FigureCanvas(fig)
+        can.setParent(self)
+        can.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        can.updateGeometry()
+        # Add the sketcher.
+        fig.subplots_adjust(left=0., right=1., bottom=0., top=1.,
+                            wspace=0., hspace=0.)
+        ax = fig.add_subplot(111)
+        self.sketcher = Sketcher(ax, self.finder)
+        # Add buttons.
+        bnd_bt = QPushButton("Set bounds", self)
+        undo_bt = QPushButton("Undo stroke", self)
+        redo_bt = QPushButton("Redo stroke", self)
+        search_bt = QPushButton("Search drawing", self)
+        # Add slider.
+        sym_sld = QSlider(Qt.Horizontal, self)
+        sym_sld.setTickInterval(1)
+        sym_sld.setTickPosition(QSlider.TicksBelow)
+        sym_sld.setToolTip("Change the order of rotational symmetry")
+        sym_sld.setValue(1)
+        sym_sld.setRange(0, 10)
+        sym_sld.setFocusPolicy(Qt.NoFocus)
+        # Add text box.
+        sym_txt = QLabel("Symmetry order", self)
+        sym_txt.setAlignment(Qt.AlignCenter)
+        # Connect callbacks.
+        bnd_bt.clicked.connect(self.sketcher.set_sketch_bounds)
+        undo_bt.clicked.connect(self.sketcher.undo_stroke)
+        redo_bt.clicked.connect(self.sketcher.redo_stroke)
+        search_bt.clicked.connect(self.search_mecha)
+        sym_sld.valueChanged.connect(self.sketcher.set_symmetry)
+        # Arrange widgets.
+        top = QHBoxLayout()
+        top.addWidget(can)
+        panel = QVBoxLayout()
+        top.addLayout(panel)
+        panel.addSpacing(10)
+        panel.addWidget(bnd_bt)
+        panel.addSpacing(10)
+        panel.addWidget(sym_txt)
+        panel.addSpacing(-10)
+        panel.addWidget(sym_sld)
+        panel.addSpacing(10)
+        undoredo = QHBoxLayout()
+        panel.addLayout(undoredo)
+        undoredo.addWidget(undo_bt)
+        undoredo.addWidget(redo_bt)
+        panel.addSpacing(30)
+        panel.addWidget(HLine())
+        panel.addWidget(search_bt)
+        panel.addWidget(HLine())
+        panel.addStretch()
+        self.setLayout(top)
+        # Finalize window
+        self.setGeometry(10, 10, 800, 600) # left, top, width, height
+        self.setWindowTitle("Drawing finder")
 
     def search_mecha(self, event):
         if not len(self.finder.strokes):
@@ -285,6 +186,7 @@ class App:
             print("Search for the best matching mechanism.")
             self.finder.search_mecha(6)
             if DEBUG:
+                # TODO FIXME distance field is sometimes broken
                 sketch = np.array(self.finder.strokes).swapaxes(1, 2)
                 fig = plt.figure(figsize=(6,12))
                 ax1 = fig.add_subplot(211)
@@ -305,8 +207,9 @@ class App:
 
 
 def main():
-    app = App()
-    app.run()
+    app = QApplication(sys.argv)
+    w = Window()
+    sys.exit(app.exec_())
 
 if __name__ == "__main__":
     main()
