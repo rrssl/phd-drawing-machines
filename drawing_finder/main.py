@@ -5,6 +5,14 @@ Demo for sketch-based curve retrieval.
 
 @author: Robin Roussel
 """
+#import sys
+#from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+#from matplotlib.figure import Figure
+#from PyQt5.QtCore import Qt
+#from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QApplication, QSizePolicy,
+#                             QSlider)
+
+
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 import numpy as np
@@ -78,7 +86,8 @@ class DrawingFinder:
             for sample in type_samples:
                 mecha.reset(*sample)
                 crv = mecha.get_curve(self.nb_crv_pts)
-                distances.append(max(self.distance(crv, sketch), self.distance(sketch, crv)))
+                distances.append(max(self.distance(crv, sketch),
+                                     self.distance(sketch, crv)))
         distances = np.array(distances)
         best = distances.argpartition(nb)[:nb]
         # Sort the best matching curves.
@@ -124,11 +133,6 @@ class View:
 
         self.axlist = []
         self.draw_sketcher_panel()
-
-        self.max_nb_props = 5
-        self.nb_props = 0
-        self.max_nb_cstr_per_poi = 3
-
         self.draw_bottom_pane()
 
     ### Low-level graphical elements (buttons, separators, etc.)
@@ -254,33 +258,34 @@ class View:
 
 
 
-class App(Sketcher):
+class App:
 
     def __init__(self):
         self.view = View()
-        super().__init__(self.view.sk_canvas, DrawingFinder())
+        self.finder = DrawingFinder()
+        self.sketcher = Sketcher(self.view.sk_canvas, self.finder)
+        self._init_ctrl()
 
     def run(self):
         plt.ioff()
         plt.show()
 
-    def _init_ctrl(self, ax):
-        super()._init_ctrl(ax)
+    def _init_ctrl(self):
         wdg = self.view.widgets
-        wdg['sk_bnd'].on_clicked(self.set_sketch_bounds)
-        wdg['sk_undo'].on_clicked(self.undo_stroke)
-        wdg['sk_redo'].on_clicked(self.redo_stroke)
-        wdg['sk_sym'].on_changed(self.set_symmetry)
+        wdg['sk_bnd'].on_clicked(self.sketcher.set_sketch_bounds)
+        wdg['sk_undo'].on_clicked(self.sketcher.undo_stroke)
+        wdg['sk_redo'].on_clicked(self.sketcher.redo_stroke)
+        wdg['sk_sym'].on_changed(self.sketcher.set_symmetry)
         wdg['search'].on_clicked(self.search_mecha)
 
     def search_mecha(self, event):
-        if not len(self.data.strokes):
+        if not len(self.finder.strokes):
             print("There is no query sketch.")
         else:
             print("Search for the best matching mechanism.")
-            self.data.search_mecha(6)
+            self.finder.search_mecha(6)
             if DEBUG:
-                sketch = np.array(self.data.strokes).swapaxes(1, 2)
+                sketch = np.array(self.finder.strokes).swapaxes(1, 2)
                 fig = plt.figure(figsize=(6,12))
                 ax1 = fig.add_subplot(211)
                 ax1.set_aspect('equal')
@@ -292,7 +297,7 @@ class App(Sketcher):
                 fig.show()
 
                 fig = plt.figure(figsize=(12,6))
-                for i, sr in enumerate(self.data.search_res):
+                for i, sr in enumerate(self.finder.search_res):
                     ax = fig.add_subplot(2, 3, i+1)
                     distshow(ax, sketch, sr['curve'])
                 fig.tight_layout()
