@@ -16,6 +16,7 @@ from ._mecha import Mechanism, DrawingMechanism
 
 class Kicker(DrawingMechanism):
     """Ball-kicking leg."""
+    param_names = ["$r_1$", "$r_2$", "$d_{12}$", "$l_1$", "$l_2$", "$d_e$"]
 
 
     class ConstraintSolver(Mechanism.ConstraintSolver):
@@ -64,7 +65,8 @@ class Kicker(DrawingMechanism):
             assert(0 <= pid < len(prop))
 
             if pid == 5:
-                return 0., np.inf
+#                return 0., np.inf
+                return 0., 10.
 
             prop = list(prop)
             cs = cls.get_constraints()
@@ -82,7 +84,8 @@ class Kicker(DrawingMechanism):
                 min_ = opt.fmin_cobyla(
                     lambda x: x, prop[pid], cons=get_cons_vec,
                     disp=0, catol=cls.eps)
-                return min_, np.inf
+#                return min_, np.inf
+                return min_, 10.
             else:
                 prop = np.column_stack((prop, prop))
                 min_, max_ = opt.fmin_cobyla(

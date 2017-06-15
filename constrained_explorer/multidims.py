@@ -220,7 +220,7 @@ def main():
         from _config import fixisectanglecdm_data as data
         app = FixIsectAngle(**data)
     # Hoot-Nanny
-    elif 1:
+    elif 0:
         from _config import fixposhoot_data as data
         app = FixPos(**data)
     elif 0:
@@ -238,6 +238,10 @@ def main():
     elif 0:
         from _config import fixdistkrvhoot_data as data
         app = FixDistKrv(**data)
+    # Kicker
+    elif 1:
+        from _config import fixposkick_data as data
+        app = FixPos(**data)
     # Thing
     elif 0:
         from _config import fixposthing_data as data

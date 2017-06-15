@@ -99,12 +99,14 @@ class PoISelector:
 
 def main():
     import mecha
-    m = mecha.HootNanny(
-        *[15, 2, 5, 1.3551568627450976, 1.6666666666666643, 3.4313725490196063, 18.72549019607844, 23.431372549019613])
-    drawing = m.get_curve(2**8)
+#    m = mecha.HootNanny(
+#        *[15, 2, 5, 1.3551568627450976, 1.6666666666666643, 3.4313725490196063, 18.72549019607844, 23.431372549019613])
+#    drawing = m.get_curve(2**8)
 #    m = mecha.Thing(
 #        *[0.09191176470588247, 0.1663602941176472, 0.08226102941176472, 0.020220588235294157, 0.38419117647058854])
 #    drawing = m.get_curve(2**8)
+    m = mecha.Kicker(*[4., 2., 8., 8., 7., 6.])
+    drawing = m.get_curve(2**6)
     app = PoISelector(drawing, m.id2time)
     app.run()
 

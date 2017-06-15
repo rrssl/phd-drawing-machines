@@ -317,6 +317,22 @@ fixdistkrvhoot_data = {
     'nb_crv_pts': 2**7
     }
 
+### Kicker
+
+fixposkick_data = {
+    'mecha_type': mecha.Kicker,
+    'props': (4., 2., 8., 8., 7., 6.),
+    'init_poi_id': 46,
+
+    'get_corresp': get_corresp_krvmax,
+    'get_features': get_position,
+#    'pts_per_dim': 5,
+#    'keep_ratio': .05,
+#    'nbhood_size': .1,
+    'ndim_invar_space': 4,
+    'nb_crv_pts': 2**6
+    }
+
 ### Thing
 
 

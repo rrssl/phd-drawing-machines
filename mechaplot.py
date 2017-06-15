@@ -9,6 +9,7 @@ import math
 import matplotlib.animation as manim
 import matplotlib.patches as pat
 from matplotlib.collections import PatchCollection
+from matplotlib.image import imread
 from matplotlib.transforms import Affine2D
 import numpy as np
 #import shapely.geometry as geom
@@ -220,6 +221,17 @@ def _align_linkage_to_joints(p1, p2, linkage, offset):
     linkage.xy = p1 + offset
     rot = Affine2D().rotate_around(*p1, theta=math.atan2(vec[1], vec[0]))
     linkage.set_transform(rot)
+
+def _align_image_to_joints(p1, p2, img, offset):
+#    vec = p2 - p1
+    box = list(img.get_extent())
+    box[0] += float(p2[0])
+    box[1] += float(p2[0])
+    box[2] += float(p2[1])
+    box[3] += float(p2[1])
+    img.set_extent(box)
+#    rot = Affine2D().rotate_around(*p1, theta=math.atan2(vec[1], vec[0]))
+#    linkage.set_transform(rot)
 
 
 class SingleGearFixedFulcrumCDM(AniMecha):
@@ -489,15 +501,15 @@ class Kicker(AniMecha):
                               angle=0., color='grey', alpha=1.)
                 ],
             'thigh': [
-                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness*2,
                               angle=0., color='m', alpha=1.)
                 ],
             'calf': [
-                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness*2,
                               angle=0., color='m', alpha=1.)
                 ],
             'foot': [
-                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness,
+                pat.Rectangle((0., 0.), width=0., height=self.rod_thickness*2,
                               angle=0., color='m', alpha=1.)
                 ],
             'pivot_1': [
@@ -532,6 +544,22 @@ class Kicker(AniMecha):
                 match_original=True))
 #        self.fg_coll = self.ax.add_collection(
 #            PatchCollection(self.shapes[6:], match_original=True))
+#
+#        self.ik_img = {
+#            'foot': imread("../assets/soccer_player/foot.png")
+#            }
+#        self.ik_img_art = {
+#            'foot': self.ax.plot(0,0)[0]
+#            }
+
+        self.bg_img = {
+            'ball': self.ax.imshow(imread("../assets/soccer_ball.png"),
+                                   extent=(-4,1,-11,-6),
+                                   interpolation='bilinear'),
+            'grass': self.ax.imshow(imread("../assets/grass.png"),
+                                    extent=(-20,20,-12,-9),
+                                    interpolation='bilinear')
+            }
 
         super().__init__(mechanism, ax)
 
@@ -565,8 +593,17 @@ class Kicker(AniMecha):
         self.shapes['foot'][0].set_width(1.5*(l1+d)/5)
         self.shapes['connector'][0].radius = pivot_size
         self.shapes['end_effector'][0].radius = pivot_size
+
+#        self.ik_img['foot'].remove()
+#        self.ik_img_art['foot'].set_extent((0, 1.5*(l1+d)/5, 0, 1.5*(l1+d)/10))
+#        self.ik_img_art['foot'] = self.ax.imshow(
+#                self.ik_img['foot'],
+#                extent=(0, 1.5*(l1+d)/5, 0, 1.5*(l1+d)/10),
+#                interpolation='bilinear',
+#                animated=True)
         # Moving parts
         self._redraw_moving_parts()
+#        self.ik_img['foot'].set_visible(False)
 
         self.bg_coll.set_paths(
             [patch for shape in self.shapes.values() for patch in shape])
@@ -613,6 +650,22 @@ class Kicker(AniMecha):
         _align_linkage_to_joints(OA, OE, self.shapes['foot'][0],
                                  rectangle_offset)
 
+#        if self.play:
+#            r1, r2, _, l1, l2, d = self.mecha.props
+#            self.ik_img_art['foot'].remove()
+#            self.ik_img_art = {
+#                'foot': self.ax.imshow(
+#                    self.ik_img['foot'],
+#                    extent=(0, 1.5*(l1+d)/5, 0, 1.5*(l1+d)/10),
+#                    interpolation='bilinear',
+#                    animated=True)
+#                }
+#            _align_image_to_joints(OA, OE, self.ik_img_art['foot'], 0)
+#        else:
+#            self.ik_img_art = {
+#                'foot': self.ax.plot(0,0)[0]
+#                }
+
     def set_visible(self, b):
         self.bg_coll.set_visible(b)
 #        self.fg_coll.set_visible(b)
@@ -621,9 +674,12 @@ class Kicker(AniMecha):
         if self.play:
             self.mecha.set_state(-t)
             self._redraw_moving_parts()
+#            self.ik_img_art['foot'].changed()
+#            self.ik_img_art['foot'].stale = True
             self.bg_coll.set_paths(
                 [patch for shape in self.shapes.values() for patch in shape])
         return self.bg_coll,
+#        return self.bg_coll, self.ik_img_art['foot']
 
 
 class Thing(AniMecha):
