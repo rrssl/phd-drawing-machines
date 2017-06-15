@@ -593,7 +593,7 @@ class ManyDimsDemo(InvarDemo):
         frame.margins(0.1)
         frame.set_xticks([])
         frame.set_yticks([])
-        frame.set_axis_bgcolor('.9')
+#        frame.set_axis_bgcolor('.9')
 #        frame.margins(.1)
         frame.set_aspect('equal')
         frame.set_title("Drawing machine (hidden).\n")
