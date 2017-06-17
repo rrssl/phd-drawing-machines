@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Elliptic Spirograph
@@ -18,12 +17,11 @@ import curves as cu
 class EllipticSpirograph(DrawingMechanism):
     """Spirograph with an elliptic gear."""
 
-
     class ConstraintSolver(Mechanism.ConstraintSolver):
         """Class for handling design constraints."""
         nb_dprops = 2
         nb_cprops = 2
-        max_nb_turns = 20 # Arbitrary value
+        max_nb_turns = 20  # Arbitrary value
 
         @classmethod
         def get_constraints(cls, cstr={}):
@@ -55,7 +53,7 @@ class EllipticSpirograph(DrawingMechanism):
                 return 0., cls._get_dmax(prop[1], prop[2]) - 2*cls.eps
 
         @classmethod
-        def sample_feasible_domain(cls, grid_resol=(10,10)):
+        def sample_feasible_domain(cls, grid_resol=(10, 10)):
             """Sample the feasible domain."""
             # Note: we could try a time-efficient version using numpy's
             # vectorization, progressively building a 4D tensor then
@@ -84,13 +82,12 @@ class EllipticSpirograph(DrawingMechanism):
         @staticmethod
         def _get_dmax(req, e2):
             """Get the upper bound of the pole distance."""
-            return req * math.pi / (2 * spec.ellipe(e2)) # dmax = semimajor
+            return req * math.pi / (2 * spec.ellipe(e2))  # dmax = semimajor
 
         @staticmethod
         def _get_reqmin(e2, d):
             """Get the lower bound of the equivalent radius."""
             return int((2 * d * spec.ellipe(e2) / math.pi) + 1)
-
 
     class Simulator(Mechanism.Simulator):
         """Class for simulating the movement of the parts."""
@@ -158,7 +155,6 @@ class EllipticSpirograph(DrawingMechanism):
             else:
                 self.roul.reset(value)
 
-
     def get_curve(self, nb=2**6, per_turn=True):
         """Return an array of points sampled on the full curve.
 
@@ -190,4 +186,3 @@ class EllipticSpirograph(DrawingMechanism):
             'rolling_gear': {'pos': None, 'or': None},
             'penhole': {'pos': None}
             }
-

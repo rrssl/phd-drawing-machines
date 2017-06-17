@@ -1,4 +1,4 @@
-import mecha.context
+import mecha._context
 
 from ._cdm import SingleGearFixedFulcrumCDM
 from ._ellip import EllipticSpirograph

@@ -1,7 +1,10 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 PoI tracking functions.
+
+Note: for the moment these functions use their own PoI detection functions,
+rather than the ones defined in 'pois.py'. This should be resolved in the
+future.
 
 @author: Robin Roussel
 """
@@ -9,12 +12,11 @@ from itertools import compress
 import numpy as np
 import scipy.signal as sig
 
+from curveproc import compute_curvature
 import poly_point_isect as ppi
 ppi.USE_DEBUG = False
 ppi.USE_IGNORE_SEGMENT_ENDINGS = False
 ppi.USE_RETURN_SEGMENT_ID = True
-
-from curveproc import compute_curvature
 
 
 def get_corresp_krvmax(ref_crv, ref_par, curves):
@@ -24,18 +26,18 @@ def get_corresp_krvmax(ref_crv, ref_par, curves):
 
     Parameters
     ----------
-    ref_crv: 2 x N_pts numpy array
+    ref_crv : 2 x N_pts numpy array
         Reference curve.
-    ref_par: int or sequence of int
+    ref_par : int or sequence of int
         Index(es) of the PoI(s) in the reference curve.
-    curves: sequence of 2 x N_pts_i numpy arrays
+    curves : sequence of 2 x N_pts_i numpy arrays
         List of curves in which to search for the corresponding PoIs.
 
     Returns
     -------
-    cor_poi: sequence
+    cor_poi : sequence
         N_curves-list of PoIs.
-    cor_par: sequence
+    cor_par : sequence
         N_curves-list of N_ref_par-lists.
     """
     cor_par = []
@@ -97,18 +99,18 @@ def get_corresp_isect(ref_crv, ref_par, curves, loc_size=15):
 
     Parameters
     ----------
-    ref_crv: 2 x N_pts numpy array
+    ref_crv : 2 x N_pts numpy array
         Reference curve.
-    ref_par: (int, int)
+    ref_par : (int, int)
         Indexes of the PoI in the reference curve.
-    curves: sequence of 2 x N_pts_i numpy arrays
+    curves : sequence of 2 x N_pts_i numpy arrays
         List of curves in which to search for the corresponding PoIs.
 
     Returns
     -------
-    cor_poi: sequence
+    cor_poi : sequence
         N_curves-list of PoIs.
-    cor_par: sequence
+    cor_par : sequence
         N_curves-list of (int, int).
     """
     assert(ref_par[0] != ref_par[1])
@@ -122,14 +124,14 @@ def get_corresp_isect(ref_crv, ref_par, curves, loc_size=15):
         # We extract a segment aroung each parameter.
         # First we test if segments overlap.
         n = crv.shape[1]
-        if (ref_par[0] + loc_size)%n >= (ref_par[1] - loc_size)%n:
+        if (ref_par[0] + loc_size) % n >= (ref_par[1] - loc_size) % n:
             # For now we just fall back to the full curve...
             local = False
             crv_ = crv
         else:
             local = True
             crv_ = np.hstack([
-                np.take(crv, range(par-loc_size,par+loc_size), axis=1,
+                np.take(crv, range(par-loc_size, par+loc_size), axis=1,
                         mode='wrap')
                 for par in ref_par])
 

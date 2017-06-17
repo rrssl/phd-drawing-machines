@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+Configuration file for the forward controller app.
+"""
 spiro_data = (
     (0,
      {'valmin': 1,
@@ -58,7 +62,8 @@ cdm_data = (
     (3,                     # Polar angle of the gear center.
      {'valmin': 0.,
       'valmax': 3.1415,
-      'valinit': 2.8, #2 * math.pi / 3,
+      'valinit': 2.8,
+      # 'valinit': 2 * math.pi / 3,
       'label': "Fulcrum-gear\nangle"}),
     (4,                     # Distance from fulcrum to penholder.
      {'valmin': 0.,

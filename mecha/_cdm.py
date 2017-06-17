@@ -1,11 +1,10 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Cycloid Drawing Machine
 
 @author: Robin Roussel
 """
-#from itertools import product
+# from itertools import product
 import math
 import numpy as np
 import scipy.optimize as opt
@@ -18,12 +17,11 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
     """Cycloid Drawing Machine with the 'simple setup'."""
     param_names = ["r_T", "r_G", "$d_F$", r"$ \theta_G$", "$d_P$", "$d_S$"]
 
-
     class ConstraintSolver(Mechanism.ConstraintSolver):
         """Class for handling design constraints."""
         nb_dprops = 2
         nb_cprops = 4
-        max_nb_turns = 10 # Arbitrary value
+        max_nb_turns = 10  # Arbitrary value
 
         @classmethod
         def get_constraints(cls, cstr={}):
@@ -41,12 +39,12 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
                     lambda p: p[3],                         # 06: theta_G >= 0
                     lambda p: math.pi - p[3],               # 07: theta_G <= pi
                     lambda p: p[4] - cls.eps,               # 08: d_P > 0
-                    lambda p: cls._get_FG(*p[:4]) - p[1] - p[4] - cls.eps,
-                                                            # 09: d_P < FG-r_G
+                    lambda p: (                             # 09: d_P < FG-r_G
+                        cls._get_FG(*p[:4]) - p[1] - p[4] - cls.eps),
                     lambda p: p[5],                         # 10: d_S >= 0
                     lambda p: p[1] - p[5] - cls.eps,        # 11: d_S < r_G
-                    lambda p: p[0]**2 - cls._get_OP2_max(*p)
-                                                            # 12: r_T >= OP_max
+                    lambda p: (                             # 12: r_T >= OP_max
+                        p[0]**2 - cls._get_OP2_max(*p))
                     )
                 return cstr[cls]
 
@@ -55,6 +53,7 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             """Get the bounds of the property prop[pid]."""
             assert(0 <= pid < len(prop))
             prop = list(prop)
+
             def adapt(cstr):
                 return lambda x: cstr(prop[:pid] + [x] + prop[pid+1:])
 
@@ -108,13 +107,14 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             for d_F in np.linspace(r_T+eps, 2*r_T, n[0], endpoint=False):
 
                 for theta_G in np.linspace(
-                    cls._get_theta_min(r_T, r_G, d_F)+eps, 3.1415, n[1]):
+                        cls._get_theta_min(r_T, r_G, d_F)+eps, 3.1415, n[1]):
 
-                    for d_P in np.linspace(eps,
-                        cls._get_FG(r_T, r_G, d_F, theta_G)-r_G-eps, n[2], endpoint=False):
+                    for d_P in np.linspace(
+                            eps, cls._get_FG(r_T, r_G, d_F, theta_G)-r_G-eps,
+                            n[2], endpoint=False):
 
                         if cls.get_constraints()[-1](
-                            (r_T, r_G, d_F, theta_G, d_P, eps)) < 0:
+                                (r_T, r_G, d_F, theta_G, d_P, eps)) < 0:
                             # This constraint is strictly decreasing wrt d_S:
                             # If there's no solution for d_S = 0, there's
                             # no solution at all.
@@ -126,7 +126,7 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
                             # a circle.
                             continue
                         for d_S in np.linspace(
-                            d_S_bnds[0]+eps, d_S_bnds[1]-eps, n[3]):
+                                d_S_bnds[0]+eps, d_S_bnds[1]-eps, n[3]):
                             yield r_T, r_G, d_F, theta_G, d_P, d_S
 
         @staticmethod
@@ -137,7 +137,7 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
 
         @staticmethod
         def _get_OP2_max(r_T, r_G, d_F, theta_G, d_P, d_S):
-            """Get the maximum distance between the center and the penholder."""
+            """Get the max distance between the center and the penholder."""
             OG = r_T + r_G
             OGx = OG*np.cos(theta_G)
             FG = np.sqrt(d_F**2 + OG**2 - 2*d_F*OGx)
@@ -154,10 +154,9 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             OG2 = OG**2
             d_F2 = d_F**2
             r_T2 = r_T**2
-            FG = np.sqrt(d_F2 - r_T2) + np.sqrt(OG2 - r_T2) # = FH + HG
+            FG = np.sqrt(d_F2 - r_T2) + np.sqrt(OG2 - r_T2)  # = FH + HG
             # Law of cosines
             return np.arccos((OG2 + d_F2 - FG**2) / (2*d_F*OG))
-
 
     class Simulator(Mechanism.Simulator):
         """Class for simulating the movement of the parts."""
@@ -234,7 +233,6 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             OP_rot = np.einsum('ijk,jk->ik', rot, OP)
 
             return OS, OP, OP_rot
-
 
     def get_curve(self, nb=2**6, per_turn=True):
         """Return an array of points sampled on the full curve.

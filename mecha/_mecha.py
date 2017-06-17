@@ -6,9 +6,9 @@ Bases classes for parameterized cyclic mechanisms.
 """
 import math
 
+
 class Mechanism:
     """Common base class for all cyclic mechanical assemblies."""
-
 
     class ConstraintSolver:
         """Class for handling design constraints.
@@ -24,7 +24,7 @@ class Mechanism:
         purpose (e.g. by filtering out redundant constraints, or avoiding
         costly bound computations).
         """
-        eps = 1e-4 # Absolute tolerance for constraint violation.
+        eps = 1e-4  # Absolute tolerance for constraint violation.
         nb_dprops = 0
         nb_cprops = 0
 
@@ -51,7 +51,6 @@ class Mechanism:
             """Sample the feasible domain."""
             raise NotImplementedError
 
-
     class Simulator:
         """Class for simulating the movement of the parts.
 
@@ -77,7 +76,6 @@ class Mechanism:
         def update_prop(self, pid, value):
             """Update the property referenced by the input index."""
             raise NotImplementedError
-
 
     def __init__(self, *props, verbose=False):
         self.constraint_solver = type(self).ConstraintSolver
@@ -115,8 +113,8 @@ class Mechanism:
 
         oldval = self.props[pid]
         self.props[pid] = value
-        if (not check
-            or self.constraint_solver.check_constraints(self.props)):
+        if (not check or
+                self.constraint_solver.check_constraints(self.props)):
             self._simulator.update_prop(pid, value)
             if update_state:
                 self._simulator.compute_state(self.assembly, 0.)
@@ -141,7 +139,6 @@ class Mechanism:
     @staticmethod
     def _create_assembly():
         raise NotImplementedError
-
 
 
 class DrawingMechanism(Mechanism):

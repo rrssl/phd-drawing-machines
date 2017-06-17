@@ -9,6 +9,7 @@ import os
 from _base import export_gear_svg, export_internal_ring_svg
 from gearprofile import Involute, Sinusoidal, Cycloidal, InvoluteElliptical
 
+
 def export_spiro(base, name):
     base = base.format("spiro")
     os.makedirs(base)
@@ -37,6 +38,7 @@ def export_spiro(base, name):
     export_internal_ring_svg(
         Cycloidal(rad_ring, int(rad_ring*circular_pitch)),
         base+name.format("cycloidal_internal"))
+
 
 def export_ellip_spiro(base, name):
     base = base.format("ellip_spiro")

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Ball-kicking leg
@@ -11,19 +10,18 @@ import scipy.optimize as opt
 from tinyik import Actuator, ConjugateGradientOptimizer
 
 from ._mecha import Mechanism, DrawingMechanism
-#from utils import skipends, farey
+# from utils import skipends, farey
 
 
 class Kicker(DrawingMechanism):
     """Ball-kicking leg."""
     param_names = ["$r_1$", "$r_2$", "$d_{12}$", "$l_1$", "$l_2$", "$d_e$"]
 
-
     class ConstraintSolver(Mechanism.ConstraintSolver):
         """Class for handling design constraints."""
         nb_dprops = 0
         nb_cprops = 6
-        max_nb_turns = 1 # Arbitrary value
+        max_nb_turns = 1  # Arbitrary value
         _prop_constraint_map = {
             0: (0, 2, 4, 5),
             1: (1, 2, 4, 5),
@@ -42,14 +40,14 @@ class Kicker(DrawingMechanism):
                 cstr[cls] = (
                     lambda p: p[0],            # 00: r1 >= 0
                     lambda p: p[1],            # 01 r2 >= 0
-                    lambda p: p[2] - p[0] - p[1] - cls.eps,
-                                               # 02: d_G1G2 > r1+r2
+                    lambda p: (                # 02: d_G1G2 > r1+r2
+                        p[2] - p[0] - p[1] - cls.eps),
                     lambda p: p[5],            # 03: d >= 0
                     # Sufficient non-singularity conditions.
-                    lambda p: p[3] + p[4] - p[0] - p[1] - p[2] - cls.eps,
-                                               # 04: l1+l2 > d_G1G2+r1+r2
-                    lambda p: p[2] - np.abs(p[0]-p[1]) - np.abs(p[3]-p[4]) - cls.eps
-                                               # 05: d_G1G2 - |r1-r2| > |l1-l2|
+                    lambda p: (                # 04: l1+l2 > d_G1G2+r1+r2
+                        p[3] + p[4] - p[0] - p[1] - p[2] - cls.eps),
+                    lambda p: (                # 05: d_G1G2 - |r1-r2| > |l1-l2|
+                        p[2] - np.abs(p[0]-p[1]) - np.abs(p[3]-p[4]) - cls.eps)
                     # Warning: this last condition works because both gears
                     # turn at the _same_speed_ with the same _phase_.
                     # The left member is min(d_P1P2).
@@ -65,12 +63,13 @@ class Kicker(DrawingMechanism):
             assert(0 <= pid < len(prop))
 
             if pid == 5:
-#                return 0., np.inf
-                return 0., 10.
+                # return 0., np.inf
+                return 0., 10.  # Arbitrary value.
 
             prop = list(prop)
             cs = cls.get_constraints()
             cs = [cs[i] for i in cls._prop_constraint_map[pid]]
+
             def get_cons_vec(x):
                 prop[pid] = x
                 return np.hstack([c(prop) for c in cs])
@@ -84,8 +83,8 @@ class Kicker(DrawingMechanism):
                 min_ = opt.fmin_cobyla(
                     lambda x: x, prop[pid], cons=get_cons_vec,
                     disp=0, catol=cls.eps)
-#                return min_, np.inf
-                return min_, 10.
+                # return min_, np.inf
+                return min_, 10.  # Arbitrary value.
             else:
                 prop = np.column_stack((prop, prop))
                 min_, max_ = opt.fmin_cobyla(
@@ -96,8 +95,7 @@ class Kicker(DrawingMechanism):
         @classmethod
         def sample_feasible_domain(cls, grid_resol=(10,)):
             """Sample the feasible domain."""
-            yield None
-
+            raise NotImplementedError
 
     class Simulator(Mechanism.Simulator):
         """Class for simulating the movement of the parts."""
@@ -190,7 +188,7 @@ class Kicker(DrawingMechanism):
             r1, r2, d_G1G2, l1, l2, d = self.props
             # Fixed points
             OG1 = np.array([[0.], [0.]])
-            OG2 = np.array([[d_G1G2],[0.]])
+            OG2 = np.array([[d_G1G2], [0.]])
             # Equations
             OP1 = r1 * np.vstack([np.cos(t), np.sin(t)])
             OP2 = r2 * np.vstack([np.cos(-t), np.sin(-t)]) + OG2
@@ -203,7 +201,6 @@ class Kicker(DrawingMechanism):
             rot_a = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
             OC = OP1 + (d+l1) * np.einsum('ijk,jk->ik', rot_a, P1P2 / d12)
             return OG1, OG2, OP1, OP2, OC
-
 
     def get_curve(self, nb=2**6, per_turn=True):
         """Return an array of points sampled on the full curve.

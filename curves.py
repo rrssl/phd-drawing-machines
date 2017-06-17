@@ -2,10 +2,11 @@
 """
 Library of parametric curves.
 
+The list of accepted parameters depends on the curve. All of them have at least
+a get_point(t) method (accepting a scalar or a 1D array).
+
 @author: Robin Roussel
 """
-
-#from fractions import Fraction
 import math
 import numpy as np
 import scipy.optimize as opt
@@ -14,15 +15,7 @@ import scipy.special as spec
 from utils import skipends, farey
 
 
-class Curve:
-    """Base class for curves."""
-
-    def get_point(self, t):
-        """Get the [x(t), y(t)] point(s)."""
-        raise NotImplementedError
-
-
-class Hypotrochoid(Curve):
+class Hypotrochoid:
     """Hypotrochoid class."""
 
     def __init__(self, ext_gear_radius, int_gear_radius, pole_dist):
@@ -53,7 +46,7 @@ class Hypotrochoid(Curve):
                           (R - r) * np.sin(t) - d * np.sin(t * (R - r) / r)])
 
 
-class Epitrochoid(Curve):
+class Epitrochoid:
     """Epitrochoid class."""
 
     def __init__(self, int_gear_radius, ext_gear_radius, pole_dist):
@@ -84,7 +77,7 @@ class Epitrochoid(Curve):
                           (R + r) * np.sin(t) - d * np.sin(t * (R + r) / r)])
 
 
-class Circle(Curve):
+class Circle:
     """Parametric curve of a circle."""
 
     def __init__(self, radius):
@@ -131,7 +124,7 @@ class Circle(Curve):
         return True
 
 
-class Ellipse(Curve):
+class Ellipse:
     """Parametric curve of an ellipse."""
 
     def __init__(self, semimajor, semiminor):
@@ -164,7 +157,9 @@ class Ellipse(Curve):
         return np.vstack([self.b * np.cos(t), self.a * np.sin(t)])
 
     def get_range(self, start, end, nb_pts):
-        """Get [x(t), y(t)] with the t values evenly sampled in [start, end]."""
+        """Get [x(t), y(t)] with the t values evenly sampled in [start, end].
+
+        """
         return self.get_point(np.linspace(start, end, nb_pts))
 
     def get_jac(self, t):
@@ -192,12 +187,12 @@ class Ellipse(Curve):
 
     def get_arclength_inv(self, s):
         """Get the parameter t given s(t)."""
-        obj_func = lambda t: self.get_arclength(t) - s
-        obj_jac = lambda t: np.diag(self.get_arclength_der(t))
         # Initialize by approximating with a circle of equal perimeter.
         init_guess = 2 * math.pi * s / self.get_perimeter()
-
-        return opt.fsolve(obj_func, init_guess, fprime=obj_jac)
+        return opt.fsolve(
+                lambda t: self.get_arclength(t) - s,
+                init_guess,
+                fprime=lambda t: np.diag(self.get_arclength_der(t)))
 
     def get_min_curvature(self):
         return self.b / (self.a * self.a) if self.a else np.inf
@@ -252,16 +247,17 @@ class Ellipse2(Ellipse):
 def _get_rotation(u, v):
     """Get the 2D rotation matrix s.t. v = Ru."""
     norms = np.sqrt((u[0] ** 2 + u[1] ** 2) * (v[0] ** 2 + v[1] ** 2))
-    cos = np.einsum('ij,ij->j', u, v) / norms # dot product
-    sin = (u[0] * v[1] - u[1] * v[0]) / norms # cross
+    cos = np.einsum('ij,ij->j', u, v) / norms  # dot product
+    sin = (u[0] * v[1] - u[1] * v[0]) / norms  # cross
     return np.array([[cos, -sin],
                      [sin, cos]])
 
 
-class Roulette(Curve):
+class Roulette:
     """Parametric roulette curve.
 
-    The 2 first inputs are expected to be Curve objects.
+    The 2 first inputs are expected to be curves objects with the same methods
+    as Ellipse.
 
     Two parametrizations are available: the contact point trajectory is
     described by the parameter of either the moving or the static curve.
@@ -330,8 +326,8 @@ class Roulette(Curve):
         length is an even function and (T / 2) % step == 0,
             - TODO: the curve is symmetric wrt the x-axis.
         """
-        if (not reuse
-            or self._check_stale_data([start, end, nb_pts])):
+        if (not reuse or
+                self._check_stale_data([start, end, nb_pts])):
             self._compute_range_data(start, end, nb_pts)
         return self._get_curve_from_data()
 
@@ -383,7 +379,7 @@ class Roulette(Curve):
             # Compute s(t) on [0, T/2].
             svals = ref_obj.get_arclength(tr[:(len(tr) + 1) // 2])
             # Mirror the variation, integrate and shift.
-            svals_diff= np.cumsum((svals[1:] - svals[:-1])[::-1]) + svals[-1]
+            svals_diff = np.cumsum((svals[1:] - svals[:-1])[::-1]) + svals[-1]
             svals = np.concatenate([svals, svals_diff])
         else:
             # Compute s(t) on [0, T].
@@ -456,7 +452,7 @@ class Roulette(Curve):
         return self._get_curve_from_data()
 
 
-class CircleInvolute(Curve):
+class CircleInvolute:
     """Parametric involute of a circle."""
 
     def __init__(self, radius, phase=0):
@@ -472,4 +468,3 @@ class CircleInvolute(Curve):
         cos = np.cos(t + self.phi)
         sin = np.sin(t + self.phi)
         return self.r * np.vstack([cos + t * sin, sin - t * cos])
-

@@ -1,9 +1,6 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Dynamically computing the invariant space of a given feature.
-
-Note: this module will replace smarteditor.py in the future.
 
 @author: Robin Roussel
 """
@@ -39,20 +36,20 @@ def fit_linear_map(s, w=None, ndim=2):
 
     Parameters
     ----------
-    s: N_samples x N_dims numpy array
+    s : N_samples x N_dims numpy array
         Samples.
-    w: N_samples numpy array, optional
+    w : N_samples numpy array, optional
         Weights.
-    ndim: int, optional
+    ndim : int, optional
         Number of dimensions _of the new basis_.
 
     Returns
     -------
-    phi: callable
+    phi : callable
         Linear map from the new basis to the old one.
-    phi_inv: callable
+    phi_inv : callable
         Inverse of phi.
-    pca: WPCA
+    pca : WPCA
         Instance of WPCA used for the fitting.
     """
     assert(s.shape[0] == w.size)
@@ -67,6 +64,7 @@ def fit_linear_map(s, w=None, ndim=2):
         Accepts a N_samples x N_new_dims input.
         """
         return pca.inverse_transform(np.asarray(p).reshape(-1, ndim))
+
     def phi_inv(p):
         """Transform data from the old space to the new.
 
@@ -78,27 +76,58 @@ def fit_linear_map(s, w=None, ndim=2):
 
 
 class InvariantSpaceFinder:
-    # TODO: update docstring with smarteditor's docstring
     """Find the invariant space of a constraint applied to mechanisms with 2
     continuous properties or more.
 
+    Parameters
+    ----------
+    mecha_type : Mechanism
+        Type of mechanism (not an instance).
+    props : sequence
+        Sequence of initial values for the mechanism's properties.
+    init_poi_id : int
+        Index of the point of interest when the machine is in its initial
+        configuration.
+    get_corresp : callable, optional
+        Tracking function. See the 'get_corresp' method for the expected
+        signature. This method should either be given as a parameter here, or
+        inherit this class and override the method.
+    get_features : callable, optional
+        Function computing the features at the PoI of a given curve. See the
+        'get_features' method for the expected signature. This method
+        should either be given as a parameter here, or inherit this class and
+        override the method.
+    pts_per_dim : int, optional
+        Number of points sampled per dimension. Default is 5.
+    keep_ratio : float, optional
+        Fraction of the highest ranking samples to be kept for the invariant
+        space regression. If the PCA complains about not having enough samples,
+        try increasing it. Default is 0.05.
+    nbhood_size : float, optional
+        Size of the local neighborhood used for sampling the valid property
+        space, relative to its extent along each dimension. Default is 0.1.
+    ndim_invar_space : int, optional
+        Number of dimensions of the invariant subspace. Depends on the number
+        of algebraic constraints. Fixed by hand in this version. Default is 2.
+    nb_crv_pts : int, optional
+        Density of points sampled along each curve. Passed to the 'get_curve'
+        method of each mechanism. What 'density' means kind of depends on the
+        parameterization of the mechanism. Default is 2**6.
+
     Attributes
     ----------
-    nbhood_size: float
-        Relative size of the local neighborhood in property space.
-    ndim_invar_space: int
-        Number of dimensions of the invariant subspace.
-        Depends on the number of algebraic constraints.
-    phi_inv: callable
+    phi: callable
+        Linear map fitted to the samples [phi(new) = old].
+    phi_inv : callable
         Inverse of the linear map fitted to the samples [phi_inv(old) = new].
-    pca: WPCA object
+    pca : WPCA object
         Instance of WPCA used to fit the linear map.
-    cont_prop_invar_space: 1D numpy array
+    cont_prop_invar_space : 1D numpy array
         Current continuous property vector expressed in the new coordinates
         (i.e. the coordinates of the current linear approximation).
     """
     def __init__(self, mecha_type, props, init_poi_id, get_corresp=None,
-                 get_features = None, pts_per_dim=5, keep_ratio=.05,
+                 get_features=None, pts_per_dim=5, keep_ratio=.05,
                  nbhood_size=.1, ndim_invar_space=2, nb_crv_pts=2**6):
         # Initial parameters.
         nb_dprops = mecha_type.ConstraintSolver.nb_dprops
@@ -110,7 +139,7 @@ class InvariantSpaceFinder:
         self.ndim_invar_space = ndim_invar_space
         self.mecha = mecha_type(*props)
         self.nb_crv_pts = nb_crv_pts
-        self.labels = mecha_type.param_names[nb_dprops:] # TODO: move it to GUI demos
+        self.labels = mecha_type.param_names[nb_dprops:]  # TODO: move to GUI
         if get_corresp is not None:
             self.get_corresp = get_corresp
         if get_features is not None:
@@ -129,8 +158,8 @@ class InvariantSpaceFinder:
         self.phi = None
         self.phi_inv = None
         self.pca = None
-        self.new_cont_prop = None # TODO: either use it or remove it
-        self.invar_space_bnds = None # TODO: either use it or remove it
+        self.new_cont_prop = None  # TODO: either use it or remove it
+        self.invar_space_bnds = None  # TODO: either use it or remove it
         self.compute_invar_space()
 
     def compute_invar_space(self):
@@ -175,6 +204,7 @@ class InvariantSpaceFinder:
         assert(0 <= pid < self.ndim_invar_space)
         # TODO: use the same optimizations as in ConstraintSolver.get_bounds
         dp, cpis, phi = self.disc_prop, self.cont_prop_invar_space, self.phi
+
         def adapt(cstr):
             return lambda x: cstr(
                 np.r_[dp, phi(np.r_[cpis[:pid], x, cpis[pid+1:]]).ravel()])
@@ -221,7 +251,7 @@ class InvariantSpaceFinder:
 
         Parameters
         ----------
-        samples: N_samples x N_props iterable
+        samples: N_samples x N_props sequence
             List of samples to which attribute a score.
         """
         curves = []
@@ -256,6 +286,7 @@ class InvariantSpaceFinder:
         cstrs = self.mecha.constraint_solver.get_constraints()
         # Start at 2*n_disc_prop to remove constraints on discrete props.
         # TODO: use the same optimizations as in ConstraintSolver.get_bounds
+
         def adapt(cstr):
             return lambda p: cstr(np.r_[dp, p])
         cstrs = [adapt(cstrs[i]) for i in range(2*len(dp), len(cstrs))]
@@ -285,10 +316,11 @@ class InvariantSpaceFinder:
 
         Parameters
         ----------
-        nb: int
-            Number of points _per dimension_.
-        extent: float
+        nb: int, optional
+            Number of points _per dimension_. Default is 5.
+        extent: float, optional
             Relative size of the neighb. wrt the space between the bounds.
+            Default is 0.1.
         """
         ids = range(len(self.disc_prop),
                     len(self.disc_prop)+len(self.cont_prop))
@@ -299,9 +331,11 @@ class InvariantSpaceFinder:
         l_bnd = np.vstack([props - rad, props + rad])
         # Get valid samples.
         coords = [np.linspace(a, b, nb) for a, b in l_bnd.T]
+
         # TODO: now that constraints are vectorized, use numpy here
-        condition = lambda p: self.mecha.constraint_solver.check_constraints(
-            self.mecha.props[:ids[0]]+list(p))
+        def condition(p):
+            return self.mecha.constraint_solver.check_constraints(
+                self.mecha.props[:ids[0]]+list(p))
         samples = filter(condition, product(*coords))
         # TODO: Check/Extract connected region
         return samples

@@ -89,7 +89,7 @@ class DemoOptions:
 
     def show_before_after(self, event):
         if self.demo.new_crv is not None:
-            fig = plt.figure(2, figsize=(16,8))
+            fig = plt.figure(2, figsize=(16, 8))
 
             ax1 = fig.add_subplot(121)
             ax1.set_aspect('equal')
@@ -109,30 +109,7 @@ class DemoOptions:
 
 
 class InvarDemo(InvariantSpaceFinder):
-    """Find the invariant subspace.
-
-    Attributes
-    ----------
-    disc_prop
-    cont_prop
-    nb_crv_pts
-    mecha
-
-    pts_per_dim
-    keep_ratio
-
-    ref_crv
-    ref_par
-    ref_poi
-
-    new_crv
-    new_poi
-
-    phi
-    bnds_invar_space
-
-    labels
-    """
+    """Base class for constrained exploration apps. """
 
     ### VIEW
 
@@ -226,7 +203,7 @@ class InvarDemo(InvariantSpaceFinder):
 #        b_show_mecha.on_clicked(opt.show_mecha)
         # Show before/after.
         b_show_ba = Button(self.fig.add_axes([.3, .05, .1, .05]),
-                            "Show before/after")
+                           "Show before/after")
         b_show_ba.on_clicked(opt.show_before_after)
 
         return opt,  (b_hide_crv, b_show_ba)
@@ -342,17 +319,20 @@ def fit_poly(s, d=2, w=None):
 class TwoDimsDemo(InvarDemo):
     """Specialization for mechanisms with 2 continuous properties.
 
+    This one is only for visual demonstration with the elliptic Spirograph,
+    therefore it works a bit differently.
+
     Attributes
     ----------
-    deg_invar_poly: int
+    deg_invar_poly : int
         Degree of the polynomial used to fit the invariant space.
-    samples: N_samples x N_cont_props numpy array
+    samples : N_samples x N_cont_props numpy array
         Array of valid property samples (for display).
-    scores: N_samples numpy array
+    scores : N_samples numpy array
         Array of invariance scores corresponding to each sample.
-    opt_path: N_cont_props x pts_per_dim numpy array
+    opt_path : N_cont_props x pts_per_dim numpy array
         Sequence of points optimally close to the solution space.
-    phi_opt: callable
+    phi_opt : callable
         Interpolation of the previous path.
     """
     def __init__(self, disc_prop, cont_prop, init_poi_id, pts_per_dim=20,
@@ -409,7 +389,7 @@ class TwoDimsDemo(InvarDemo):
             print("Warning: too few samples for the "
                   "regression ({})".format(len(ids)))
         self.phi = fit_poly(self.samples[ids], w=self.scores[ids],
-                             d=self.deg_invar_poly)
+                            d=self.deg_invar_poly)
         # Redefine bounds.
         self.bnds_invar_space = (self.samples[ids, 0].min(),
                                  self.samples[ids, 0].max())
@@ -460,7 +440,7 @@ class TwoDimsDemo(InvarDemo):
         # Draw the position of the new curve.
         self.new_crv_pos = frame.scatter(
             [], [], s=300, c=self.new_crv_plt.get_color(), marker='*',
-            edgecolor='none', zorder=3,label="New curve")
+            edgecolor='none', zorder=3, label="New curve")
         # Draw the legend.
         # Dummy plot to avoid the ugly patch symbol of the boundary.
         frame.plot([], [], c='r', linewidth=2, label="Boundary")
@@ -493,9 +473,11 @@ class TwoDimsDemo(InvarDemo):
         p2 = []
         for val in p1:
             self.mecha.update_prop(2, val)
+
             def obj_func(x):
                 self.mecha.update_prop(3, x[0])
-                crv = self.mecha.get_curve(self.nb_crv_pts)#[:, :-1]
+                crv = self.mecha.get_curve(self.nb_crv_pts)
+#                crv = self.mecha.get_curve(self.nb_crv_pts)[:, :-1]
                 poi, par = self.get_corresp(self.ref_crv, self.ref_par, [crv])
                 ft = self.get_features(crv, par[0], poi[0])
                 diff = ref_ft - ft
@@ -529,13 +511,13 @@ class TwoDimsDemo(InvarDemo):
                      'valinit': self.cont_prop[0],
                      'label': "Approx.\nsolution",
                      'color': 'c'
-                    }),
+                     }),
             ('opt', {'valmin': bounds[0],
                      'valmax': bounds[1],
                      'valinit': self.cont_prop[0],
                      'label': "Optimal\nsolution",
                      'color': 'm'
-                    })
+                     })
             )
         return ControlPane(self.fig, data, self.on_slider_update, subplot_spec,
                            show_value=False)
@@ -565,9 +547,11 @@ class TwoDimsDemo(InvarDemo):
 class ManyDimsDemo(InvarDemo):
     """Specialization for mechanisms with 2 continuous properties or more.
 
+    This is the version that is used in demos.
+
     Attributes
     ----------
-    slider_active: bool
+    slider_active : bool
         Used to know if the slider is being used.
     """
     def __init__(self, *args, **kwargs):

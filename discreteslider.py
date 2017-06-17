@@ -2,27 +2,29 @@
 """
 Specialization of matplotlib's Slider widget to take discrete values.
 
-@author: Robin R. from a script by an anonymous author, cf. source link below.
-
-https://stackoverflow.com/questions/23703105/discrete-slider-in-matplotlib-widget
+@author: Robin Roussel & anonymous author
+Source:
+    stackoverflow.com/questions/23703105/discrete-slider-in-matplotlib-widget
 """
 from matplotlib.widgets import Slider
 from numpy import float_
 
+
 class DiscreteSlider(Slider):
-    """A matplotlib slider widget with discrete steps."""
+    """A matplotlib slider widget with discrete steps.
+
+    Parameters are identical to Slider.__init__, except for the new keyword
+    'allowed_vals', which specifies the allowed positions of the slider.
+    """
+
     def __init__(self, *args, **kwargs):
-        """
-        Identical to Slider.__init__, except for the new keyword 'allowed_vals'.
-        This keyword specifies the allowed positions of the slider
-        """
         self.allowed_vals = kwargs.pop('allowed_vals', None)
         if kwargs.get('valfmt') is None:
             kwargs['valfmt'] = '%.0f'
         self.previous_val = kwargs['valinit']
         Slider.__init__(self, *args, **kwargs)
-        if self.allowed_vals == None:
-            self.allowed_vals = [self.valmin,self.valmax]
+        if self.allowed_vals is None:
+            self.allowed_vals = [self.valmin, self.valmax]
 
     def set_val(self, val):
         # If 'valmin' or 'valmax' is given as an int, it will be passed as an

@@ -14,18 +14,20 @@ import pois
 
 
 class PoISelector:
+    """
+    PoI selector app.
+
+    Parameters
+    ----------
+    drawing: (2,n) iterable
+        The drawing curve.
+    id2time: callable
+        Used to convert a point ID to the corresponding time parameter.
+    """
 
     def __init__(self, drawing, id2time):
-        """
-        Parameters
-        ----------
-        drawing: 2 x N_points iterable
-            The drawing curve.
-        id2time: callable
-            Used to convert a point ID to the corresponding time parameter.
-        """
         self.drw = drawing
-        self.id2time = id2time # Method converting IDs to corresp. time params.
+        self.id2time = id2time  # Method converting ID to corresp. time param.
         self.opt_labels = ('Show curvature maxima', 'Show intersections')
         self._init_data()
         self._init_draw()
@@ -36,7 +38,7 @@ class PoISelector:
             pois.find_krv_max(self.drw),
             pois.find_isect(self.drw)
             )
-        self.pois_slices = ( # Column(s) where to find the PoI index(es).
+        self.pois_slices = (  # Column(s) where the PoI index(es) are.
             slice(2, 3),
             slice(2, 4)
             )
@@ -60,8 +62,8 @@ class PoISelector:
         self.pois_plots = [
             # Scatter is better than plot here because in the latter, lines
             # would fire a PickEvent as well (even if they have 0 width).
-            self.ax.scatter(*pois[:, :2].T, s=100, c=c, edgecolor='w', zorder=3,
-                            picker=True, label=l)
+            self.ax.scatter(*pois[:, :2].T, s=100, c=c, edgecolor='w',
+                            zorder=3, picker=True, label=l)
             for pois, c, l in zip(self.pois, colors, labels)
             ]
         self.ax.legend()
@@ -73,7 +75,6 @@ class PoISelector:
         self.opt_btns.on_clicked(self.on_btn_press)
 
         self.fig.canvas.mpl_connect('pick_event', self.on_pick)
-#        self.fig.canvas.mpl_connect('motion_notify_event', self.on_move)
 
     def on_pick(self, event):
         # If a PoI is clicked, give its ID
@@ -97,18 +98,14 @@ class PoISelector:
         plt.ioff()
         plt.show()
 
+
 def main():
-    import mecha
-#    m = mecha.HootNanny(
-#        *[15, 2, 5, 1.3551568627450976, 1.6666666666666643, 3.4313725490196063, 18.72549019607844, 23.431372549019613])
-#    drawing = m.get_curve(2**8)
-#    m = mecha.Thing(
-#        *[0.09191176470588247, 0.1663602941176472, 0.08226102941176472, 0.020220588235294157, 0.38419117647058854])
-#    drawing = m.get_curve(2**8)
-    m = mecha.Kicker(*[4., 2., 8., 8., 7., 6.])
-    drawing = m.get_curve(2**6)
+    from _config import data
+    m = data['type'](*data['param'])
+    drawing = m.get_curve(data['density'])
     app = PoISelector(drawing, m.id2time)
     app.run()
+
 
 if __name__ == "__main__":
     main()

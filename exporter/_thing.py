@@ -16,12 +16,14 @@ from gearprofile import Involute
 from mecha import Thing
 
 
-def export_thing_base_svg(asb, rad_tt, tt_hole_size, gears_hole_size, filename):
+def export_thing_base_svg(asb, rad_tt, tt_hole_size, gears_hole_size,
+                          filename):
     base_thickness = .3
     support_base_height = .5
     margin = .1 * rad_tt
     nb_gears = sum(1 for name in asb.keys() if name.startswith('gear'))
-    gpos = np.hstack([asb['gear_{}'.format(i)]['pos'] for i in range(nb_gears)])
+    gpos = np.hstack([asb['gear_{}'.format(i)]['pos']
+                      for i in range(nb_gears)])
     gpos = np.hstack([gpos, asb['dgear']['pos']])
     xmin, ymin = np.abs(gpos.min(axis=1))
     xmax, ymax = gpos.max(axis=1)
@@ -43,16 +45,20 @@ def export_thing_base_svg(asb, rad_tt, tt_hole_size, gears_hole_size, filename):
     #  -------
     add_support_holes_line(cut, cont,
                            (3*margin, dims[1]-2*margin-base_thickness),
-                           (dims[0]-6*margin, base_thickness*.95), nb, axis='x')
+                           (dims[0]-6*margin, base_thickness*.95),
+                           nb, axis='x')
     add_support_holes_line(cut, cont,
                            (3*margin, 2*margin),
-                           (dims[0]-6*margin, base_thickness*.95), nb, axis='x')
+                           (dims[0]-6*margin, base_thickness*.95),
+                           nb, axis='x')
     add_support_holes_line(cut, cont,
                            (2*margin, 3*margin),
-                           (base_thickness*.95, dims[1]-6*margin), nb, axis='y')
+                           (base_thickness*.95, dims[1]-6*margin),
+                           nb, axis='y')
     add_support_holes_line(cut, cont,
                            (dims[0]-2*margin-base_thickness, 3*margin),
-                           (base_thickness*.95, dims[1]-6*margin), nb, axis='y')
+                           (base_thickness*.95, dims[1]-6*margin),
+                           nb, axis='y')
     tot = support_base_height + base_thickness
     add_support_line(
         cut, cont, [margin, dims[0]+2*margin], dims[0]-6*margin,
@@ -144,7 +150,7 @@ def export_thing(props, scale, base, name):
         if coord.get('pos') is not None:
             coord['pos'] *= scale
     rad_tt = scale
-    rad_dgear = .5 * rad_tt # Radius of the driving gear
+    rad_dgear = .5 * rad_tt  # Radius of the driving gear
     ang_dgear = np.pi * 5 / 4
     asb['dgear'] = {
         'pos': (rad_tt + rad_dgear) * np.vstack([math.cos(ang_dgear),
@@ -183,7 +189,7 @@ def export_thing(props, scale, base, name):
         gname = base + name.format("gear_{}".format(i+1))
         export_gear_svg(Involute(rad, int(rad*circular_pitch)), gname, holes,
                         center_hole_size=2*rad_gear_pivot)
-    holes = [(.8* rad_dgear, 0.)]
+    holes = [(.8 * rad_dgear, 0.)]
     gname = base + name.format("dgear")
     export_gear_svg(Involute(rad_dgear, int(rad_dgear*circular_pitch)), gname,
                     holes, center_hole_size=2*rad_gear_pivot)
@@ -208,7 +214,7 @@ def export_thing(props, scale, base, name):
             vec = (asb['pivot_{}'.format(i+1)]['pos']
                    - asb['joint_{}'.format(i)]['pos'])
         dist = np.sqrt(vec[0]**2 + vec[1]**2)
-        arm_length = dist.max() * 1.1 # Safety
+        arm_length = dist.max() * 1.1  # Safety
 
         aname = base + name.format("arm_{}".format(i+1))
         export_thing_arm_svg(notch_x, notch_length, notch_depth,

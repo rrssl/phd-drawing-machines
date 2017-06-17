@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Basic Spirograph
@@ -16,12 +15,11 @@ from curves import Hypotrochoid
 class BaseSpirograph(DrawingMechanism):
     """Internal Spirograph with circular gears."""
 
-
     class ConstraintSolver(Mechanism.ConstraintSolver):
         """Class for handling design constraints."""
         nb_dprops = 2
         nb_cprops = 1
-        max_nb_turns = 20 # Arbitrary value
+        max_nb_turns = 20  # Arbitrary value
 
         @classmethod
         def get_constraints(cls, cstr={}):
@@ -57,7 +55,6 @@ class BaseSpirograph(DrawingMechanism):
             for r, R in skipends(farey(n_R)):
                 for d in d_arr[r - 1]:
                     yield R, r, d
-
 
     class Simulator(Mechanism.Simulator):
         """Class for simulating the movement of the parts."""
@@ -112,7 +109,6 @@ class BaseSpirograph(DrawingMechanism):
                 self.trocho.r = value
             else:
                 self.trocho.d = value
-
 
     def get_curve(self, nb=2**6, per_turn=True):
         """Return an array of points sampled on the full curve.

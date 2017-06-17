@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 Smart editor
+Note: this module will be deprecated and replaced by 'invarspace.py'. It's only
+used by the Spyrou app anymway.
 
 @author: Robin Roussel
 """

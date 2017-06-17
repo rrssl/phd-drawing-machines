@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Hoot-Nanny
@@ -19,12 +18,11 @@ class HootNanny(DrawingMechanism):
     param_names = ["r_T", "r_{G1}", "r_{G2}",
                    r"$ \theta_{12}$", "$d_1$", "$d_2$", "$l_1$", "$l_2$"]
 
-
     class ConstraintSolver(Mechanism.ConstraintSolver):
         """Class for handling design constraints."""
         nb_dprops = 3
         nb_cprops = 5
-        max_nb_turns = 15 # Arbitrary value
+        max_nb_turns = 15  # Arbitrary value
         _prop_constraint_map = {
             0: (0, 1, 13, 15, 16, 17, 18),
             1: (2, 3, 9, 12, 13, 16, 17, 18),
@@ -43,32 +41,32 @@ class HootNanny(DrawingMechanism):
                 return cstr[cls]
             except KeyError:
                 cstr[cls] = (
-                    lambda p: p[0] - cls.eps,               # 00: r_T > 0
-                    lambda p: cls.max_nb_turns - p[0],      # 01: r_T <= B
-                    lambda p: p[1] - cls.eps,               # 02 r_G1 > 0
-                    lambda p: cls.max_nb_turns - p[1],      # 03: r_G1 <= B
-                    lambda p: p[2] - cls.eps,               # 04 r_G2 > 0
-                    lambda p: cls.max_nb_turns - p[2],      # 05: r_G2 <= B
-                    lambda p: p[3],                         # 06: theta12 >= 0
-                    lambda p: math.pi - p[3],               # 07: theta12 <= pi
-                    lambda p: p[4],                         # 08: d1 >= 0
-                    lambda p: p[1] - p[4],                  # 09: d1 <= r_G1
-                    lambda p: p[5],                         # 10: d2 >= 0
-                    lambda p: p[2] - p[5],                  # 11: d2 <= r_G2
-                    lambda p: p[6] - p[1] - p[4],           # 12: l1 >= r_G1+d1
-                    lambda p: 2*p[0] + p[1] - p[4] - p[6],
-                                                    # 13: l1 <= 2r_T+r_G1-d1
-                    lambda p: p[7] - p[2] - p[5],           # 14: l2 >= r_G2+d2
-                    lambda p: 2*p[0] + p[2] - p[5] - p[7],
-                                                    # 15: l2 <= 2r_T+r_G2-d2
-                    lambda p: cls._get_G1G2_sq(*p[:4]) - (p[1]+p[2])**2,
-                                                    # 16: G1G2 >= r_G1+r_G2
+                    lambda p: p[0] - cls.eps,           # 00: r_T > 0
+                    lambda p: cls.max_nb_turns - p[0],  # 01: r_T <= B
+                    lambda p: p[1] - cls.eps,           # 02 r_G1 > 0
+                    lambda p: cls.max_nb_turns - p[1],  # 03: r_G1 <= B
+                    lambda p: p[2] - cls.eps,           # 04 r_G2 > 0
+                    lambda p: cls.max_nb_turns - p[2],  # 05: r_G2 <= B
+                    lambda p: p[3],                     # 06: theta12 >= 0
+                    lambda p: math.pi - p[3],           # 07: theta12 <= pi
+                    lambda p: p[4],                     # 08: d1 >= 0
+                    lambda p: p[1] - p[4],              # 09: d1 <= r_G1
+                    lambda p: p[5],                     # 10: d2 >= 0
+                    lambda p: p[2] - p[5],              # 11: d2 <= r_G2
+                    lambda p: p[6] - p[1] - p[4],       # 12: l1 >= r_G1+d1
+                    lambda p: (                         # 13: l1 <= 2r_T+r_G1-d1
+                        2*p[0] + p[1] - p[4] - p[6]),
+                    lambda p: p[7] - p[2] - p[5],       # 14: l2 >= r_G2+d2
+                    lambda p: (                         # 15: l2 <= 2r_T+r_G2-d2
+                        2*p[0] + p[2] - p[5] - p[7]),
+                    lambda p: (                         # 16: G1G2 >= r_G1+r_G2
+                        cls._get_G1G2_sq(*p[:4]) - (p[1]+p[2])**2),
                     # Sufficient non-singularity condition.
-                    lambda p: (p[6]+p[7]-p[4]-p[5])**2 - cls._get_G1G2_sq(*p[:4]),
-                                                    # 17: l1+l2 >= G1G2+d1+d2
+                    lambda p: (                         # 17: l1+l2 >= G1G2+d1+d2
+                        (p[6]+p[7]-p[4]-p[5])**2 - cls._get_G1G2_sq(*p[:4])),
                     # Drawing-inside condition.
-                    lambda p: p[0]**2 - cls._get_OH_sq_max(*p)
-                                                    # 18: OH_max <= r_T
+                    lambda p: (                         # 18: OH_max <= r_T
+                        p[0]**2 - cls._get_OH_sq_max(*p))
                     )
                 return cstr[cls]
 
@@ -79,6 +77,7 @@ class HootNanny(DrawingMechanism):
             prop = np.column_stack((prop, prop))
             cs = cls.get_constraints()
             cs = [cs[i] for i in cls._prop_constraint_map[pid]]
+
             def get_cons_vec(x):
                 prop[pid] = x
                 return np.hstack([c(prop) for c in cs])
@@ -96,7 +95,6 @@ class HootNanny(DrawingMechanism):
                 max_ = math.floor(max_)
 
             return min_, max_
-
 
         @classmethod
         def sample_feasible_domain(cls, grid_resol=(4, 4, 4, 4, 4)):
@@ -117,7 +115,7 @@ class HootNanny(DrawingMechanism):
                         nonsing_cons,
                         (p[0]**2 - cls._get_OH_sq_max(*p)
                          if (nonsing_cons >= 0.).all()
-                         else (-1.,-1.))
+                         else (-1., -1.))
                         ))
                 return assign_and_eval_constraints
 
@@ -141,12 +139,12 @@ class HootNanny(DrawingMechanism):
                             continue
 
                         for theta_12 in np.linspace(
-                            b_theta_12[0], b_theta_12[1], n[0]):
+                                b_theta_12[0], b_theta_12[1], n[0]):
                             yield r_T, r_G1, r_G2, theta_12, d1, d2, l1, l2
 
             def sample_gear2_and_cont(r_T, r_G1):
                 itr = farey(cls.max_nb_turns)
-                next(itr) # Skip first element (0-radius)
+                next(itr)  # Skip first element (0-radius)
                 for r_G2, r_T_ in itr:
                     yield from sample_cont(r_T, r_G1, r_G2*r_T/r_T_)
 
@@ -168,30 +166,33 @@ class HootNanny(DrawingMechanism):
             """Get the maximum distance between the center and the pen."""
             OG2 = (r_T + r_G2) * np.vstack((np.cos(theta_12),
                                             np.sin(theta_12)))
-            G2G1 = -OG2 # shape = (2,n)
+            G2G1 = -OG2  # shape = (2,n)
             G2G1[0] += r_T + r_G1
-            d_G2G1_sq = G2G1[0]**2 + G2G1[1]**2 # shape = (n,)
-            d_G2G1 = np.sqrt(d_G2G1_sq) # shape = (n,)
+            d_G2G1_sq = G2G1[0]**2 + G2G1[1]**2  # shape = (n,)
+            d_G2G1 = np.sqrt(d_G2G1_sq)  # shape = (n,)
             # Compute the 4 candidate points for the max distance.
             errval = np.max(r_T)**2 + 1.
-            d_G1H = np.array((l1-d1, l1-d1, l1+d1, l1+d1)) # shape = (4,n)
-            d_G2H = np.array((l2-d2, l2+d2, l2-d2, l2+d2)) # shape = (4,n)
+            d_G1H = np.array((l1-d1, l1-d1, l1+d1, l1+d1))  # shape = (4,n)
+            d_G2H = np.array((l2-d2, l2+d2, l2-d2, l2+d2))  # shape = (4,n)
             # Find OH with the law of cosines
             cos_a = (d_G2G1_sq + d_G2H**2 - d_G1H**2) / (2.*d_G2G1*d_G2H)
-            sin_a = np.empty_like(cos_a) # shape = (4,n)
-            valid = abs(cos_a) <= 1. # find valid triangles
-            sin_a[valid] = -np.sqrt(1. - cos_a[valid]**2) # we want sin < 0 for all t
+            sin_a = np.empty_like(cos_a)  # shape = (4,n)
+            valid = abs(cos_a) <= 1.  # find valid triangles
+            sin_a[valid] = -np.sqrt(
+                    1. - cos_a[valid]**2)  # we want sin < 0 for all t
             rot_a = np.array(((cos_a, -sin_a),
-                              (sin_a,  cos_a))) # shape = (2,2,4,n)
-            rot_a = np.rollaxis(rot_a, 2).reshape(4, 2, 2, -1) # shape = (4,2,2,n)
-            d_G2H = d_G2H.reshape(4, 1, -1) # shape = (4,1,n)
-            OH = OG2 + np.einsum('ijkl,kl->ijl', rot_a, G2G1)*d_G2H/d_G2G1 # shape = (4,2,n)
+                              (sin_a,  cos_a)))  # shape = (2,2,4,n)
+            rot_a = np.rollaxis(
+                    rot_a, 2).reshape(4, 2, 2, -1)  # shape = (4,2,2,n)
+            d_G2H = d_G2H.reshape(4, 1, -1)  # shape = (4,1,n)
+            OH = OG2 + np.einsum(
+                    'ijkl,kl->ijl', rot_a, G2G1
+                    ) * d_G2H / d_G2G1  # shape = (4,2,n)
             # Compute squared distances.
-            d_OH_sq = OH[:, 0]**2 + OH[:, 1]**2 # shape = (4,n)
+            d_OH_sq = OH[:, 0]**2 + OH[:, 1]**2  # shape = (4,n)
             d_OH_sq[~valid] = errval
             # Return the maximum squared distance among the 4 candidates.
-            return d_OH_sq.max(0) # shape = (n,)
-
+            return d_OH_sq.max(0)  # shape = (n,)
 
     class Simulator(Mechanism.Simulator):
         """Class for simulating the movement of the parts."""
@@ -274,8 +275,8 @@ class HootNanny(DrawingMechanism):
             d21_sq = P2P1[0]**2 + P2P1[1]**2
             d21 = np.sqrt(d21_sq)
             # Angle between arm 2 and P2P1 (law of cosines)
-            cos_a = (d21_sq + l2**2 - l1**2)  / (2 * d21 * l2)
-            sin_a = -np.sqrt(1. - cos_a**2) # sin < 0. for all t by convention
+            cos_a = (d21_sq + l2**2 - l1**2) / (2 * d21 * l2)
+            sin_a = -np.sqrt(1. - cos_a**2)  # sin < 0. for all t by convention
             # Pen-holder in referential R_0
             rot_a = np.array([[cos_a, -sin_a],
                               [sin_a,  cos_a]])
@@ -288,7 +289,6 @@ class HootNanny(DrawingMechanism):
             OH_rot = np.einsum('ijk,jk->ik', rot, OH)
 
             return OP1, OP2, OH, OH_rot
-
 
     def get_curve(self, nb=2**6, per_turn=True):
         """Return an array of points sampled on the full curve.

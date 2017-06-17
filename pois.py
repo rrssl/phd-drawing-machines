@@ -36,7 +36,8 @@ def find_krv_max(poly, closed=True):
         N_PoIs x N_features array of PoIs.
     """
     krv = compute_curvature(poly, closed)
-    if closed: krv = krv[:-1]
+    if closed:
+        krv = krv[:-1]
     peaks = sig.argrelmax(krv, mode=('wrap' if closed else 'clip'))[0]
 
     pois = np.vstack([poly[:, peaks], peaks, krv[peaks]]).T
@@ -81,28 +82,25 @@ def find_isect(poly):
     return pois
 
 
-class PoITracker:
-    """Tracks corresponding PoIs in the property space of a mechanism."""
+# class PoITracker:
+#     """Tracks corresponding PoIs in the property space of a mechanism."""
 
-    def __init__(self, mecha, ref_par, prop_samples, poi_finder):
-        self.mecha = mecha
-        self.ref_par = ref_par
-        n = len(self.mecha.props)
-        self.prop_samples = np.asarray(prop_samples).reshape(-1, n)
-        self.poi_finder = poi_finder
+#     def __init__(self, mecha, ref_par, prop_samples, poi_finder):
+#         self.mecha = mecha
+#         self.ref_par = ref_par
+#         n = len(self.mecha.props)
+#         self.prop_samples = np.asarray(prop_samples).reshape(-1, n)
+#         self.poi_finder = poi_finder
 
-        self.loc_radius = np.pi / 2**3
-        self.loc_size = 2**4 - 1
+#         self.loc_radius = np.pi / 2**3
+#         self.loc_size = 2**4 - 1
 
-    def track(self):
-        rho = self.loc_radius
-        for props in self.prop_samples:
-            self.mecha.reset(*props)
-            crv_loc = np.hstack([
-                self.mecha.get_range(par-rho, par+rho, self.loc_size)
-                for par in self.ref_par
-                ])
-            pois = self.poi_finder(crv_loc, closed=False)
-
-
-
+#     def track(self):
+#         rho = self.loc_radius
+#         for props in self.prop_samples:
+#             self.mecha.reset(*props)
+#             crv_loc = np.hstack([
+#                 self.mecha.get_range(par-rho, par+rho, self.loc_size)
+#                 for par in self.ref_par
+#                 ])
+#             pois = self.poi_finder(crv_loc, closed=False)

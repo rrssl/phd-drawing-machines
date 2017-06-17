@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Base class for the forward controller.
+Base module for the forward controller app.
 
 @author: Robin Roussel
 """
@@ -17,6 +17,17 @@ from controlpane import ControlPane
 
 
 class ForwardController:
+    """Base class for the forward controller app.
+
+    Parameters
+    ----------
+    mecha_type: Mechanism
+        As defined in the mecha module.
+    param_data: iterable
+        Sequence of (param_id, dict) pairs, where each dict defines
+        the parameters required to initialize the sliders.
+    """
+
     def __init__(self, mecha_type, param_data, pt_density=2**6):
         self.param_data = param_data
         self.pt_density = pt_density
@@ -28,12 +39,12 @@ class ForwardController:
         self._init_draw(param_data)
 
     def _init_draw(self, param_data):
-        self.fig = plt.figure(figsize=(16,8))
+        self.fig = plt.figure(figsize=(16, 8))
         gs = GridSpec(9, 12)
         self.ax = self.fig.add_subplot(gs[:, :6])
         self.ax.set_aspect('equal')
-#        self.ax.get_xaxis().set_ticks([])
-#        self.ax.get_yaxis().set_ticks([])
+        self.ax.get_xaxis().set_ticks([])
+        self.ax.get_yaxis().set_ticks([])
         plt.subplots_adjust(left=.05, wspace=0., hspace=1.)
 
         self.crv_plot = self.ax.plot([], [], lw=1, alpha=.8)[0]
@@ -41,8 +52,9 @@ class ForwardController:
         self.mecha_plot = mechaplot_factory(self.mecha, self.ax, self.crv_plot)
 
         bounds = [self.get_bounds(i) for i in range(len(self.mecha.props))]
-        self.control_pane = ControlPane(self.fig, param_data, self.update,
-                                        subplot_spec=gs[:-2, 8:], bounds=bounds)
+        self.control_pane = ControlPane(
+            self.fig, param_data, self.update,
+            subplot_spec=gs[:-2, 8:], bounds=bounds)
 
         btn_ax = self.fig.add_subplot(gs[-1, 7:9])
         self.gen_btn = Button(btn_ax, "Generate random\ncombination")
@@ -98,8 +110,8 @@ class ForwardController:
 
     def get_bounds(self, i):
         a, b = self.mecha.get_prop_bounds(i)
-        if (i >= self.mecha.ConstraintSolver.nb_dprops
-            and np.isfinite((a,b)).all()):
+        if (i >= self.mecha.ConstraintSolver.nb_dprops and
+                np.isfinite((a, b)).all()):
             # Account for slider imprecision wrt bounds.
             margin = (b - a) / 100.
             a += margin

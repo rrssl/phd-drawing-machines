@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Constrained exploration with in multidimensional spaces.
+Constrained exploration in multidimensional spaces.
 
 @author: Robin Roussel
 """
@@ -18,9 +18,6 @@ class FixPos(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-
-    ### VIEW
-
     def draw_curve_space(self, frame):
         """Draw the curve."""
         super().draw_curve_space(frame)
@@ -34,14 +31,12 @@ class FixLine(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    ### VIEW
-
     def draw_curve_space(self, frame):
         """Draw the curve."""
         super().draw_curve_space(frame)
         frame.set_title("Curve space (visible in the UI).\n"
-                        "The line on which the point of interest lies is fixed "
-                        "by the user.\n")
+                        "The line on which the point of interest lies is "
+                        "fixed by the user.\n")
         # Draw the constraint axis.
         end = self.ref_poi * 10
         line = Line2D([0., end[0]], [0., end[1]], linewidth=2, color='gold',
@@ -54,8 +49,6 @@ class FixKrv(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    ### VIEW
-
     def redraw(self):
         """Redraw dynamic elements."""
         super().redraw()
@@ -80,8 +73,8 @@ class FixKrv(ManyDimsDemo):
             ls='--', label="Ref. osc. circle")
         frame.add_patch(self.ref_osc_plt)
         # New osculating circle.
-        self.new_osc_plt = Circle((0,0), 0, color='b', alpha=.7, lw=2,
-                              fill=False, ls='--', label="New osc. circle")
+        self.new_osc_plt = Circle((0, 0), 0, color='b', alpha=.7, lw=2,
+                                  fill=False, ls='--', label="New osc. circle")
         frame.add_patch(self.new_osc_plt)
 
 
@@ -90,9 +83,6 @@ class FixKrvNoDisplay(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-
-    ### VIEW
-
     def draw_curve_space(self, frame):
         """Draw the curve."""
         super().draw_curve_space(frame)
@@ -116,14 +106,12 @@ class FixKrvLine(ManyDimsDemo):
 #        self.new_osc_plt.center = self.new_poi + normal
 #        self.new_osc_plt.radius = rk
 
-    ### VIEW
-
     def draw_curve_space(self, frame):
         """Draw the curve."""
         super().draw_curve_space(frame)
         frame.set_title("Curve space (visible in the UI).\n"
-                        "The curvature at the point of interest \nAND the line "
-                        "on which it lies are both fixed by the user.\n")
+                        "The curvature at the point of interest \nAND the "
+                        "line on which it lies are both fixed by the user.\n")
         # Draw the constraint axis.
         end = self.ref_poi * 10
         line = Line2D([0., end[0]], [0., end[1]], linewidth=2, color='gold',
@@ -134,8 +122,8 @@ class FixKrvLine(ManyDimsDemo):
 #        ref_rk = 2. / compute_curvature(self.ref_crv)[self.ref_par]
 #        normal = _get_inwards_normal(self.ref_crv, self.ref_par) * ref_rk
 #        self.ref_osc_plt = Circle(
-#            self.ref_poi+normal, ref_rk, color='k', alpha=.5, lw=1, fill=False,
-#            ls='--', label="Ref. osc. circle")
+#            self.ref_poi+normal, ref_rk, color='k', alpha=.5, lw=1,
+#            fill=False, ls='--', label="Ref. osc. circle")
 #        frame.add_patch(self.ref_osc_plt)
 #        # New osculating circle.
 #        self.new_osc_plt = Circle((0,0), 0, color='b', alpha=.7, lw=2,
@@ -148,8 +136,6 @@ class FixIsectAngle(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    ### VIEW
-
     def draw_curve_space(self, frame):
         """Draw the curve."""
         super().draw_curve_space(frame)
@@ -163,8 +149,6 @@ class FixDist(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    ### VIEW
-
     def draw_curve_space(self, frame):
         """Draw the curve."""
         super().draw_curve_space(frame)
@@ -184,8 +168,6 @@ class FixDistKrv(ManyDimsDemo):
 
     We use index value as an approx. of parameter value (discretized curve).
     """
-    ### VIEW
-
     def draw_curve_space(self, frame):
         """Draw the curve."""
         super().draw_curve_space(frame)
@@ -250,6 +232,7 @@ def main():
         from _config import fixkrvthing_data as data
         app = FixKrvNoDisplay(**data)
     app.run()
+
 
 if __name__ == "__main__":
     main()

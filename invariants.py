@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Features corresponding to each type of invariant. for corresponding PoIs.

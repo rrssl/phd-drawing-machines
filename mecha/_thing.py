@@ -5,30 +5,29 @@ Personal creation
 
 @author: Robin Roussel
 """
-#from itertools import product
+# from itertools import product
 import math
 import numpy as np
-#import scipy.optimize as opt
+# import scipy.optimize as opt
 
 from ._mecha import Mechanism, DrawingMechanism
-#from utils import skipends, farey
+# from utils import skipends, farey
 
 NB_GEARS = 5
 RADII = 1. / np.arange(2, 2+NB_GEARS)[::-1]
 RADII[2] = 6/7
-#RADII[0] = 2
+# RADII[0] = 2
 
 
 class Thing(DrawingMechanism):
     """Just a thing."""
     param_names = ["a_{}".format(i+1) for i in range(NB_GEARS)]
 
-
     class ConstraintSolver(Mechanism.ConstraintSolver):
         """Class for handling design constraints."""
         nb_dprops = 0
         nb_cprops = NB_GEARS
-        max_nb_turns = 1 # Arbitrary value
+        max_nb_turns = 1  # Arbitrary value
         _prop_constraint_map = {
             i: ((i-1)*2+2, (i-1)*2+3) for i in range(NB_GEARS)
             }
@@ -61,7 +60,6 @@ class Thing(DrawingMechanism):
         @staticmethod
         def get_radius(i):
             return RADII[i]
-
 
     class Simulator(Mechanism.Simulator):
         """Class for simulating the movement of the parts."""
@@ -146,7 +144,7 @@ class Thing(DrawingMechanism):
             joints = [pivots[0]]
             for i in range(NB_GEARS-1):
                 vec = pivots[i+1] - joints[-1]
-                vec *=  lengths[i] / np.sqrt(vec[0]**2 + vec[1]**2)
+                vec *= lengths[i] / np.sqrt(vec[0]**2 + vec[1]**2)
                 joints.append(joints[-1] + vec)
             del joints[0]
             # Apply offset.
@@ -166,7 +164,6 @@ class Thing(DrawingMechanism):
             drawing = np.einsum('ijk,jk->ik', rot, motion)
 
             return gears, pivots, joints, motion, drawing
-
 
     def get_curve(self, nb=2**8, per_turn=True):
         """Return an array of points sampled on the full curve.

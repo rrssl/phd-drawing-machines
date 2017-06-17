@@ -8,8 +8,6 @@ App allowing direct exploration of the feasible design space of a machine.
 import _context
 from _base import ForwardController
 
-#import warnings
-#warnings.filterwarnings("error")
 
 pt_density = 2**6
 if 0:

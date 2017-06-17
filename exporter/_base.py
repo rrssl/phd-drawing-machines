@@ -11,7 +11,25 @@ import svgwrite as svg
 # Convert 0.1px (required by the laser cutter) to cm ( = our user unit)
 STROKE_WIDTH = 0.1 / 35.43307
 
+
 def add_support_holes_line(g, cont, xy, size, nb, axis):
+    """Add holes for the support line.
+
+    Parameters
+    ----------
+    g : SVG group
+        SVG group to which the profiles will be added.
+    cont : SVG context
+        SVG context in which the profiles will be drawn.
+    xy : pair of floats
+        Origin of the line of holes (bottom left corner).
+    size : pair of floats
+        Total width and height of the line of holes.
+    nb : int
+        Number of holes (linearly spaced).
+    axis : 'x' or 'y'
+        Axis of the line of holes.
+    """
     x, y = xy
     w, h = size
     if axis == 'x':
@@ -23,7 +41,27 @@ def add_support_holes_line(g, cont, xy, size, nb, axis):
         for yi in ylist[::2]:
             g.add(cont.rect(insert=(x, yi), size=(w, step)))
 
+
 def add_support_line(g, cont, xy, l, h1, h2, nb):
+    """Add the profile of the support line.
+
+    Parameters
+    ----------
+    g : SVG group
+        SVG group to which the profiles will be added.
+    cont : SVG context
+        SVG context in which the profiles will be drawn.
+    xy : pair of floats
+        Origin of the support line (bottom left corner).
+    l : float
+        Total length of the support line.
+    h1 : float
+        Base height of the 'teeth'.
+    h2 : float
+        Top height of the 'teeth'.
+    nb : int
+        Number of 'teeth' (linearly spaced).
+    """
     x, y = xy
     points = [[x, y]]
     xlist, step = np.linspace(x, x+l, nb+2, endpoint=False, retstep=True)
@@ -37,6 +75,7 @@ def add_support_line(g, cont, xy, l, h1, h2, nb):
 
     g.add(cont.polyline(points=points))
 
+
 def get_svg_context(filename, dims_cm):
     """Returns the SVG context."""
     width = str(dims_cm[0])
@@ -45,6 +84,7 @@ def get_svg_context(filename, dims_cm):
     # default.
     return svg.Drawing(filename, size=(width + 'cm', height + 'cm'),
                        viewBox='0 0 ' + width + ' ' + height)
+
 
 def export_gear_svg(gear, filename, holes=[], hole_size=.3,
                     center_hole_size=None):
@@ -69,10 +109,12 @@ def export_gear_svg(gear, filename, holes=[], hole_size=.3,
 #    # Markings
 #    write = cont.add(cont.g(stroke='black', stroke_width=0.01, font_size=0.5))
 #    for hole in holes:
-#        rad = "{:.0f}".format(math.sqrt(hole[0] * hole[0] + hole[1] * hole[1]))
+#        rad = "{:.0f}".format(
+#                math.sqrt(hole[0] * hole[0] + hole[1] * hole[1]))
 #        write.add(cont.text(text=rad, insert=dims * 0.5 + hole - (0.2, 0.5)))
 
     cont.save()
+
 
 def export_internal_ring_svg(gear, filename, hole_size=.3):
     """Export internal ring to SVG."""
@@ -99,6 +141,7 @@ def export_internal_ring_svg(gear, filename, hole_size=.3):
 
     cont.save()
 
+
 def export_toothless_ring_svg(rad_int, rad_ext, filename):
     margin = .1
     dims = 2*rad_ext*(1+margin)*np.array([1, 1])
@@ -110,4 +153,3 @@ def export_toothless_ring_svg(rad_int, rad_ext, filename):
     cut.add(cont.circle(center=dims/2, r=rad_ext))
 
     cont.save()
-

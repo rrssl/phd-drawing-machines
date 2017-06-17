@@ -36,8 +36,7 @@ class SliderBound:
         self.poly.xy = xy
 
 
-def make_slider(ax, bounds=None, show_init=False, show_value=True,
-                **kwargs):
+def make_slider(ax, bounds=None, show_init=False, show_value=True, **kwargs):
     """Factory function with more options than the classic Slider.
 
     See ControlPane doc for info on the arguments.
@@ -52,8 +51,8 @@ def make_slider(ax, bounds=None, show_init=False, show_value=True,
             kwargs['slidermax'] = SliderBound(
                 ax, up, kwargs.get('valmax'), type_='upper')
     # Create slider.
-    if (type(kwargs.get('valmin')) == int
-        and type(kwargs.get('valmax')) == int):
+    if (type(kwargs.get('valmin')) == int and
+            type(kwargs.get('valmax')) == int):
         vals = range(kwargs.get('valmin'), kwargs.get('valmax') + 1)
         slider = DiscreteSlider(ax, allowed_vals=vals, **kwargs)
     else:
@@ -67,21 +66,26 @@ def make_slider(ax, bounds=None, show_init=False, show_value=True,
 class ControlPane:
     """Control pane.
 
-    Constructor parameters:
-     -- figure:
-         matplotlib figure.
-     -- param_data:
-         sequence of (id, kwargs) pairs, where 'id' is whatever identifier you
-         want to give to the callback when the corresp. slider is changed, and
-         'kwargs' contains the Slider arguments.
-     -- update_func:
-         callable object with arguments (id, value).
-     -- subplot_spec:
-         SubplotSpec defining the space in which to draw the control pane; if
-         not specified, room will be made at the bottom of the figure.
-     -- bounds:
-         sequence of (lower, upper) pairs (same order as param_data), defining
-         bounds within each slider (can be changed dynamically).
+    Parameters
+    ----------
+    figure : Figure
+        matplotlib figure.
+    param_data : sequence
+        sequence of (id, kwargs) pairs, where 'id' is whatever identifier you
+        want to give to the callback when the corresp. slider is changed, and
+        'kwargs' contains the Slider arguments.
+    update_func : callable
+        callable object with arguments (id, value).
+    subplot_spec : SubplotSpec, optional
+        Defines the space in which to draw the control pane; if not specified,
+        room will be made at the bottom of the figure.
+    bounds : sequence, optional
+        sequence of (lower, upper) pairs (same order as param_data), defining
+        bounds within each slider (can be changed dynamically).
+    show_init : boolean, optional
+        Whether or not to mark the initial position with a vertical bar.
+    show_value : boolean, optional
+        Whether or not to show the current value on the side of the slider.
 
     If objects of type int are given as 'valmin' and 'valmax', a discrete
     slider will be used.

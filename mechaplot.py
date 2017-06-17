@@ -12,8 +12,8 @@ from matplotlib.collections import PatchCollection
 from matplotlib.image import imread
 from matplotlib.transforms import Affine2D
 import numpy as np
-#import shapely.geometry as geom
-#import descartes
+# import shapely.geometry as geom
+# import descartes
 
 import sys
 
@@ -118,7 +118,8 @@ class BaseSpirograph(AniMecha):
         self.shapes['ring'][0].set_height(R * 2.2)
         self.shapes['ring'][1].radius = R
         # Create new rolling gear.
-        self.shapes['gear'][0].center = self.mecha.assembly['rolling_gear']['pos']
+        self.shapes['gear'][0].center = (
+                self.mecha.assembly['rolling_gear']['pos'])
         self.shapes['gear'][0].radius = r
         self.shapes['gear'][1].center = self.mecha.assembly['penhole']['pos']
         self.shapes['gear'][1].radius = r * 0.1
@@ -136,7 +137,6 @@ class BaseSpirograph(AniMecha):
         asb = self.mecha.assembly
         self.shapes['gear'][0].center = asb['rolling_gear']['pos']
         self.shapes['gear'][1].center = asb['penhole']['pos']
-
 
     def set_visible(self, b):
         self.bg_coll.set_visible(b)
@@ -201,7 +201,8 @@ class EllipticSpirograph(AniMecha):
     def _redraw_moving_parts(self):
         asb = self.mecha.assembly
         self.shapes['gear'][0].center = asb['rolling_gear']['pos']
-        self.shapes['gear'][0].angle = asb['rolling_gear']['or'] * 180. / math.pi
+        self.shapes['gear'][0].angle = (
+                asb['rolling_gear']['or'] * 180. / math.pi)
         self.shapes['gear'][1].center = asb['penhole']['pos']
 
     def set_visible(self, b):
@@ -222,16 +223,17 @@ def _align_linkage_to_joints(p1, p2, linkage, offset):
     rot = Affine2D().rotate_around(*p1, theta=math.atan2(vec[1], vec[0]))
     linkage.set_transform(rot)
 
+
 def _align_image_to_joints(p1, p2, img, offset):
-#    vec = p2 - p1
+    # vec = p2 - p1
     box = list(img.get_extent())
     box[0] += float(p2[0])
     box[1] += float(p2[0])
     box[2] += float(p2[1])
     box[3] += float(p2[1])
     img.set_extent(box)
-#    rot = Affine2D().rotate_around(*p1, theta=math.atan2(vec[1], vec[0]))
-#    linkage.set_transform(rot)
+    # rot = Affine2D().rotate_around(*p1, theta=math.atan2(vec[1], vec[0]))
+    # linkage.set_transform(rot)
 
 
 class SingleGearFixedFulcrumCDM(AniMecha):
@@ -312,7 +314,7 @@ class SingleGearFixedFulcrumCDM(AniMecha):
 
     def _redraw_moving_parts(self):
         asb = self.mecha.assembly
-        OF = np.array([[self.mecha.props[2]],[0.]])
+        OF = np.array([[self.mecha.props[2]], [0.]])
         OS = asb['slider']['pos']
         # Pivots
         self.shapes['slider'][0].center = OS
@@ -344,6 +346,7 @@ class SingleGearFixedFulcrumCDM(AniMecha):
                 [patch for label in ['slider', 'link', 'pen-holder']
                  for patch in self.shapes[label]])
         return self.fg_coll, self.anim_plt
+
 
 class HootNanny(AniMecha):
     rod_thickness = .2
@@ -554,10 +557,10 @@ class Kicker(AniMecha):
 
         self.bg_img = {
             'ball': self.ax.imshow(imread("../assets/soccer_ball.png"),
-                                   extent=(-4,1,-11,-6),
+                                   extent=(-4, 1, -11, -6),
                                    interpolation='bilinear'),
             'grass': self.ax.imshow(imread("../assets/grass.png"),
-                                    extent=(-20,20,-12,-9),
+                                    extent=(-20, 20, -12, -9),
                                     interpolation='bilinear')
             }
 
@@ -595,7 +598,8 @@ class Kicker(AniMecha):
         self.shapes['end_effector'][0].radius = pivot_size
 
 #        self.ik_img['foot'].remove()
-#        self.ik_img_art['foot'].set_extent((0, 1.5*(l1+d)/5, 0, 1.5*(l1+d)/10))
+#        self.ik_img_art['foot'].set_extent(
+#                (0, 1.5*(l1+d)/5, 0, 1.5*(l1+d)/10))
 #        self.ik_img_art['foot'] = self.ax.imshow(
 #                self.ik_img['foot'],
 #                extent=(0, 1.5*(l1+d)/5, 0, 1.5*(l1+d)/10),
@@ -706,26 +710,26 @@ class Thing(AniMecha):
                 pat.Circle((0., 0.), 0., color='grey', alpha=.7)
                 ]
              for i in range(nb_props)
-            })
+             })
         self.shapes.update(
             {'pivot_{}'.format(i): [
                 pat.Circle((0., 0.), .03, color='pink', alpha=1.)
                 ]
              for i in range(nb_props)
-            })
+             })
         self.shapes.update(
             {'joint_{}'.format(i): [
                 pat.Circle((0., 0.), .03, color='lightgreen', alpha=1.)
                 ]
              for i in range(nb_props-1)
-            })
+             })
         self.shapes.update(
             {'link_{}'.format(i): [
                 pat.Rectangle((0., 0.), width=3., height=self.rod_thickness,
                               angle=0., color='grey', alpha=1.)
                 ]
              for i in range(nb_props)
-            })
+             })
         self.bg_labels = ['turntable', 'canvas'] + [
             'gear_{}'.format(i) for i in range(nb_props)]
         self.bg_coll = self.ax.add_collection(PatchCollection(
@@ -759,8 +763,8 @@ class Thing(AniMecha):
             self.shapes[gear][1].center = asb[gear]['pos']
             self.shapes[gear][1].radius = r_G(i) * .1
         self.shapes['link_{}'.format(nb_props-1)][0].set_width(np.linalg.norm(
-            asb['pen-holder']['pos']
-            - asb['joint_{}'.format(nb_props-2)]['pos']))
+            asb['pen-holder']['pos'] -
+            asb['joint_{}'.format(nb_props-2)]['pos']))
         # Moving parts
         self._redraw_moving_parts()
         # Update patches
@@ -832,4 +836,3 @@ class Thing(AniMecha):
                 [patch for label in self.fg_labels
                  for patch in self.shapes[label]])
         return self.fg_coll, self.anim_plt
-

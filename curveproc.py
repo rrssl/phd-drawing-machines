@@ -5,10 +5,10 @@ computations, etc.)
 
 @author: Robin Roussel
 """
-
 from matplotlib.path import Path
 import numpy as np
 import scipy.interpolate as itp
+
 
 def compute_curvature(curve, is_closed=True):
     """Compute the curvature along the input curve."""
@@ -43,7 +43,7 @@ def get_hand_drawn(curve, amplitude=0.01, wavelength=0.3, randomness=2):
     path = path.cleaned(sketch=(amplitude, wavelength, randomness))
     curve2 = path.to_polygons()[0].T[:, :-1]
     curve2 = smooth_curve(curve2)
-    
+
     return curve2
 
 
@@ -55,11 +55,11 @@ def smooth_curve(curve, sample_fraction=2, step=3):
     curve = curve[:, ::sample_fraction]
     # Version 2: random sample (keeping the first and last points).
 #    ids = np.arange(size)
-#    ids = np.sort(np.random.choice(ids, size / sample_fraction, replace=False))
+#    ids = np.sort(
+#        np.random.choice(ids, size / sample_fraction, replace=False))
 #    ids[0] = 0
 #    ids[-1] = size - 1
 #    curve = curve[:, ids]
-
 
     # Use a parametric representation {(x(t), y(t)), t in [0, 1]} of the curve.
     t = np.zeros(curve.shape[1])

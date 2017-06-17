@@ -1,48 +1,15 @@
+# -*- coding: utf-8 -*-
+"""
+Configuration file for all constrained exploration demos.
+"""
 from functools import partial
-import numpy as np
 
 import _context
-from curveproc import compute_curvature
 import mecha
 from poitrackers import get_corresp_krvmax, get_corresp_isect
-
-### Feature getters
-# TODO: once PoI have been harmonized, used invariants.py instead
-
-def get_position(curve, param, poi):
-    return poi
-
-def get_curvature(curve, param, poi):
-    return compute_curvature(curve)[param]
-
-def get_angle(curve, param, poi):
-    return np.arctan2(poi[1], poi[0])
-
-def get_curvature_and_angle(curve, param, poi):
-    return np.r_[compute_curvature(curve)[param] * 3e-2, np.arctan2(poi[1], poi[0])]
-#    return np.r_[compute_curvature(curve)[param], np.arctan2(poi[1], poi[0])]
-
-def get_isect_angle(curve, param, poi):
-    if poi is None or not poi.size:
-        feats= np.full(2, 1e6)
-    else:
-        curve = curve[:, :-1] # Remove last point
-        n = curve.shape[1]
-        param = np.asarray(param)
-        v = curve[:, (param+1)%n] - curve[:, param%n]
-        v /= np.linalg.norm(v, axis=0)
-        feats = v[:, 1] - v[:, 0]
-    return feats
-
-def get_dist(curve, param, poi):
-    diff = poi[:, 1] - poi[:, 0]
-    return diff[0]**2 + diff[1]**2
-
-def get_dist_and_krv_diff(curve, param, poi):
-    krv = compute_curvature(curve)[param]
-    diffpos = (poi[:, 1] - poi[:, 0]) / poi[:, 0]
-    diffkrv = (krv[1] - krv[0]) / krv[0]
-    return diffpos[0]**2 + diffpos[1]**2 + diffkrv**2
+from features import (get_position, get_curvature, get_angle,
+                      get_curvature_and_angle, get_isect_angle,
+                      get_dist, get_dist_and_krv_diff)
 
 ### EllipticSpirograph
 
@@ -58,9 +25,9 @@ fixkrv_data = {
 
 fixdist_data = {
     'disc_prop': (5, 3),
-#    'cont_prop': (.31, .48), # Nonzero dist between PoIs
-    'cont_prop': (.3, 1.), # Nonzero dist between PoIs
-#    'cont_prop': (.3, .692), # Quasi zero dist
+#    'cont_prop': (.31, .48),  # Nonzero dist between PoIs
+    'cont_prop': (.3, 1.),  # Nonzero dist between PoIs
+#    'cont_prop': (.3, .692),  # Quasi zero dist
 #    'cont_prop': (.1, .2),  # Non zero dist
     'init_poi_id': (150, 117),
 #    'init_poi_id': (53, 267),
@@ -82,7 +49,7 @@ fixpos_data = {
 
 fixisectangle_data = {
     'disc_prop': (5, 3),
-    'cont_prop': (.31, .4755), # Quasi zero angle between segments
+    'cont_prop': (.31, .4755),  # Quasi zero angle between segments
 #    'init_poi_id': (11, 117),
     'init_poi_id': (53, 267),
     'pts_per_dim': 10,
@@ -93,7 +60,7 @@ fixisectangle_data = {
 
 fixisectpos_data = {
     'disc_prop': (5, 3),
-    'cont_prop': (.31, .48), # Quasi zero angle between segments
+    'cont_prop': (.31, .48),  # Quasi zero angle between segments
 #    'init_poi_id': (11, 117),
     'init_poi_id': (53, 267),
     'pts_per_dim': 17,
@@ -333,9 +300,8 @@ fixposkick_data = {
     'nb_crv_pts': 2**6
     }
 
+
 ### Thing
-
-
 nb_cprops = mecha.Thing.ConstraintSolver.nb_cprops
 
 fixposthing_data = {

@@ -13,6 +13,7 @@ from _base import (get_svg_context, export_gear_svg, export_toothless_ring_svg,
                    STROKE_WIDTH)
 from gearprofile import Involute
 
+
 def export_hoot_base_svg(rad_turntable, rad_gear1, rad_gear2, gear_angle,
                          rad_dgear, square_hole_size, filename):
     hole_size = .6
@@ -21,7 +22,7 @@ def export_hoot_base_svg(rad_turntable, rad_gear1, rad_gear2, gear_angle,
                                                   math.sin(gear_angle)])
     dims = 4*margin + rad_turntable + np.array(
         [2*rad_gear1 + abs(min(-rad_turntable, TG2[0]-rad_gear2)),
-         2*rad_dgear + max (rad_turntable, TG2[1]+rad_gear2)])
+         2*rad_dgear + max(rad_turntable, TG2[1]+rad_gear2)])
     cont = get_svg_context(filename, dims)
     cut = cont.add(cont.g(fill='none', stroke='red', stroke_width=.005))
     # Base contour
@@ -82,6 +83,7 @@ def export_hoot_arm_svg(length, rad1, rad2, filename):
 
     cont.save()
 
+
 def export_hoot(props, scale, base, name):
     base = base.format("hoot_nanny")
     os.makedirs(base)
@@ -95,7 +97,7 @@ def export_hoot(props, scale, base, name):
     length1 = props[6]*scale
     length2 = props[7]*scale
     circular_pitch = 12/scale
-    rad_dgear = .5 * rad_turntable # Radius of the driving gear
+    rad_dgear = .5 * rad_turntable  # Radius of the driving gear
     # The 4 following dimensions come from physical measurements.
     # They are not affected by the scale factor.
     tt_hole_size = 4.02
