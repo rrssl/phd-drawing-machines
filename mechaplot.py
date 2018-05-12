@@ -549,17 +549,17 @@ class Kicker(AniMecha):
 #            PatchCollection(self.shapes[6:], match_original=True))
 #
 #        self.ik_img = {
-#            'foot': imread("../assets/soccer_player/foot.png")
+#            'foot': imread("../_assets/soccer_player/foot.png")
 #            }
 #        self.ik_img_art = {
 #            'foot': self.ax.plot(0,0)[0]
 #            }
 
         self.bg_img = {
-            'ball': self.ax.imshow(imread("../assets/soccer_ball.png"),
+            'ball': self.ax.imshow(imread("../_assets/soccer_ball.png"),
                                    extent=(-4, 1, -11, -6),
                                    interpolation='bilinear'),
-            'grass': self.ax.imshow(imread("../assets/grass.png"),
+            'grass': self.ax.imshow(imread("../_assets/grass.png"),
                                     extent=(-20, 20, -12, -9),
                                     interpolation='bilinear')
             }
