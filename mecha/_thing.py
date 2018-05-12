@@ -15,7 +15,7 @@ from ._mecha import Mechanism, DrawingMechanism
 
 NB_GEARS = 5
 RADII = 1. / np.arange(2, 2+NB_GEARS)[::-1]
-RADII[2] = 6/7
+#  RADII[2] = 6/7
 # RADII[0] = 2
 
 

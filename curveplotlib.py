@@ -41,6 +41,7 @@ class PixelFormatter:
 
     def __init__(self, im):
         self.im = im
+
     def __call__(self, x, y):
         try:
             z = self.im.get_array()[int(y), int(x)]
@@ -59,7 +60,7 @@ def imshow(frame, img, curve=None):
         pltim = frame.imshow(img, interpolation=None, cmap=plt.cm.gray)
     elif len(shp) == 3 and shp[2] == 3:
         # /!\ OpenCV uses BGR order, while Pyplot uses RGB!
-        img2 = img[:,:,::-1]
+        img2 = img[:, :, ::-1]
         pltim = frame.imshow(img2, interpolation='none')
 
     # Show pixel value when hovering over it.

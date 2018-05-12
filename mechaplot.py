@@ -45,7 +45,7 @@ class AniMecha:
         self.play = False
         self.anim = manim.FuncAnimation(
             ax.figure, self.animate, frames=self.get_anim_time,
-            interval=40, blit=True)
+            interval=20, blit=True)
         self.anim_plt = anim_plt
         if self.anim_plt is not None:
             self.anim_plt_init = self.anim_plt.get_data()
@@ -60,6 +60,7 @@ class AniMecha:
             if self.play:
                 t += dt
             yield t
+        self.play = False
 
     def reset_anim(self):
         """Reset the animation. Will be visible after Axes redraw."""

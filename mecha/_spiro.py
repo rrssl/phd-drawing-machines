@@ -19,7 +19,7 @@ class BaseSpirograph(DrawingMechanism):
         """Class for handling design constraints."""
         nb_dprops = 2
         nb_cprops = 1
-        max_nb_turns = 20  # Arbitrary value
+        max_nb_turns = 25  # Arbitrary value
 
         @classmethod
         def get_constraints(cls, cstr={}):

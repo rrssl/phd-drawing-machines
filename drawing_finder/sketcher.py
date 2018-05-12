@@ -8,7 +8,7 @@ Sketcher class.
 from enum import Enum
 import math
 import numpy as np
-from matplotlib.patches import Circle #, Rectangle
+from matplotlib.patches import Circle  # , Rectangle
 
 
 # TODO: replace 'Actions' with pickable patches.
@@ -55,7 +55,7 @@ class Sketcher:
         connect('scroll_event', self.zoom)
 
     def set_sketch_bounds(self, event):
-        print("Set the bounds of the drawing.")
+        #  print("Set the bounds of the drawing.")
         self.action = Actions.set_min_bound
         # Flush previous bounds.
         if self.data.crv_bnds[0] is not None:
@@ -63,7 +63,7 @@ class Sketcher:
             self.remove_bounds()
 
     def set_symmetry(self, value):
-        print("Set the symmetry order of the drawing: {}".format(value))
+        #  print("Set the symmetry order of the drawing: {}".format(value))
         self.data.sym_order = value
         self.remove_sym_lines()
         self.draw_sym_lines(value)

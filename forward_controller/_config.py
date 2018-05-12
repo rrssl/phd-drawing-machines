@@ -5,7 +5,7 @@ Configuration file for the forward controller app.
 spiro_data = (
     (0,
      {'valmin': 1,
-      'valmax': 15,
+      'valmax': 25,
       'valinit': 8,
       'label': "Outer gear radius"}),
     (1,
@@ -158,8 +158,8 @@ from mecha import Thing
 thing_data = [
     (i,                     # Amplitude
      {'valmin': 0.,
-      'valmax': .5,
-      'valinit': .15,
+      'valmax': 1.,
+      'valinit': 0.,
       'label': "a_{}".format(i)})
     for i in range(Thing.ConstraintSolver.nb_cprops)
     ]
