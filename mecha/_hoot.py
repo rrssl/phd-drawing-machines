@@ -22,7 +22,7 @@ class HootNanny(DrawingMechanism):
         """Class for handling design constraints."""
         nb_dprops = 3
         nb_cprops = 5
-        max_nb_turns = 15  # Arbitrary value
+        max_nb_turns = 10  # Arbitrary value
         _prop_constraint_map = {
             0: (0, 1, 13, 15, 16, 17, 18),
             1: (2, 3, 9, 12, 13, 16, 17, 18),
@@ -87,7 +87,7 @@ class HootNanny(DrawingMechanism):
 #            max_ = opt.fmin_cobyla(
 #                lambda x: -x, prop[pid], cons=cstrs, disp=0, catol=cls.eps)
             min_, max_ = opt.fmin_cobyla(
-                lambda x: x[0]-x[1], prop[pid], cons=get_cons_vec,
+                lambda x: x[0] - x[1], prop[pid], cons=get_cons_vec,
                 disp=0, catol=cls.eps)
 
             if pid in (0, 1, 2):
@@ -97,10 +97,51 @@ class HootNanny(DrawingMechanism):
             return min_, max_
 
         @classmethod
-        def sample_feasible_domain(cls, grid_resol=(4, 4, 4, 4, 4)):
+        def sample_feasible_domain(cls, grid_resol=(4, 4, 4, 4, 4),
+                                   fixed_values=None):
             """Sample the feasible domain."""
-            n = grid_resol[-5:]
-            eps = 2*cls.eps
+            if fixed_values is not None:
+                r_T_f, r_G1_f, r_G2_f, *_ = fixed_values
+            else:
+                r_T_f = None
+                r_G1_f = None
+                r_G2_f = None
+
+            def sample_gear2_and_cont(r_T, r_G1):
+                if r_G2_f is not None:
+                    yield from cls.sample_feasible_continuous_domain(
+                            r_T, r_G1, r_G2_f, grid_resol)
+                else:
+                    for r_G2 in range(1, cls.max_nb_turns + 1):
+                        if (math.gcd(r_T, r_G2) == 1
+                                or math.gcd(r_G1, r_G2) == 1):
+                            yield from cls.sample_feasible_continuous_domain(
+                                    r_T, r_G1, r_G2, grid_resol)
+
+            if r_T_f is not None:
+                if r_G1_f is not None:
+                    yield from sample_gear2_and_cont(r_T_f, r_G1_f)
+                else:
+                    for r_G1 in range(1, cls.max_nb_turns + 1):
+                        if r_T_f == 1 or r_G1 != r_T_f:
+                            yield from sample_gear2_and_cont(r_T_f, r_G1)
+            else:
+                if r_G1_f is not None:
+                    for r_T in range(1, cls.max_nb_turns + 1):
+                        if r_G1_f == 1 or r_T != r_G1_f:
+                            yield from sample_gear2_and_cont(r_T, r_G1_f)
+                else:
+                    for r_G1, r_T in skipends(farey(cls.max_nb_turns)):
+                        yield from sample_gear2_and_cont(r_T, r_G1)
+                        r_T, r_G1 = r_G1, r_T
+                        yield from sample_gear2_and_cont(r_T, r_G1)
+                    yield from sample_gear2_and_cont(1, 1)
+
+        @classmethod
+        def sample_feasible_continuous_domain(
+                cls, r_T, r_G1, r_G2, grid_resol=(5, 5, 5, 5, 5)):
+            n = grid_resol
+            eps = 2 * cls.eps
 
             def get_cons_func(p):
                 def assign_and_eval_constraints(x):
@@ -119,40 +160,27 @@ class HootNanny(DrawingMechanism):
                         ))
                 return assign_and_eval_constraints
 
-            def sample_cont(r_T, r_G1, r_G2):
-                rng_d1 = np.linspace(0., min(r_T, r_G1), n[1], endpoint=False)
-                rng_d2 = np.linspace(0., r_G2, n[2], endpoint=False)
+            rng_d1 = np.linspace(0., min(r_T, r_G1), n[1], endpoint=False)
+            rng_d2 = np.linspace(0., r_G2, n[2], endpoint=False)
 
-                for d1, d2 in product(rng_d1, rng_d2):
-                    rng_l1 = np.linspace(r_G1+d1+eps, 2*r_T+r_G1-d1, n[3],
-                                         endpoint=False)
-                    rng_l2 = np.linspace(r_G2+d2+eps, 2*r_T+r_G2-d2, n[4],
-                                         endpoint=False)
+            for d1, d2 in product(rng_d1, rng_d2):
+                rng_l1 = np.linspace(r_G1+d1+eps, 2*r_T+r_G1-d1, n[3],
+                                     endpoint=False)
+                rng_l2 = np.linspace(r_G2+d2+eps, 2*r_T+r_G2-d2, n[4],
+                                     endpoint=False)
 
-                    for l1, l2 in product(rng_l1, rng_l2):
-                        prop = [r_T, r_G1, r_G2, 0., d1, d2, l1, l2]
-                        prop = np.column_stack((prop, prop))
-                        b_theta_12 = opt.fmin_cobyla(
-                            lambda x: x[0]-x[1], [1.5708, 1.5708],
-                            cons=get_cons_func(prop), disp=0, catol=eps)
-                        if (get_cons_func(prop)(b_theta_12) < 0.).any():
-                            continue
+                for l1, l2 in product(rng_l1, rng_l2):
+                    prop = [r_T, r_G1, r_G2, 0., d1, d2, l1, l2]
+                    prop = np.column_stack((prop, prop))
+                    b_theta_12 = opt.fmin_cobyla(
+                        lambda x: x[0]-x[1], [1.5708, 1.5708],
+                        cons=get_cons_func(prop), disp=0, catol=eps)
+                    if (get_cons_func(prop)(b_theta_12) < 0.).any():
+                        continue
 
-                        for theta_12 in np.linspace(
-                                b_theta_12[0], b_theta_12[1], n[0]):
-                            yield r_T, r_G1, r_G2, theta_12, d1, d2, l1, l2
-
-            def sample_gear2_and_cont(r_T, r_G1):
-                itr = farey(cls.max_nb_turns)
-                next(itr)  # Skip first element (0-radius)
-                for r_G2, r_T_ in itr:
-                    yield from sample_cont(r_T, r_G1, r_G2*r_T/r_T_)
-
-            for r_G1, r_T in skipends(farey(cls.max_nb_turns)):
-                yield from sample_gear2_and_cont(r_T, r_G1)
-                r_T, r_G1 = r_G1, r_T
-                yield from sample_gear2_and_cont(r_T, r_G1)
-            yield from sample_gear2_and_cont(1, 1)
+                    for theta_12 in np.linspace(
+                            b_theta_12[0], b_theta_12[1], n[0]):
+                        yield r_T, r_G1, r_G2, theta_12, d1, d2, l1, l2
 
         @staticmethod
         def _get_G1G2_sq(r_T, r_G1, r_G2, theta_12):

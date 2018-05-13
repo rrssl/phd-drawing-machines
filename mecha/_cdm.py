@@ -88,14 +88,37 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             return min_, max_
 
         @classmethod
-        def sample_feasible_domain(cls, grid_resol=(5, 5, 5, 5)):
+        def sample_feasible_domain(cls, grid_resol=(5, 5, 5, 5),
+                                   fixed_values=None):
             """Sample the feasible domain."""
-            for r_G, r_T in skipends(farey(cls.max_nb_turns)):
-                yield from cls.sample_feasible_continuous_domain(
-                    r_T, r_G, grid_resol)
-                yield from cls.sample_feasible_continuous_domain(
-                    r_G, r_T, grid_resol)
-            yield from cls.sample_feasible_continuous_domain(1, 1, grid_resol)
+            if fixed_values is not None:
+                r_T_f, r_G_f, *_ = fixed_values
+            else:
+                r_T_f = None
+                r_G_f = None
+            if r_T_f is not None:
+                if r_G_f is not None:
+                    yield from cls.sample_feasible_continuous_domain(
+                            r_T_f, r_G_f, grid_resol)
+                else:
+                    for r_G in range(1, cls.max_nb_turns + 1):
+                        if r_T_f == 1 or r_G != r_T_f:
+                            yield from cls.sample_feasible_continuous_domain(
+                                    r_T_f, r_G, grid_resol)
+            else:
+                if r_G_f is not None:
+                    for r_T in range(1, cls.max_nb_turns + 1):
+                        if r_G_f == 1 or r_T != r_G_f:
+                            yield from cls.sample_feasible_continuous_domain(
+                                    r_T, r_G_f, grid_resol)
+                else:
+                    for r_G, r_T in skipends(farey(cls.max_nb_turns)):
+                        yield from cls.sample_feasible_continuous_domain(
+                                r_T, r_G, grid_resol)
+                        yield from cls.sample_feasible_continuous_domain(
+                                r_G, r_T, grid_resol)
+                    yield from cls.sample_feasible_continuous_domain(
+                            1, 1, grid_resol)
 
         @classmethod
         def sample_feasible_continuous_domain(cls, r_T, r_G,

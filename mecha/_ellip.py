@@ -53,20 +53,42 @@ class EllipticSpirograph(DrawingMechanism):
                 return 0., cls._get_dmax(prop[1], prop[2]) - 2*cls.eps
 
         @classmethod
-        def sample_feasible_domain(cls, grid_resol=(10, 10)):
+        def sample_feasible_domain(cls, grid_resol=(10, 10),
+                                   fixed_values=None):
             """Sample the feasible domain."""
-            # Note: we could try a time-efficient version using numpy's
-            # vectorization, progressively building a 4D tensor then
-            # 'flattening' it to a Nx4 matrix.
+            if fixed_values is not None:
+                R_f, req_f, *_ = fixed_values
+            else:
+                R_f = None
+                req_f = None
+            if R_f is not None:
+                if req_f is not None:
+                    yield from cls.sample_feasible_continuous_domain(
+                        R_f, req_f, grid_resol)
+                else:
+                    for req in range(1, R_f):
+                        yield from cls.sample_feasible_continuous_domain(
+                            R_f, req, grid_resol)
+            else:
+                if req_f is not None:
+                    for R in range(req_f+1, cls.max_nb_turns):
+                        yield from cls.sample_feasible_continuous_domain(
+                            R, req_f, grid_resol)
+                else:
+                    for req, R in skipends(farey(cls.max_nb_turns)):
+                        yield from cls.sample_feasible_continuous_domain(
+                            R, req, grid_resol)
+
+        @classmethod
+        def sample_feasible_continuous_domain(
+                cls, R, req, grid_resol=(10, 10)):
             n_e2, n_d = grid_resol[-2], grid_resol[-1]
-            for req, R in skipends(farey(cls.max_nb_turns)):
+            emax2 = cls._get_e2max(R, req) - 2*cls.eps
+            for e2 in np.linspace(0, emax2, n_e2, endpoint=False):
 
-                emax2 = cls._get_e2max(R, req) - 2*cls.eps
-                for e2 in np.linspace(0, emax2, n_e2, endpoint=False):
-
-                    dmax = cls._get_dmax(req, e2) - 2*cls.eps
-                    for d in np.linspace(0, dmax, n_d, endpoint=False):
-                        yield R, req, e2, d
+                dmax = cls._get_dmax(req, e2) - 2*cls.eps
+                for d in np.linspace(0, dmax, n_d, endpoint=False):
+                    yield R, req, e2, d
 
         @staticmethod
         def _get_e2max(R, req):
