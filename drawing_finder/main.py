@@ -3,7 +3,9 @@ Demo for sketch-based curve retrieval.
 
 """
 import math
+import pickle
 import sys
+from time import perf_counter
 
 import matplotlib
 matplotlib.use("Qt5Agg")
@@ -150,6 +152,28 @@ def find_all_props(spline, mecha_type, disc_props, crv_density):
         return disc_props + list(sol)
 
 
+def show_search_results(results, original_spline):
+    n = len(results)
+    dims = (n // 3 + bool(n % 3), 3)
+    fig, axes = plt.subplots(
+        dims[0], dims[1], figsize=plt.figaspect(1 / 2),
+        subplot_kw=dict(aspect='equal'))
+    for ax, res in zip(axes.flat, results):
+        #  distshow(ax, sketch, res['curve'])
+        curve = res['curve'].T
+        sketch = np.column_stack(
+            splev(np.linspace(0, 1, len(curve)), original_spline))
+        curve, sketch, _ = procrustes(curve, sketch)
+        ax.plot(*curve.T)
+        ax.plot(*sketch.T)
+        props = np.round(res['props'], 2)
+        ax.set_title("Distance: {:.2f}\nParameters: {}".format(
+            res['dist'], props))
+        ax.axis("off")
+    #  fig.tight_layout()
+    fig.show()
+
+
 def isinteger(x):
     return np.equal(np.mod(x, 1), 0)
 
@@ -168,7 +192,6 @@ class DrawingFinder:
         self.undone_strokes = []
         # Mechanism retrieval
         self.pts_per_dim = {t: 4 for t in TYPES}
-        self.distance = DistanceField().get_dist
         self.search_res = []  # list of  {'type', 'props', 'curve'} dicts
         # Mechanism
         self.mecha = None
@@ -274,9 +297,12 @@ class DrawingFinder:
         if not len(self.strokes):
             return
         self.search_res.clear()
+        _time = perf_counter()
         spline = get_smooth_drawing(self.strokes)
+        print("Smoothing time: {}s".format(perf_counter() - _time))
         self.spline = spline
         # Sample the parameter space.
+        _time = perf_counter()
         search_space = self.compute_search_space()
         print("Search space:")
         print(search_space)
@@ -285,10 +311,13 @@ class DrawingFinder:
                 for t, fv in search_space)
         print("Num samples", sum(len(s) for s in samples))
         samples = [(ss[0], s) for ss, s in zip(search_space, samples)]
+        print("Sample computation time: {}s".format(perf_counter() - _time))
         # Compute distances.
+        _time = perf_counter()
         distances = Parallel(n_jobs=len(search_space))(
                 delayed(get_distances)(spline, t, s, self.crv_density)
                 for t, s in samples)
+        print("Distances computation time: {}s".format(perf_counter() - _time))
         distances = np.concatenate(distances)
         best = distances.argpartition(n_res)[:n_res]
         # Sort the best matching curves.parameter
@@ -347,7 +376,8 @@ class Window(QWidget):
         redo_bt = QPushButton("Redo stroke", self)
         search_bt = QPushButton("Search drawing", self)
         show_bt = QPushButton("Show spline", self)
-        save_bt = QPushButton("Save canvas", self)
+        save_canvas_bt = QPushButton("Save canvas", self)
+        save_query_bt = QPushButton("Save query", self)
         # Add symmetry slider.
         sym_sld = QSlider(Qt.Horizontal, self)
         sym_sld.setTickInterval(1)
@@ -356,17 +386,20 @@ class Window(QWidget):
         sym_sld.setValue(1)
         sym_sld.setRange(1, 10)
         sym_sld.setFocusPolicy(Qt.NoFocus)
-        # Add text box.
+        # Add text boxes.
         sym_txt = QLabel("Symmetry order: 1", self)
         sym_txt.setAlignment(Qt.AlignCenter)
         self.sym_txt = sym_txt
+        dbg_txt = QLabel("-- Debug --")
+        dbg_txt.setAlignment(Qt.AlignCenter)
         # Connect callbacks.
         #  bnd_bt.clicked.connect(self.sketcher.set_sketch_bounds)
         undo_bt.clicked.connect(self.sketcher.undo_stroke)
         redo_bt.clicked.connect(self.sketcher.redo_stroke)
         search_bt.clicked.connect(self.search_mecha)
         show_bt.clicked.connect(self.show_spline)
-        save_bt.clicked.connect(self.save_canvas)
+        save_canvas_bt.clicked.connect(self.save_canvas)
+        save_query_bt.clicked.connect(self.save_query)
         sym_sld.valueChanged.connect(self.set_symmetry)
         # Arrange widgets.
         top = QHBoxLayout()
@@ -388,8 +421,10 @@ class Window(QWidget):
         panel.addWidget(search_bt)
         panel.addWidget(HLine())
         panel.addStretch()
+        panel.addWidget(dbg_txt)
         panel.addWidget(show_bt)
-        panel.addWidget(save_bt)
+        panel.addWidget(save_canvas_bt)
+        panel.addWidget(save_query_bt)
         self.setLayout(top)
         # Finalize window
         self.setGeometry(10, 10, 800, 600)  # left, top, width, height
@@ -406,26 +441,7 @@ class Window(QWidget):
             print("Search for the best matching mechanism.")
             n = 9
             results = self.finder.search_mecha(n)
-
-            spline = self.finder.spline
-            dims = (n // 3 + bool(n % 3), 3)
-            fig, axes = plt.subplots(
-                dims[0], dims[1], figsize=plt.figaspect(1 / 2),
-                subplot_kw=dict(aspect='equal'))
-            for ax, res in zip(axes.flat, results):
-                #  distshow(ax, sketch, res['curve'])
-                curve = res['curve'].T
-                sketch = np.column_stack(
-                    splev(np.linspace(0, 1, len(curve)), spline))
-                curve, sketch, _ = procrustes(curve, sketch)
-                ax.plot(*curve.T)
-                #  ax.plot(*sketch.T)
-                props = np.round(res['props'], 2)
-                ax.set_title("Distance: {:.2f}\nParameters: {}".format(
-                    res['dist'], props))
-                ax.axis("off")
-            #  fig.tight_layout()
-            fig.show()
+            show_search_results(results, self.finder.spline)
 
     def show_spline(self, event):
         strokes = self.finder.strokes
@@ -459,6 +475,18 @@ class Window(QWidget):
     def save_canvas(self):
         self.fig.savefig("canvas.svg")
 
+    def save_query(self):
+        with open("query.pkl", 'wb') as f:
+            pickle.dump(self.finder, f)
+
+
+def process_query(filename, n_results):
+    with open(filename, 'rb') as f:
+        finder = pickle.load(f)
+    finder.search_mecha(n_results)
+    with open(filename[:-4] + "_processed" + filename[-4:], 'rb') as f:
+        pickle.dump(finder, f)
+
 
 def main():
     app = QApplication(sys.argv)
@@ -468,4 +496,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) < 2:
+        main()
+    else:
+        filename = sys.argv[1]
+        n_results = sys.argv[2]
+        process_query(filename, n_results)
