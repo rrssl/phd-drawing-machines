@@ -91,5 +91,6 @@ ENV/
 # Perso
 _*/
 *.npy
+*.pkl
 exporter/svg
 user_study/data
