@@ -1,0 +1,4 @@
+#!/bin/bash
+for file in *.pkl; do
+    python main.py $file 9 > $file".log" 2>&1
+done

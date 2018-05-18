@@ -484,7 +484,7 @@ def process_query(filename, n_results):
     with open(filename, 'rb') as f:
         finder = pickle.load(f)
     finder.search_mecha(n_results)
-    with open(filename[:-4] + "_processed" + filename[-4:], 'rb') as f:
+    with open(filename[:-4] + "_processed" + filename[-4:], 'wb') as f:
         pickle.dump(finder, f)
 
 
@@ -500,5 +500,5 @@ if __name__ == "__main__":
         main()
     else:
         filename = sys.argv[1]
-        n_results = sys.argv[2]
+        n_results = int(sys.argv[2])
         process_query(filename, n_results)
