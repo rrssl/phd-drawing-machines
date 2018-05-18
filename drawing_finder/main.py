@@ -7,24 +7,24 @@ import sys
 
 import matplotlib
 matplotlib.use("Qt5Agg")
-from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.optimize as opt
+from joblib import Parallel, delayed
 from matplotlib.backends.backend_qt5agg import \
     FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
-                             QPushButton, QSizePolicy, QSlider, QVBoxLayout,
-                             QWidget, QSpinBox)
+                             QPushButton, QSizePolicy, QSlider, QSpinBox,
+                             QVBoxLayout, QWidget)
 from scipy.interpolate import splev, splprep
-import scipy.optimize as opt
-from scipy.spatial import procrustes
 from scipy.signal import fftconvolve
+from scipy.spatial import procrustes
 
 import _context  # noqa
-from curvedistances import DistanceField
 import mecha
+from curvedistances import DistanceField
 from sketcher import Sketcher
 from tsp import TSPSolver
 #  from curveplotlib import distshow
