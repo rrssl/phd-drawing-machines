@@ -83,6 +83,11 @@ class ForwardController:
         self.info_btn = Button(btn_ax, "Show info")
         self.info_btn.on_clicked(self.show_info)
 
+        btn_ax = self.fig.add_subplot(gs[-2, 7:9])
+        self.svcu_btn = Button(btn_ax, "Save curve")
+        self.svcu_btn.on_clicked(self.save_curve_to_npy)
+        self.svcu_cnt = 0
+
         self.redraw()
 
     def generate_random_params(self, event):
@@ -111,6 +116,10 @@ class ForwardController:
         self.crv = self.mecha.get_curve(nb=self.pt_density)
         self.redraw()
         self.fig.canvas.draw_idle()
+
+    def save_curve_to_npy(self, event):
+        self.svcu_cnt += 1
+        np.save("curve_{}.npy".format(self.svcu_cnt), np.asarray(self.crv))
 
     def save_params(self, event):
         save = {
