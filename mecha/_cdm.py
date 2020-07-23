@@ -223,7 +223,7 @@ class SingleGearFixedFulcrumCDM(DrawingMechanism):
             """Simulate one cycle of the assembly's motion."""
             length = self.get_cycle_length()
             if self.per_turn:
-                nb_samples = (length / (2*math.pi)) * self.nb_samples + 1
+                nb_samples = int(length / (2*math.pi)) * self.nb_samples + 1
             else:
                 nb_samples = self.nb_samples
             t_range = np.linspace(0., length, nb_samples)
