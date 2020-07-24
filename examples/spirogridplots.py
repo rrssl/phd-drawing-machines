@@ -28,7 +28,7 @@ class SpiroGridPlot:
     def draw_grid(self):
         """Draw the grid of figures."""
         num_R_vals = 7
-        num_d_vals = 7
+        num_d_vals = 8
 
         # Compute combinations.
         self.mecha.constraint_solver.max_nb_turns = num_R_vals
@@ -54,16 +54,10 @@ class SpiroGridPlot:
         frame.set_xlim(-3, 3 * (combi.shape[0] // num_d_vals))
         frame.set_aspect('equal')
         frame.set_facecolor('none')
-        frame.set_xlabel('r/R', labelpad=20, fontsize='xx-large')
-        plt.tick_params(
-            axis='both',            # changes apply to both axes
-            which='both',           # both major and minor ticks are affected
-            right='off',            # ticks along the bottom edge are off
-            top='off',              # ticks along the top edge are off
-            labelbottom='on')       # labels along the bottom edge are on
-        frame.set_ylabel('d/r', labelpad=20, fontsize='xx-large')
-        frame.spines['top'].set_edgecolor('none')
-        frame.spines['right'].set_edgecolor('none')
+        # frame.set_xlabel('r/R', labelpad=20, fontsize='xx-large')
+        # frame.set_ylabel('d/r', labelpad=20, fontsize='xx-large')
+        for spine in frame.spines.values():
+            spine.set_visible(False)
 
         positions = np.tile(np.arange(len(combi)), (2, 1))
         positions[0] //= num_d_vals
@@ -76,27 +70,21 @@ class SpiroGridPlot:
             if c[2]:
                 self.draw_grid_cell(frame, c, p)
         frame.set_xticks(positions[0].reshape(-1, num_d_vals)[:, 0])
-        frame.set_xticklabels(xlabels, fontsize='xx-large')
-        ylabels = [r'${:.2f}$'.format(val) for val in
+        frame.set_xticklabels(xlabels)
+        ylabels = [r'${:.3f}$'.format(val) for val in
                    np.linspace(0., 1., num_d_vals, endpoint=False)[1:]]
         frame.set_yticks(positions[1, 1:num_d_vals])
-        frame.set_yticklabels(ylabels, fontsize='x-large')
-
-        frame.arrow(51, -.05, .1, 0., width=.01, color="k", clip_on=False,
-                    head_width=.5, head_length=.5, lw=.5)
-        frame.arrow(-2.97, 25., 0., 1., width=.01, color="k", clip_on=False,
-                    head_width=.5, head_length=.5, lw=.5)
+        frame.set_yticklabels(ylabels)
 
     def draw_grid_cell(self, ax, parameters, position):
         """Draw a single cell of the grid."""
-        print(parameters)
         self.mecha.reset(*parameters)
         curve = self.mecha.get_curve(2**5)
 
         curve = curve / abs(curve).max()
         curve = curve + position.reshape(2, 1)
 
-        ax.plot(*curve, c='b', lw=2)
+        ax.plot(*curve, c='b', lw=1)
 
     def run(self):
         plt.ioff()
